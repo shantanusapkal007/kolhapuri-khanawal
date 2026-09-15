@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import net from "net";
 
-export const dynamic = "auto";
+export const dynamic = "force-static";
 
 /**
  * Health check / ping a network thermal printer over raw TCP port 9100

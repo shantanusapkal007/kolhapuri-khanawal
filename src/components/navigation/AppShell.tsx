@@ -13,6 +13,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isWaiterFloor = pathname === "/waiter";
 
+  if (pathname === "/login") {
+    return <main className="min-h-screen bg-[#0F172A]">{children}</main>;
+  }
+
   return (
     <div className="min-h-screen flex bg-[#F9F7F4] text-stone-900 selection:bg-red-700 selection:text-amber-100">
       {/* Sideways Navigation Bar (Desktop fixed / Mobile drawer) */}

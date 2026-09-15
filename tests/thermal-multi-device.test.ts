@@ -247,7 +247,7 @@ describe("Multi-Device Thermal Printer Connection System", () => {
 
   describe("2. Multi-Device Hardware Fleet & Discovery", () => {
     it("provides default printer fleet with separate devices for counter and kitchen stations", () => {
-      expect(DEFAULT_PRINTER_DEVICES.length).toBeGreaterThanOrEqual(5);
+      expect(DEFAULT_PRINTER_DEVICES.length).toBeGreaterThanOrEqual(2);
 
       const cashierPrinter = DEFAULT_PRINTER_DEVICES.find((d) => d.isDefaultReceiptPrinter);
       expect(cashierPrinter).toBeDefined();
@@ -255,13 +255,7 @@ describe("Multi-Device Thermal Printer Connection System", () => {
 
       const kitchenPrinter = DEFAULT_PRINTER_DEVICES.find((d) => d.assignedStations.includes("MAIN_KITCHEN"));
       expect(kitchenPrinter).toBeDefined();
-      expect(kitchenPrinter?.connectionType).toBe("NETWORK");
-      expect(kitchenPrinter?.ipAddress).toBe("192.168.1.201");
-      expect(kitchenPrinter?.port).toBe(9100);
-
-      const barPrinter = DEFAULT_PRINTER_DEVICES.find((d) => d.assignedStations.includes("BEVERAGE_DESSERT"));
-      expect(barPrinter).toBeDefined();
-      expect(barPrinter?.paperWidth).toBe("58mm");
+      expect(kitchenPrinter?.isDefaultKotPrinter).toBe(true);
     });
 
     it("verifies printer connection status based on connection type", async () => {
@@ -348,6 +342,36 @@ describe("Multi-Device Thermal Printer Connection System", () => {
 
   describe("3. Multi-Station Routing & Auto-Splitting", () => {
     it("splits a multi-station order and generates simultaneous jobs for respective station printers", () => {
+      const stationDevices: PrinterDevice[] = [
+        {
+          id: "printer-bhakri",
+          name: "Bhakri Station Printer",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth: "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["TANDOOR_BHAKRI"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        {
+          id: "printer-bar",
+          name: "Bar & Dessert Printer",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth: "58mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["BEVERAGE_DESSERT"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        ...DEFAULT_PRINTER_DEVICES,
+      ];
+
       const settings: PrinterSettings = {
         paperWidth: "80mm",
         autoPrintKotOnOrder: true,
@@ -357,7 +381,7 @@ describe("Multi-Device Thermal Printer Connection System", () => {
         numberOfReceiptCopies: 1,
         printMarathiHeader: true,
         stationPrinters: [],
-        devices: DEFAULT_PRINTER_DEVICES,
+        devices: stationDevices,
         autoSplitKotByStation: true,
         printMasterKotToKitchen: true,
       };
@@ -418,7 +442,7 @@ describe("Multi-Device Thermal Printer Connection System", () => {
       const job = globalPrinterManager.dispatchBill(mockBill, false, settings);
       expect(job.type).toBe("RECEIPT");
       expect(job.stationCode).toBe("CASHIER");
-      expect(job.printerName).toContain("POS-80 Counter");
+      expect(job.printerName).toContain("Counter");
       expect(["QUEUED", "PRINTING", "SUCCESS"]).toContain(job.status);
     });
   });

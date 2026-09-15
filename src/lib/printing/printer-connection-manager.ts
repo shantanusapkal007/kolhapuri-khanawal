@@ -30,11 +30,11 @@ import {
 } from "./escpos-builder";
 import { openPrintWindow } from "./thermal-printer";
 
-// Default Initial Hardware Printer Fleet
+// Default Initial Hardware Printer Fleet — Optimized for Instant Zero-Setup Printing on Android & Desktop
 export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
   {
     id: "printer-cashier-01",
-    name: "POS-80 Counter (Cashier)",
+    name: "System Print / Mobile Spooler (Counter)",
     connectionType: "BROWSER_SYSTEM",
     paperWidth: "80mm",
     isEnabled: true,
@@ -47,61 +47,15 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
   },
   {
     id: "printer-kitchen-01",
-    name: "Kitchen Master 80-1 (Main)",
-    connectionType: "NETWORK",
-    ipAddress: "192.168.1.201",
-    port: 9100,
+    name: "Kitchen KOT Spooler (Main)",
+    connectionType: "BROWSER_SYSTEM",
     paperWidth: "80mm",
     isEnabled: true,
     status: "ONLINE",
-    assignedStations: ["MAIN_KITCHEN", "THALI_SECTION"],
+    assignedStations: ["MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
     isDefaultReceiptPrinter: false,
     isDefaultKotPrinter: true,
     autoCut: true,
-    openDrawerOnPrint: false,
-  },
-  {
-    id: "printer-bhakri-01",
-    name: "Bhakri & Tandoor 80",
-    connectionType: "NETWORK",
-    ipAddress: "192.168.1.202",
-    port: 9100,
-    paperWidth: "80mm",
-    isEnabled: true,
-    status: "ONLINE",
-    assignedStations: ["TANDOOR_BHAKRI"],
-    isDefaultReceiptPrinter: false,
-    isDefaultKotPrinter: false,
-    autoCut: true,
-    openDrawerOnPrint: false,
-  },
-  {
-    id: "printer-fry-01",
-    name: "Fry & Sukka Station 80",
-    connectionType: "NETWORK",
-    ipAddress: "192.168.1.203",
-    port: 9100,
-    paperWidth: "80mm",
-    isEnabled: true,
-    status: "ONLINE",
-    assignedStations: ["FRY_SECTION"],
-    isDefaultReceiptPrinter: false,
-    isDefaultKotPrinter: false,
-    autoCut: true,
-    openDrawerOnPrint: false,
-  },
-  {
-    id: "printer-bar-01",
-    name: "Solkadhi & Bar 58",
-    connectionType: "BLUETOOTH",
-    bluetoothDeviceName: "RPP02N-Bar",
-    paperWidth: "58mm",
-    isEnabled: true,
-    status: "ONLINE",
-    assignedStations: ["BEVERAGE_DESSERT"],
-    isDefaultReceiptPrinter: false,
-    isDefaultKotPrinter: false,
-    autoCut: false,
     openDrawerOnPrint: false,
   },
 ];
@@ -249,7 +203,17 @@ class PrinterConnectionManager {
    */
   public async requestSerialPort(baudRate: number = 9600): Promise<{ portName: string; portId: string } | null> {
     if (typeof window === "undefined" || !("serial" in navigator)) {
-      throw new Error("Web Serial API is not supported in this browser. Use Chrome/Edge over HTTPS.");
+      throw new Error("Web Serial API is not supported in this browser. Use Chrome/Edge over HTTPS on a desktop computer.");
+    }
+
+    const isMobile =
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+      (typeof window !== "undefined" && window.innerWidth < 768);
+
+    if (isMobile) {
+      throw new Error(
+        "Serial COM Ports are only supported on Windows/Linux desktop computers with RS232/USB cables. On Android/mobile, please select 'System Print (Android Print Service)' or 'Bluetooth Thermal Printer'."
+      );
     }
 
     try {
@@ -536,29 +500,47 @@ class PrinterConnectionManager {
         throw new Error("Raw ESC/POS payload is required for Network printing");
       }
 
-      const res = await fetch("/api/print/network", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ip: device.ipAddress,
-          port: device.port || 9100,
-          payloadBase64: job.rawPayload,
-          timeoutMs: settings.networkTimeoutMs || 4000,
-        }),
-      });
+      try {
+        const res = await fetch("/api/print/network", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ip: device.ipAddress,
+            port: device.port || 9100,
+            payloadBase64: job.rawPayload,
+            timeoutMs: settings.networkTimeoutMs || 3000,
+          }),
+        });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || `Network printer ${device.ipAddress} refused connection`);
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `Network printer ${device.ipAddress} refused connection`);
+        }
+        return;
+      } catch (err: any) {
+        console.warn(`Network printer ${device.ipAddress} failed (${err?.message}), falling back to browser print:`, err);
+        if (job.htmlPayload) {
+          openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
+          return;
+        }
+        throw err;
       }
-      return;
     }
 
     // 3. BLUETOOTH (Web Bluetooth GATT) DRIVER
     if (device.connectionType === "BLUETOOTH") {
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth");
-      await this.sendBluetoothPayload(device, this.base64ToBytes(job.rawPayload));
-      return;
+      try {
+        await this.sendBluetoothPayload(device, this.base64ToBytes(job.rawPayload));
+        return;
+      } catch (err: any) {
+        console.warn(`Bluetooth print failed (${err?.message}), falling back to browser print:`, err);
+        if (job.htmlPayload) {
+          openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
+          return;
+        }
+        throw err;
+      }
     }
 
     // 3b. BLUETOOTH_SPP (Bluetooth Classic Serial Port Profile / RFCOMM) DRIVER
@@ -1058,6 +1040,14 @@ class PrinterConnectionManager {
       device.connectionType === "SERIAL_USB" ||
       (device.connectionType === "BLUETOOTH_SPP" && (device.sppMode === "VIRTUAL_COM" || !device.sppMode))
     ) {
+      const isMobile =
+        /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+        (typeof window !== "undefined" && window.innerWidth < 768);
+      if (isMobile) {
+        openPrintWindow(html, `Diagnostic Test — ${device.name}`);
+        return { success: true, message: "Dispatched to System Print (Mobile mode)" };
+      }
+
       if (typeof window === "undefined" || !("serial" in navigator)) {
         throw new Error("Web Serial API is not supported in this browser. Use Chrome or Edge over HTTPS.");
       }
@@ -1297,7 +1287,12 @@ class PrinterConnectionManager {
     }
     return new Uint8Array(Buffer.from(base64, "base64"));
   }
+
+  public getDevices(settings?: PrinterSettings): PrinterDevice[] {
+    return this.getActiveDevices(settings);
+  }
 }
 
 // Global Singleton Instance
 export const globalPrinterManager = new PrinterConnectionManager();
+export const printerConnectionManager = globalPrinterManager;

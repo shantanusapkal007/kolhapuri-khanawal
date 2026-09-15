@@ -510,6 +510,14 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                   )}
                 </optgroup>
               </select>
+
+              <Link
+                href="/login"
+                className="w-full inline-flex items-center justify-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold py-1.5 rounded-lg transition-all active:scale-95 border border-stone-200"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-red-600" />
+                <span>लॉगिन पोर्टल (Login Screen)</span>
+              </Link>
             </div>
           )}
 

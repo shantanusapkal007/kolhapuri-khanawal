@@ -226,7 +226,7 @@ export class RestaurantStore {
     this.printerSettings = getStoredPrinterSettings();
     this.settings = this.getStoredRestaurantSettings();
     this.waiterCredentials = this.getStoredWaiterCredentials();
-    this.currentUser = {
+    this.currentUser = this.getStoredActiveUser() || {
       id: "u-owner-01",
       email: "owner@kolhapurikhanawal.com",
       name: "Suresh Rao",
@@ -236,6 +236,30 @@ export class RestaurantStore {
       updatedAt: new Date().toISOString(),
     };
     this.seedInitialState();
+  }
+
+  getStoredActiveUser(): User | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("kk_active_user");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  saveStoredActiveUser(user: User | null): void {
+    if (typeof window === "undefined") return;
+    try {
+      if (!user) {
+        localStorage.removeItem("kk_active_user");
+      } else {
+        localStorage.setItem("kk_active_user", JSON.stringify(user));
+      }
+    } catch (e) {
+      console.warn("Failed to persist active user session", e);
+    }
   }
 
   getStoredRestaurantSettings(): RestaurantSettings {
@@ -449,6 +473,30 @@ export class RestaurantStore {
     }
   }
 
+  setCurrentUserRole(role: RoleType): void {
+    const roleNames: Record<RoleType, string> = {
+      OWNER: "Suresh Rao (Owner / Admin)",
+      MANAGER: "Ramesh Patil (Manager)",
+      CASHIER: "Deepak Shinde (Cashier)",
+      KITCHEN: "Bapu Bandal (Head Chef)",
+      WAITER: "Waiter Staff",
+      PURCHASE_STAFF: "Purchase Manager",
+      INVENTORY_MANAGER: "Inventory Supervisor",
+      OTHER_STAFF: "Staff Member",
+    };
+
+    this.currentUser = {
+      id: `u-${role.toLowerCase()}-01`,
+      email: `${role.toLowerCase()}@kolhapurikhanawal.com`,
+      name: roleNames[role] || `${role} Staff`,
+      role,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.saveStoredActiveUser(this.currentUser);
+  }
+
   loginAsWaiter(cred: WaiterCredential): void {
     this.currentUser = {
       id: cred.id,
@@ -461,6 +509,7 @@ export class RestaurantStore {
     };
     cred.lastLoginAt = new Date().toISOString();
     this.saveStoredWaiterCredentials();
+    this.saveStoredActiveUser(this.currentUser);
     this.recordAuditLog("WAITER_LOGIN", "AUTH", cred.id, `Waiter ${cred.name} logged in`);
   }
 
@@ -492,9 +541,103 @@ export class RestaurantStore {
     return { success: true, waiter: match };
   }
 
+  loginUser(usernameOrIdentifier: string, pinOrPass: string): { success: boolean; user?: User; error?: string } {
+    const cleanUser = usernameOrIdentifier.trim().toLowerCase();
+    const cleanPin = pinOrPass.trim();
+
+    // 1. Built-in Admin / Manager / Cashier / Kitchen Roles
+    if (cleanUser === "admin" || cleanUser === "owner" || cleanUser === "suresh") {
+      if (cleanPin === "1234" || cleanPin === "admin" || cleanPin === "admin123") {
+        this.setCurrentUserRole("OWNER");
+        this.recordAuditLog("LOGIN_SUCCESS", "AUTH", this.currentUser.id, "Owner/Admin logged in");
+        return { success: true, user: this.currentUser };
+      } else {
+        return { success: false, error: "Incorrect Admin PIN / Password (Default PIN: 1234)" };
+      }
+    }
+
+    if (cleanUser === "manager") {
+      if (cleanPin === "1234" || cleanPin === "manager") {
+        this.setCurrentUserRole("MANAGER");
+        this.recordAuditLog("LOGIN_SUCCESS", "AUTH", this.currentUser.id, "Manager logged in");
+        return { success: true, user: this.currentUser };
+      } else {
+        return { success: false, error: "Incorrect Manager PIN (Default PIN: 1234)" };
+      }
+    }
+
+    if (cleanUser === "cashier") {
+      if (cleanPin === "1234" || cleanPin === "cashier") {
+        this.setCurrentUserRole("CASHIER");
+        this.recordAuditLog("LOGIN_SUCCESS", "AUTH", this.currentUser.id, "Cashier logged in");
+        return { success: true, user: this.currentUser };
+      } else {
+        return { success: false, error: "Incorrect Cashier PIN (Default PIN: 1234)" };
+      }
+    }
+
+    if (cleanUser === "chef" || cleanUser === "kitchen") {
+      if (cleanPin === "1234" || cleanPin === "chef") {
+        this.setCurrentUserRole("KITCHEN");
+        this.recordAuditLog("LOGIN_SUCCESS", "AUTH", this.currentUser.id, "Kitchen Chef logged in");
+        return { success: true, user: this.currentUser };
+      } else {
+        return { success: false, error: "Incorrect Kitchen PIN (Default PIN: 1234)" };
+      }
+    }
+
+    // 2. Waiter Credentials
+    const waiterCandidate = this.waiterCredentials.find(
+      (w) => w.username.toLowerCase() === cleanUser || w.name.toLowerCase() === cleanUser
+    );
+
+    if (waiterCandidate) {
+      if (!waiterCandidate.isActive) {
+        return { success: false, error: `Account for ${waiterCandidate.name} is deactivated. Contact Admin.` };
+      }
+      if (cleanPin && waiterCandidate.pin === cleanPin) {
+        this.loginAsWaiter(waiterCandidate);
+        return { success: true, user: this.currentUser };
+      } else if (cleanPin) {
+        return { success: false, error: `Incorrect PIN for ${waiterCandidate.name}. Please try again.` };
+      }
+    }
+
+    // 3. Direct 4-digit PIN lookup for all waiters (either entered in pin field or username field)
+    const directPin = cleanPin.length === 4 && !isNaN(Number(cleanPin))
+      ? cleanPin
+      : (cleanUser.length === 4 && !isNaN(Number(cleanUser)) ? cleanUser : null);
+
+    if (directPin) {
+      const pinMatch = this.waiterCredentials.find((w) => w.pin === directPin);
+      if (pinMatch) {
+        if (!pinMatch.isActive) {
+          return { success: false, error: `Account for ${pinMatch.name} is deactivated.` };
+        }
+        this.loginAsWaiter(pinMatch);
+        return { success: true, user: this.currentUser };
+      }
+    }
+
+    return { success: false, error: "Invalid username or PIN. Please check your credentials." };
+  }
+
   logoutCurrentUser(targetRole: RoleType = "OWNER"): void {
     this.setCurrentUserRole(targetRole);
     this.recordAuditLog("LOGOUT_USER", "AUTH", this.currentUser.id, `Switched session to ${targetRole}`);
+  }
+
+  logout(): void {
+    this.saveStoredActiveUser(null);
+    this.currentUser = {
+      id: "guest",
+      email: "",
+      name: "Guest",
+      role: "WAITER",
+      isActive: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
   }
 
   exportSystemBackup(): string {
@@ -573,28 +716,6 @@ export class RestaurantStore {
   removePrinterDevice(id: string) {
     const devices = (this.printerSettings.devices || []).filter((d) => d.id !== id);
     this.updatePrinterSettings({ devices });
-  }
-
-  setCurrentUserRole(role: RoleType) {
-    const roleNames: Record<RoleType, string> = {
-      OWNER: "Shantanu (Owner)",
-      MANAGER: "Vikram Patil (Manager)",
-      CASHIER: "Priya Kulkarni (Cashier)",
-      WAITER: "Rahul Shinde (Waiter)",
-      KITCHEN: "Suresh Maharaj (Head Chef)",
-      INVENTORY_MANAGER: "Mahesh More (Storekeeper)",
-      PURCHASE_STAFF: "Sachin More (Purchase Staff)",
-      OTHER_STAFF: "Sunita Bai (Support Staff)",
-    };
-    this.currentUser = {
-      id: `u-${role.toLowerCase()}`,
-      email: `${role.toLowerCase()}@kolhapurikhanawal.com`,
-      name: roleNames[role],
-      role,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
   }
 
   seedInitialState() {

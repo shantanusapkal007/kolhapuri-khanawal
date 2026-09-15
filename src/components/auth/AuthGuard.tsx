@@ -122,6 +122,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [currentRole, store]);
 
+  // Allow login page without restrictions
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
   // Strict Waiter Isolation: Waiters can ONLY see /waiter and /menu
   if (currentRole === "WAITER") {
     // If waiter tries to visit homepage "/", redirect immediately to /waiter

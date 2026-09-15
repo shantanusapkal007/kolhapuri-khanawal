@@ -280,12 +280,25 @@ export function triggerCashDrawerKick(): void {
 }
 
 /**
- * Opens a print execution via hidden iframe (zero popups blocked) with window.open fallback.
+ * Opens a print execution.
+ * On Android / Mobile browsers, direct print injection into the document body with @media print
+ * is used because Android Chrome suppresses hidden iframe.contentWindow.print().
+ * On Desktop, iframe print is used with automatic fallback.
  */
 export function openPrintWindow(html: string, title: string): void {
   if (typeof window === "undefined") return;
 
-  // 1. Try hidden iframe first for seamless, silent printing without popup blocker issues
+  const isMobile =
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (typeof window !== "undefined" && window.innerWidth < 768);
+
+  // If Mobile (Android / iOS): Use Direct Injected Document Print
+  if (isMobile) {
+    directMobilePrint(html, title);
+    return;
+  }
+
+  // Desktop: Try hidden iframe first for silent desktop printing
   try {
     let iframe = document.getElementById("thermal-print-frame") as HTMLIFrameElement | null;
     if (!iframe) {
@@ -294,8 +307,8 @@ export function openPrintWindow(html: string, title: string): void {
       iframe.style.position = "fixed";
       iframe.style.top = "-9999px";
       iframe.style.left = "-9999px";
-      iframe.style.width = "0";
-      iframe.style.height = "0";
+      iframe.style.width = "10px";
+      iframe.style.height = "10px";
       iframe.style.border = "none";
       document.body.appendChild(iframe);
     }
@@ -312,17 +325,84 @@ export function openPrintWindow(html: string, title: string): void {
           iframe?.contentWindow?.focus();
           iframe?.contentWindow?.print();
         } catch {
-          fallbackWindowPrint(html, title);
+          directMobilePrint(html, title);
         }
-      }, 300);
+      }, 250);
       return;
     }
   } catch (err) {
-    console.warn("IFrame print attempt failed, trying window:", err);
+    console.warn("IFrame print attempt failed, switching to direct print:", err);
   }
 
-  // 2. Fallback to pop-up window
-  fallbackWindowPrint(html, title);
+  directMobilePrint(html, title);
+}
+
+function directMobilePrint(html: string, title: string): void {
+  try {
+    let printRoot = document.getElementById("kk-direct-print-root");
+    if (!printRoot) {
+      printRoot = document.createElement("div");
+      printRoot.id = "kk-direct-print-root";
+      document.body.appendChild(printRoot);
+    }
+
+    let styleEl = document.getElementById("kk-direct-print-style");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "kk-direct-print-style";
+      styleEl.textContent = `
+        @media print {
+          body > *:not(#kk-direct-print-root) {
+            display: none !important;
+          }
+          #kk-direct-print-root {
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            color: #000 !important;
+          }
+        }
+        @media screen {
+          #kk-direct-print-root {
+            display: none !important;
+          }
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    // Extract body content or inject full html
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    const bodyContent = doc.body ? doc.body.innerHTML : html;
+    printRoot.innerHTML = bodyContent;
+
+    const prevTitle = document.title;
+    document.title = title;
+
+    setTimeout(() => {
+      try {
+        window.focus();
+        window.print();
+      } catch (err) {
+        console.warn("Direct window.print() failed:", err);
+        fallbackWindowPrint(html, title);
+      } finally {
+        setTimeout(() => {
+          document.title = prevTitle;
+          if (printRoot) printRoot.innerHTML = "";
+        }, 1500);
+      }
+    }, 150);
+  } catch (err) {
+    console.error("Direct print error, trying popup window:", err);
+    fallbackWindowPrint(html, title);
+  }
 }
 
 function fallbackWindowPrint(html: string, title: string): void {
@@ -344,7 +424,7 @@ function fallbackWindowPrint(html: string, title: string): void {
       } catch (err) {
         console.warn("Auto-print error:", err);
       }
-    }, 400);
+    }, 350);
   } catch (err) {
     console.error("Print window open failed:", err);
   }
