@@ -121,6 +121,35 @@ export class EscPosBuilder {
   }
 
   /**
+   * Print 2D QR Code (compatible with POSIFLOW KP307-UEWB and ESC/POS standard)
+   * Uses GS ( k commands for Model 2 QR Code
+   */
+  qrCode(data: string, size: number = 6): this {
+    if (!data) return this;
+    const encoder = new TextEncoder();
+    const dataBytes = encoder.encode(data);
+    const pL = (dataBytes.length + 3) & 0xff;
+    const pH = ((dataBytes.length + 3) >> 8) & 0xff;
+
+    // 1. Select QR Model (Model 2)
+    this.buffer.push(GS, 0x28, 0x6b, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00);
+    // 2. Set module size (2 to 8 dots, default 6)
+    const clampedSize = Math.max(2, Math.min(8, size));
+    this.buffer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x43, clampedSize);
+    // 3. Set error correction (Level M)
+    this.buffer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x45, 0x31);
+    // 4. Store symbol data in printer memory
+    this.buffer.push(GS, 0x28, 0x6b, pL, pH, 0x31, 0x50, 0x31);
+    for (let i = 0; i < dataBytes.length; i++) {
+      this.buffer.push(dataBytes[i]);
+    }
+    // 5. Print the stored symbol
+    this.buffer.push(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30);
+    this.feed(1);
+    return this;
+  }
+
+  /**
    * Append raw ASCII / UTF-8 text string
    */
   text(str: string): this {
@@ -547,11 +576,16 @@ export function buildTableCheckEscPos(
   p.bold(true).size("BIG").twoColumns("Estimated Total:", `₹${grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
   p.separator();
 
+  const is58mm = paperWidth === "58mm";
+  const upiUrl = `upi://pay?pa=kolhapurikhanawal@okhdfcbank&pn=KolhapuriKhanawal&am=${grandTotal.toFixed(2)}&cu=INR`;
+
   p.align("CENTER")
     .bold(true)
-    .line("PAY VIA UPI AT TABLE")
+    .line("⚡ SCAN TO PAY VIA UPI ⚡")
+    .bold(false);
+  p.qrCode(upiUrl, is58mm ? 4 : 5);
+  p.align("CENTER")
     .line("UPI ID: kolhapurikhanawal@okhdfcbank")
-    .bold(false)
     .line("Please settle with your waiter or at counter.");
 
   p.cut();

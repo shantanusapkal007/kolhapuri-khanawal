@@ -229,6 +229,9 @@ export default function CashierBillingPage() {
         );
         // Auto-print receipt on full payment
         printBillReceipt(result.bill);
+        if (paymentMethod === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
+          triggerCashDrawerKick();
+        }
         setIsPrintModalOpen(true);
 
         // Notify floor staff that table is now settled and available

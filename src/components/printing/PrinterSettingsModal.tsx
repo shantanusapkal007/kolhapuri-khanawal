@@ -634,22 +634,31 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t border-stone-100 bg-stone-50/80 px-5 py-3 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
+        <div className="border-t border-stone-100 bg-stone-50/80 px-5 py-3 flex items-center justify-between gap-2.5">
+          <a
+            href="/printers"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 rounded-xl hover:bg-stone-200/50 transition-colors"
+            className="text-xs font-bold text-red-700 hover:text-red-900 underline flex items-center gap-1"
           >
-            रद्द करा (Cancel)
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation flex items-center gap-1.5"
-          >
-            <Check className="h-4 w-4" />
-            <span>जतन करा (Save Settings)</span>
-          </button>
+            <span>प्रगत प्रिंटर व्यवस्थापन (Fleet) →</span>
+          </a>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-bold text-stone-600 hover:text-stone-900 rounded-xl hover:bg-stone-200/50 transition-colors"
+            >
+              रद्द करा (Cancel)
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation flex items-center gap-1.5"
+            >
+              <Check className="h-4 w-4" />
+              <span>जतन करा (Save Settings)</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

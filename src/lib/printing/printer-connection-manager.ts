@@ -30,12 +30,15 @@ import {
 } from "./escpos-builder";
 import { openPrintWindow } from "./thermal-printer";
 
-// Default Initial Hardware Printer Fleet — Optimized for Instant Zero-Setup Printing on Android & Desktop
+// Default Initial Hardware Printer Fleet — Tailored for POSIFLOW KP307-UEWB & Mobile Spooling
 export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
   {
-    id: "printer-cashier-01",
-    name: "System Print / Mobile Spooler (Counter)",
-    connectionType: "BROWSER_SYSTEM",
+    id: "printer-posiflow-counter",
+    name: "POSIFLOW KP307-UEWB (Counter Bill)",
+    modelName: "POSIFLOW KP307-UEWB",
+    connectionType: "NETWORK",
+    ipAddress: "192.168.1.50",
+    port: 9100,
     paperWidth: "80mm",
     isEnabled: true,
     status: "ONLINE",
@@ -44,17 +47,48 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     isDefaultKotPrinter: false,
     autoCut: true,
     openDrawerOnPrint: true,
+    failoverPrinterId: "printer-cashier-fallback",
   },
   {
-    id: "printer-kitchen-01",
-    name: "Kitchen KOT Spooler (Main)",
-    connectionType: "BROWSER_SYSTEM",
+    id: "printer-posiflow-kitchen",
+    name: "POSIFLOW KP307-UEWB (Kitchen KOT)",
+    modelName: "POSIFLOW KP307-UEWB",
+    connectionType: "NETWORK",
+    ipAddress: "192.168.1.51",
+    port: 9100,
     paperWidth: "80mm",
     isEnabled: true,
     status: "ONLINE",
     assignedStations: ["MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
     isDefaultReceiptPrinter: false,
     isDefaultKotPrinter: true,
+    autoCut: true,
+    openDrawerOnPrint: false,
+    failoverPrinterId: "printer-kitchen-fallback",
+  },
+  {
+    id: "printer-cashier-fallback",
+    name: "Counter System Print (Browser Spooler)",
+    connectionType: "BROWSER_SYSTEM",
+    paperWidth: "80mm",
+    isEnabled: true,
+    status: "ONLINE",
+    assignedStations: ["CASHIER"],
+    isDefaultReceiptPrinter: false,
+    isDefaultKotPrinter: false,
+    autoCut: true,
+    openDrawerOnPrint: true,
+  },
+  {
+    id: "printer-kitchen-fallback",
+    name: "Kitchen System Print (Fallback Spooler)",
+    connectionType: "BROWSER_SYSTEM",
+    paperWidth: "80mm",
+    isEnabled: true,
+    status: "ONLINE",
+    assignedStations: ["MAIN_KITCHEN"],
+    isDefaultReceiptPrinter: false,
+    isDefaultKotPrinter: false,
     autoCut: true,
     openDrawerOnPrint: false,
   },
@@ -74,6 +108,19 @@ class PrinterConnectionManager {
   private serialPorts = new Map<string, any>();
 
   constructor() {
+    // Restore persisted queue history
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("kk_print_jobs");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            this.jobs = parsed.slice(0, 40);
+          }
+        }
+      } catch {}
+    }
+
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       try {
         this.broadcastChannel = new BroadcastChannel("kk_printer_bus");
@@ -82,10 +129,19 @@ class PrinterConnectionManager {
             this.handleRemoteJobUpdate(event.data.job);
           } else if (event.data?.type === "ENQUEUE_JOB") {
             this.jobs.push(event.data.job);
+            this.saveJobsToStorage();
             this.notifyListeners();
             this.processQueue();
           }
         };
+      } catch {}
+    }
+  }
+
+  private saveJobsToStorage() {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("kk_print_jobs", JSON.stringify(this.jobs.slice(0, 40)));
       } catch {}
     }
   }
@@ -119,7 +175,51 @@ class PrinterConnectionManager {
 
   public clearCompletedJobs() {
     this.jobs = this.jobs.filter((j) => j.status === "QUEUED" || j.status === "PRINTING");
+    this.saveJobsToStorage();
     this.notifyListeners();
+  }
+
+  public retryJob(jobId: string) {
+    const job = this.jobs.find((j) => j.id === jobId);
+    if (job) {
+      job.status = "QUEUED";
+      job.attempts = 0;
+      job.errorMessage = undefined;
+      this.saveJobsToStorage();
+      this.notifyListeners();
+      this.processQueue();
+    }
+  }
+
+  public retryAllFailed() {
+    let modified = false;
+    for (const job of this.jobs) {
+      if (job.status === "FAILED") {
+        job.status = "QUEUED";
+        job.attempts = 0;
+        job.errorMessage = undefined;
+        modified = true;
+      }
+    }
+    if (modified) {
+      this.saveJobsToStorage();
+      this.notifyListeners();
+      this.processQueue();
+    }
+  }
+
+  public cancelJob(jobId: string) {
+    const idx = this.jobs.findIndex((j) => j.id === jobId);
+    if (idx !== -1) {
+      if (this.jobs[idx].status === "QUEUED" || this.jobs[idx].status === "RETRYING") {
+        this.jobs.splice(idx, 1);
+      } else {
+        this.jobs[idx].status = "FAILED";
+        this.jobs[idx].errorMessage = "Cancelled by user";
+      }
+      this.saveJobsToStorage();
+      this.notifyListeners();
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -359,6 +459,17 @@ class PrinterConnectionManager {
       }
     }
 
+    if (device.connectionType === "BLUETOOTH_BLE") {
+      const hasBle = typeof window !== "undefined" && !!(navigator as any).bluetooth;
+      return {
+        online: hasBle,
+        latencyMs: 12,
+        message: hasBle
+          ? (device.bluetoothDeviceName ? `BLE Ready (${device.bluetoothDeviceName})` : "iOS Bluetooth BLE ready")
+          : "Web Bluetooth API not supported in this browser (use WebBLE on iOS or Chrome on Android/PC)",
+      };
+    }
+
     return { online: true };
   }
 
@@ -367,7 +478,7 @@ class PrinterConnectionManager {
   // ══════════════════════════════════════════════════════════════════
 
   /**
-   * Enqueue a new print job into the spooler
+   * Enqueue a new print job into the spooler with optional duplicate suppression
    */
   public enqueueJob(
     device: PrinterDevice,
@@ -375,8 +486,24 @@ class PrinterConnectionManager {
     type: PrintJob["type"],
     escposBytes?: Uint8Array,
     htmlFallback?: string,
-    stationCode?: string
+    stationCode?: string,
+    idempotencyKey?: string
   ): PrintJob {
+    // Duplicate print protection: suppress identical ticket within 60s
+    if (idempotencyKey) {
+      const now = Date.now();
+      const existing = this.jobs.find(
+        (j) =>
+          j.idempotencyKey === idempotencyKey &&
+          (j.status === "SUCCESS" || j.status === "PRINTING" || j.status === "QUEUED") &&
+          now - new Date(j.createdAt).getTime() < 60000
+      );
+      if (existing) {
+        console.warn(`[Spooler] Duplicate print suppressed for key: ${idempotencyKey}`);
+        return existing;
+      }
+    }
+
     const job: PrintJob = {
       id: `job-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       printerId: device.id,
@@ -385,6 +512,7 @@ class PrinterConnectionManager {
       type,
       status: "QUEUED",
       title,
+      idempotencyKey,
       rawPayload: escposBytes ? this.bytesToBase64(escposBytes) : undefined,
       htmlPayload: htmlFallback,
       paperWidth: device.paperWidth,
@@ -394,6 +522,7 @@ class PrinterConnectionManager {
     };
 
     this.jobs.unshift(job);
+    this.saveJobsToStorage();
     this.notifyListeners();
 
     // Broadcast to other tabs
@@ -427,6 +556,7 @@ class PrinterConnectionManager {
         job.status = "PRINTING";
         job.startedAt = new Date().toISOString();
         job.attempts++;
+        this.saveJobsToStorage();
         this.notifyListeners();
         this.broadcastJobUpdate(job);
 
@@ -449,6 +579,7 @@ class PrinterConnectionManager {
           })
           .finally(() => {
             this.activePrinterLocks.delete(job.printerId);
+            this.saveJobsToStorage();
             this.notifyListeners();
             this.broadcastJobUpdate(job);
             // Process any remaining jobs
@@ -518,12 +649,7 @@ class PrinterConnectionManager {
         }
         return;
       } catch (err: any) {
-        console.warn(`Network printer ${device.ipAddress} failed (${err?.message}), falling back to browser print:`, err);
-        if (job.htmlPayload) {
-          openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
-          return;
-        }
-        throw err;
+        return await this.handleDriverFailure(device, job, settings, err);
       }
     }
 
@@ -534,34 +660,52 @@ class PrinterConnectionManager {
         await this.sendBluetoothPayload(device, this.base64ToBytes(job.rawPayload));
         return;
       } catch (err: any) {
-        console.warn(`Bluetooth print failed (${err?.message}), falling back to browser print:`, err);
-        if (job.htmlPayload) {
-          openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
-          return;
-        }
-        throw err;
+        return await this.handleDriverFailure(device, job, settings, err);
       }
     }
 
-    // 3b. BLUETOOTH_SPP (Bluetooth Classic Serial Port Profile / RFCOMM) DRIVER
+    // 3b. BLUETOOTH_BLE (iOS / Web Bluetooth Low Energy) DRIVER
+    if (device.connectionType === "BLUETOOTH_BLE") {
+      if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth BLE");
+      try {
+        await this.sendBluetoothBlePayload(device, this.base64ToBytes(job.rawPayload));
+        return;
+      } catch (err: any) {
+        return await this.handleDriverFailure(device, job, settings, err);
+      }
+    }
+
+    // 3c. BLUETOOTH_SPP (Bluetooth Classic Serial Port Profile / RFCOMM) DRIVER
     if (device.connectionType === "BLUETOOTH_SPP") {
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth SPP");
-      await this.sendBluetoothSppPayload(device, this.base64ToBytes(job.rawPayload), job.rawPayload);
-      return;
+      try {
+        await this.sendBluetoothSppPayload(device, this.base64ToBytes(job.rawPayload), job.rawPayload);
+        return;
+      } catch (err: any) {
+        return await this.handleDriverFailure(device, job, settings, err);
+      }
     }
 
     // 4. SERIAL_USB (Web Serial COM Port) DRIVER
     if (device.connectionType === "SERIAL_USB") {
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Serial");
-      await this.sendSerialPayload(device, this.base64ToBytes(job.rawPayload));
-      return;
+      try {
+        await this.sendSerialPayload(device, this.base64ToBytes(job.rawPayload));
+        return;
+      } catch (err: any) {
+        return await this.handleDriverFailure(device, job, settings, err);
+      }
     }
 
     // 5. RAWBT (Android Driver / Print Service)
     if (device.connectionType === "RAWBT") {
       if (!job.rawPayload) throw new Error("No ESC/POS payload for RawBT");
-      await this.sendRawBtPayload(device, job.rawPayload);
-      return;
+      try {
+        await this.sendRawBtPayload(device, job.rawPayload);
+        return;
+      } catch (err: any) {
+        return await this.handleDriverFailure(device, job, settings, err);
+      }
     }
 
     // 6. LOCAL_BRIDGE DRIVER
@@ -580,6 +724,95 @@ class PrinterConnectionManager {
         throw new Error(`Local bridge returned error: ${res.statusText}`);
       }
       return;
+    }
+  }
+
+  /**
+   * Automatic Failover & Browser Fallback Handler
+   */
+  private async handleDriverFailure(
+    device: PrinterDevice,
+    job: PrintJob,
+    settings: PrinterSettings,
+    err: any
+  ): Promise<void> {
+    console.warn(`[Spooler] Primary printer '${device.name}' failed: ${err?.message}`);
+
+    // 1. Check if a failover printer is configured and enabled
+    if (device.failoverPrinterId && settings.devices) {
+      const failoverDev = settings.devices.find((d) => d.id === device.failoverPrinterId && d.isEnabled);
+      if (failoverDev && failoverDev.id !== device.id) {
+        console.warn(`[Failover] Re-routing job "${job.title}" to backup: ${failoverDev.name}`);
+        job.printerId = failoverDev.id;
+        job.printerName = failoverDev.name;
+        return await this.executeJob(job);
+      }
+    }
+
+    // 2. Fallback to Browser System Print window so no receipt is lost
+    if (job.htmlPayload) {
+      openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
+      return;
+    }
+
+    throw err;
+  }
+
+  private async sendBluetoothBlePayload(device: PrinterDevice, bytes: Uint8Array): Promise<void> {
+    if (typeof window === "undefined" || !(navigator as any).bluetooth) {
+      throw new Error("Web Bluetooth API not available in this browser");
+    }
+
+    let btDevice = this.bluetoothDevices.get(device.id);
+    if (!btDevice) {
+      const bleServices = [
+        device.bleServiceUuid || "000018f0-0000-1000-8000-00805f9b34fb",
+        "49535343-fe7d-41aa-87d9-066442454a86",
+        "0000ffe0-0000-1000-8000-00805f9b34fb",
+        "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+        "e7810a71-73ae-499d-8c15-faa9aef0c3f2",
+      ];
+      btDevice = await (navigator as any).bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: bleServices,
+      });
+      this.bluetoothDevices.set(device.id, btDevice);
+    }
+
+    const server = await btDevice.gatt?.connect();
+    if (!server) throw new Error("Could not connect to Bluetooth BLE GATT Server");
+
+    const services = await server.getPrimaryServices();
+    let writeChar: any = null;
+
+    for (const service of services) {
+      const chars = await service.getCharacteristics();
+      for (const char of chars) {
+        if (char.properties.writeWithoutResponse || char.properties.write) {
+          writeChar = char;
+          break;
+        }
+      }
+      if (writeChar) break;
+    }
+
+    if (!writeChar) {
+      throw new Error("No writable BLE characteristic found on thermal printer");
+    }
+
+    const chunkSize = device.chunkSize || 64;
+    const delayMs = device.chunkDelayMs !== undefined ? device.chunkDelayMs : 20;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.slice(i, i + chunkSize);
+      if (writeChar.writeValueWithoutResponse) {
+        await writeChar.writeValueWithoutResponse(chunk);
+      } else {
+        await writeChar.writeValue(chunk);
+      }
+      if (delayMs > 0) {
+        await new Promise((r) => setTimeout(r, delayMs));
+      }
     }
   }
 
@@ -846,7 +1079,8 @@ class PrinterConnectionManager {
           "KOT",
           escpos,
           html,
-          stationCode
+          stationCode,
+          isReprint ? undefined : `kot-${kot.id || kot.kotNumber}-${stationCode}`
         );
         jobsCreated.push(job);
       }
@@ -865,7 +1099,8 @@ class PrinterConnectionManager {
           "KOT",
           escpos,
           html,
-          "MAIN_KITCHEN"
+          "MAIN_KITCHEN",
+          isReprint ? undefined : `kot-${kot.id || kot.kotNumber}-MASTER`
         );
         jobsCreated.push(masterJob);
       }
@@ -883,7 +1118,8 @@ class PrinterConnectionManager {
         "KOT",
         escpos,
         html,
-        kot.stationCode
+        kot.stationCode,
+        isReprint ? undefined : `kot-${kot.id || kot.kotNumber}`
       );
       jobsCreated.push(job);
     }
@@ -914,7 +1150,8 @@ class PrinterConnectionManager {
       "RECEIPT",
       escpos,
       html,
-      "CASHIER"
+      "CASHIER",
+      isDuplicate ? undefined : `bill-${bill.id}-${bill.paidAmount || bill.grandTotal}`
     );
   }
 

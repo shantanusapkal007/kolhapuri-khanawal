@@ -212,21 +212,31 @@ export interface UPILedgerEntry {
 }
 
 export type PrinterConnectionType =
-  | "NETWORK"        // TCP/IP raw socket port 9100 (Ethernet / Wi-Fi)
-  | "BLUETOOTH"      // Web Bluetooth BLE
-  | "BLUETOOTH_SPP"  // Bluetooth Classic Serial Port Profile (SPP) / RFCOMM (Virtual COM / GATT Serial / RawBT)
+  | "NETWORK"        // TCP/IP raw socket port 9100 (Ethernet / Wi-Fi) — Primary Recommended for POSIFLOW KP307-UEWB
+  | "BLUETOOTH"      // Web Bluetooth BLE (standard)
+  | "BLUETOOTH_BLE"  // iOS Bluetooth Low Energy (CoreBluetooth / GATT)
+  | "BLUETOOTH_SPP"  // Android Bluetooth Classic SPP (Serial Port Profile) / RFCOMM
   | "SERIAL_USB"     // Web Serial COM port / direct USB
   | "RAWBT"          // RawBT print service (Android HTTP daemon :40213 or App Intent)
   | "LOCAL_BRIDGE"   // Local HTTP print daemon / gateway (e.g. http://localhost:9180/print)
   | "BROWSER_SYSTEM"; // Browser window / iframe print dialog fallback
 
-export type PrinterStatus = "ONLINE" | "OFFLINE" | "CONNECTING" | "BUSY" | "ERROR";
+export type PrinterStatus =
+  | "ONLINE"
+  | "OFFLINE"
+  | "CONNECTING"
+  | "BUSY"
+  | "ERROR"
+  | "PAPER_OUT"
+  | "COVER_OPEN"
+  | "UNKNOWN";
 
 export type BluetoothSppMode = "VIRTUAL_COM" | "BLE_GATT" | "RAWBT_RFCOMM" | "AUTO";
 
 export interface PrinterDevice {
   id: string;
   name: string;
+  modelName?: string;         // e.g. "POSIFLOW KP307-UEWB"
   connectionType: PrinterConnectionType;
   paperWidth: "80mm" | "58mm";
   isEnabled: boolean;
@@ -235,6 +245,7 @@ export interface PrinterDevice {
   // Connection parameters
   ipAddress?: string;         // e.g. "192.168.1.100" (for NETWORK)
   port?: number;              // default 9100 (for NETWORK)
+  timeoutMs?: number;         // ping / socket timeout ms
   baudRate?: number;          // 9600, 19200, 38400, 57600, 115200 (for SERIAL_USB / BLUETOOTH_SPP)
   serialPortName?: string;     // e.g. "COM3 (USB-SERIAL CH340)" (for SERIAL_USB / BLUETOOTH_SPP)
   dataBits?: 7 | 8;
@@ -248,8 +259,9 @@ export interface PrinterDevice {
   rawbtPort?: number;              // default 40213
 
   bridgeUrl?: string;         // e.g. "http://localhost:9180/print" (for LOCAL_BRIDGE)
-  bluetoothDeviceName?: string; // e.g. "RPP02N-Thermal" (for BLUETOOTH / BLUETOOTH_SPP)
+  bluetoothDeviceName?: string; // e.g. "KP307-UEWB" (for BLUETOOTH / BLUETOOTH_SPP / BLUETOOTH_BLE)
   bluetoothServiceUuid?: string; // Optional custom GATT service UUID
+  bleServiceUuid?: string;       // iOS BLE GATT Service UUID
 
   // Bluetooth Classic SPP (Serial Port Profile) & RFCOMM Settings
   sppMode?: BluetoothSppMode;       // "VIRTUAL_COM" | "BLE_GATT" | "RAWBT_RFCOMM" | "AUTO"
@@ -260,11 +272,11 @@ export interface PrinterDevice {
   chunkSize?: number;               // Throttle chunk size in bytes (e.g. 64, 128, 256)
   chunkDelayMs?: number;            // Delay between chunks in ms (e.g. 15, 25, 50)
 
-  
   // Station & role assignments
   assignedStations: string[];  // e.g. ["MAIN_KITCHEN", "TANDOOR_BHAKRI"]
   isDefaultReceiptPrinter: boolean; // Receives customer tax invoices
   isDefaultKotPrinter: boolean;     // Receives kitchen tickets
+  failoverPrinterId?: string;       // If offline, redirect print to this printer ID
   
   // Hardware capabilities
   autoCut: boolean;
@@ -284,6 +296,7 @@ export interface PrintJob {
   type: "RECEIPT" | "KOT" | "TABLE_CHECK" | "CANCELLED_KOT" | "DAY_END" | "TEST";
   status: PrintJobStatus;
   title: string;
+  idempotencyKey?: string;    // Prevents accidental duplicate print jobs within 60s
   rawPayload?: string;        // Base64 or hex encoded ESC/POS byte sequence
   htmlPayload?: string;       // Fallback HTML string
   paperWidth: "80mm" | "58mm";
@@ -322,5 +335,7 @@ export interface PrinterSettings {
   printMasterKotToKitchen?: boolean; // Also print master ticket to Main Kitchen when splitting
   printSpoolerEnabled?: boolean;     // Sequential per-printer queue to prevent byte collision
   networkTimeoutMs?: number;         // Socket timeout in milliseconds (default: 3500)
+  failoverEnabled?: boolean;         // Automatically fall back to secondary printer if primary offline
+  duplicatePrintProtection?: boolean;// Suppress repeated prints of identical ticket within 60s
 }
 

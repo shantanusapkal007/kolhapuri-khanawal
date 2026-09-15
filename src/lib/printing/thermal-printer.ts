@@ -82,6 +82,8 @@ export const DEFAULT_PRINTER_SETTINGS: PrinterSettings = {
   printMasterKotToKitchen: true,
   printSpoolerEnabled: true,
   networkTimeoutMs: 3500,
+  failoverEnabled: true,
+  duplicatePrintProtection: true,
 };
 
 /**

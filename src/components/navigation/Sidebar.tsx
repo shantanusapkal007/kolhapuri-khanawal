@@ -28,6 +28,7 @@ import {
   Trash2,
   Wallet,
   Sliders,
+  Printer,
   KeyRound,
   LogIn,
   LogOut,
@@ -46,6 +47,7 @@ const ROUTE_PERM_MAP: Record<string, PermissionCode> = {
   "/billing": "bill.create",
   "/kitchen": "kot.status_update",
   "/settings": "settings.manage",
+  "/printers": "settings.manage",
   "/staff": "staff.manage",
   "/expenses": "reports.financial",
   "/daily-closing": "bill.create",
@@ -284,6 +286,12 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
           label: "Executive Dashboard",
           subtitle: "Analytics & audit trail",
           icon: LayoutDashboard,
+        },
+        {
+          href: "/printers",
+          label: "Printers & KP307 KOT",
+          subtitle: "वाय-फाय, ब्लूटूथ व स्पूलर",
+          icon: Printer,
         },
         {
           href: "/settings",

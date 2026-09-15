@@ -272,16 +272,6 @@ export default function WaiterFloorPage() {
 
         <div className="flex items-center gap-2">
           <button
-            type="button"
-            onClick={() => setShowPrinterModal(true)}
-            className="flex items-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-amber-300 border border-stone-800 text-xs font-black px-3 py-2 rounded-xl shadow-xs active:scale-95 transition-all shrink-0"
-            title="Configure thermal printer or print test slip"
-          >
-            <Printer className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline">प्रिंटर सेटिंग्ज (Printer)</span>
-            <span className="sm:hidden">प्रिंटर</span>
-          </button>
-          <button
             onClick={() => handleOpenAddParty(1)}
             className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white text-xs font-black px-3.5 py-2 rounded-xl shadow-2xs active:scale-95 transition-all shrink-0"
           >
@@ -299,27 +289,17 @@ export default function WaiterFloorPage() {
             {availableCount} Free
           </span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowPrinterModal(true)}
-            className="px-2.5 py-1 bg-stone-800 text-amber-300 font-black text-[10px] rounded-lg border border-stone-700 shadow-2xs active:scale-95 transition-all flex items-center gap-1"
-          >
-            <Printer className="w-3 h-3 text-amber-400" />
-            <span>Printer</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenAddParty(1)}
-            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1"
-          >
-            <Plus className="w-3 h-3 text-amber-200" />
-            <span>+ Seat Table</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleOpenAddParty(1)}
+          className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3 text-amber-200" />
+          <span>+ Seat Table</span>
+        </button>
       </div>
 
-      {/* Fast Service Floor Filter Bar */}
+      {/* Fast Filter Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
         <button
           onClick={() => setFloorFilter("ALL")}
@@ -349,17 +329,7 @@ export default function WaiterFloorPage() {
               : "bg-white text-red-800 border-[#E7E2DA] hover:bg-red-50/50"
           }`}
         >
-          Occ ({occupiedCount})
-        </button>
-        <button
-          onClick={() => setFloorFilter("SHARED")}
-          className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs ${
-            floorFilter === "SHARED"
-              ? "bg-amber-500 text-stone-950 border-amber-500 shadow-2xs"
-              : "bg-white text-amber-800 border-[#E7E2DA] hover:bg-amber-50/50"
-          }`}
-        >
-          Shared ({sharedCount})
+          Occupied ({occupiedCount + sharedCount})
         </button>
         {billRequestedCount > 0 && (
           <button
@@ -387,6 +357,14 @@ export default function WaiterFloorPage() {
           const primaryParty = tableParties[0];
           const totalSubtotal = tableParties.reduce((sum, p) => sum + p.runningSubtotal, 0);
           const totalGuests = tableParties.reduce((sum, p) => sum + p.guestCount, 0);
+
+          // Count ordered items for this table
+          const tableOrderedItems = tableParties.flatMap((p) =>
+            store.orders
+              .filter((o) => o.partyId === p.id && o.status !== "CANCELLED")
+              .flatMap((o) => o.items)
+          );
+          const totalItemsCount = tableOrderedItems.reduce((sum, it) => sum + it.quantity, 0);
 
           return (
             <div
@@ -470,20 +448,24 @@ export default function WaiterFloorPage() {
                   <span className="text-xs sm:text-base md:text-lg font-black text-stone-900 font-mono leading-tight mt-0.5">
                     ₹{totalSubtotal}
                   </span>
-                  <span className="text-[8px] sm:text-[9px] text-stone-400 font-medium truncate leading-tight">
-                    {primaryParty.assignedWaiterName.split(" ")[0]}
-                  </span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {totalItemsCount > 0 && (
+                      <span className="text-[7px] sm:text-[8px] font-black px-1 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                        {totalItemsCount} items
+                      </span>
+                    )}
+                    <span className="text-[8px] sm:text-[9px] text-stone-400 font-medium truncate leading-tight">
+                      {primaryParty.assignedWaiterName.split(" ")[0]}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <div
                   onClick={() => handleOpenAddParty(table.tableNumber)}
                   className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-0.5"
                 >
-                  <div className="flex items-center justify-center gap-1 text-stone-700">
-                    <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
-                    <span className="text-[10px] sm:text-xs font-black">4 Seats</span>
-                  </div>
-                  <span className="text-[8px] sm:text-[9px] text-emerald-600 font-bold leading-tight mt-0.5">Vacant</span>
+                  <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
+                  <span className="text-[9px] sm:text-[10px] text-emerald-600 font-bold leading-tight mt-0.5">Tap to seat</span>
                 </div>
               )}
 
@@ -522,35 +504,9 @@ export default function WaiterFloorPage() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handlePrintKotForParty(primaryParty.id);
-                      }}
-                      title="Print Kitchen KOT"
-                      className="p-1 sm:p-1.5 bg-stone-900 hover:bg-stone-800 text-amber-300 rounded-md sm:rounded-lg active:scale-90 transition-all shrink-0"
-                    >
-                      <ChefHat className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePrintFinalBill(primaryParty.id);
-                      }}
-                      title="Print Final Bill"
-                      className={`p-1 sm:p-1.5 rounded-md sm:rounded-lg active:scale-90 transition-all shrink-0 ${
-                        hasBillRequested
-                          ? "bg-amber-500 hover:bg-amber-600 text-stone-950 ring-1 ring-amber-400 animate-pulse"
-                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                      }`}
-                    >
-                      <Receipt className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
                         setActiveTableForDetail(table);
                       }}
-                      title="Table Actions: Move, Merge, Split, Pre-Bill"
+                      title="Table Actions: KOT, Bill, Move, Merge, Split"
                       className="p-1 sm:p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md sm:rounded-lg active:scale-90 transition-all shrink-0 font-black text-[10px] leading-none"
                     >
                       ⋯
@@ -558,22 +514,14 @@ export default function WaiterFloorPage() {
                   </div>
                 )
               ) : (
-                <div className="grid grid-cols-2 gap-1 pt-1 border-t border-stone-100 shrink-0">
+                <div className="pt-1 border-t border-stone-100 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
-                    className="w-full py-0.5 sm:py-1 px-0.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[9px] sm:text-[10px] rounded-md sm:rounded-lg shadow-2xs active:scale-95 transition-all text-center truncate"
+                    className="w-full py-0.5 sm:py-1 px-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[9px] sm:text-[10px] rounded-md sm:rounded-lg shadow-2xs active:scale-95 transition-all text-center truncate"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
                     + Seat
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAddParty(table.tableNumber)}
-                    className="w-full py-0.5 sm:py-1 px-0.5 bg-[#FAF8F5] hover:bg-stone-100 text-stone-700 font-bold text-[9px] sm:text-[10px] rounded-md sm:rounded-lg border border-[#E7E2DA] active:scale-95 transition-all text-center truncate"
-                    title="Custom guests or Parcel"
-                  >
-                    Custom
                   </button>
                 </div>
               )}
@@ -656,42 +604,59 @@ export default function WaiterFloorPage() {
                       </p>
                     )}
 
-                    {/* Primary actions */}
-                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                    {/* Ordered Items Summary */}
+                    {(() => {
+                      const partyOrders = store.orders.filter(
+                        (o) => o.partyId === party.id && o.status !== "CANCELLED"
+                      );
+                      const orderedItems = partyOrders.flatMap((o) => o.items);
+                      if (orderedItems.length === 0) return null;
+                      return (
+                        <div className="bg-white rounded-lg border border-stone-200 p-2 space-y-1">
+                          <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Ordered Items</span>
+                          <div className="divide-y divide-stone-100">
+                            {orderedItems.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between py-1 text-[11px]">
+                                <span className="font-bold text-stone-800 truncate">
+                                  {item.quantity}× {item.menuItemName}
+                                </span>
+                                <span className="font-mono font-black text-stone-700 shrink-0 ml-2">
+                                  ₹{item.totalPrice}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Actions — Simple 2-row layout */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1">
                       <Link
                         href={`/waiter/order/${party.id}`}
                         onClick={() => setActiveTableForDetail(null)}
-                        className="py-2 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-center flex items-center justify-center gap-1 shadow-xs"
+                        className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-center flex items-center justify-center gap-1 shadow-xs"
                       >
                         <Utensils className="w-3.5 h-3.5 text-amber-200" />
                         <span>+ Order</span>
                       </Link>
                       <button
                         type="button"
-                        onClick={() => handlePrintKotForParty(party.id)}
-                        className="py-2 bg-white hover:bg-stone-100 text-stone-800 border border-stone-300 font-bold rounded-xl flex items-center justify-center gap-1"
-                      >
-                        <ChefHat className="w-3.5 h-3.5 text-red-600" />
-                        <span>Print KOT</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handlePrintFinalBill(party.id)}
-                        className="py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs"
+                        onClick={() => handleRequestBill(party.id)}
+                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs"
                       >
                         <Receipt className="w-3.5 h-3.5" />
-                        <span>Print Bill</span>
+                        <span>Bill</span>
                       </button>
                     </div>
-
-                    {/* Secondary actions: Pre-Bill, Move, Merge, Split */}
-                    <div className="grid grid-cols-4 gap-1 pt-1 text-[10px]">
+                    <div className="grid grid-cols-3 gap-1 text-[10px]">
                       <button
                         type="button"
-                        onClick={() => handleRequestBill(party.id)}
-                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg"
+                        onClick={() => handlePrintKotForParty(party.id)}
+                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-0.5"
                       >
-                        Pre-Bill
+                        <ChefHat className="w-3 h-3 text-red-600" />
+                        <span>KOT</span>
                       </button>
                       <button
                         type="button"
@@ -708,29 +673,11 @@ export default function WaiterFloorPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedPartyIdsForMerge([party.id]);
-                          setActiveTableForDetail(null);
-                          setActiveModal("MERGE");
-                        }}
-                        className="py-1.5 bg-stone-100 hover:bg-purple-100 text-purple-800 font-bold rounded-lg flex items-center justify-center gap-0.5"
+                        onClick={() => handlePrintFinalBill(party.id)}
+                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-0.5"
                       >
-                        <Merge className="w-3 h-3" />
-                        <span>Merge</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSplitSourcePartyId(party.id);
-                          setSplitTargetTableNumber(activeTableForDetail.tableNumber);
-                          setSelectedOrderItemIdsForSplit([]);
-                          setActiveTableForDetail(null);
-                          setActiveModal("SPLIT");
-                        }}
-                        className="py-1.5 bg-stone-100 hover:bg-rose-100 text-rose-800 font-bold rounded-lg flex items-center justify-center gap-0.5"
-                      >
-                        <Scissors className="w-3 h-3 text-rose-600" />
-                        <span>Split</span>
+                        <Printer className="w-3 h-3" />
+                        <span>Print</span>
                       </button>
                     </div>
 

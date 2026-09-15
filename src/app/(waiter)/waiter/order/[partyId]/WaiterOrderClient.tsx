@@ -64,7 +64,7 @@ export default function WaiterOrderClient({
 
   // UI Modals & Drawers
   const [isCartSheetOpen, setIsCartSheetOpen] = useState<boolean>(false);
-  const [showActiveOrders, setShowActiveOrders] = useState<boolean>(false);
+  const [showActiveOrders, setShowActiveOrders] = useState<boolean>(true);
   const [showMoreActions, setShowMoreActions] = useState<boolean>(false);
   const [showPrinterModal, setShowPrinterModal] = useState<boolean>(false);
   const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
@@ -448,17 +448,6 @@ export default function WaiterOrderClient({
             </span>
           </div>
 
-          {/* Quick Printer Setting Button */}
-          <button
-            type="button"
-            onClick={() => setShowPrinterModal(true)}
-            title="Printer Settings & Test Slip"
-            className="p-2 sm:px-3 sm:py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all"
-          >
-            <Printer className="w-3.5 h-3.5 text-amber-400" />
-            <span className="hidden sm:inline text-xs">Printer</span>
-          </button>
-
           {/* More Actions Dropdown */}
           <div className="relative">
             <button
@@ -544,19 +533,35 @@ export default function WaiterOrderClient({
 
           {showActiveOrders && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 border-t border-emerald-200/60 text-xs">
-              {previouslyOrderedItems.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="p-2 rounded-xl bg-white border border-emerald-200 flex items-center justify-between"
-                >
-                  <span className="font-bold text-stone-900 truncate">
-                    {item.quantity}× {item.menuItemName}
-                  </span>
-                  <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
-                    {item.kotStatus}
-                  </span>
-                </div>
-              ))}
+              {previouslyOrderedItems.map((item, idx) => {
+                const menuItem = store.menuItems.find((m) => m.id === item.menuItemId);
+                return (
+                  <div
+                    key={idx}
+                    className="p-2 rounded-xl bg-white border border-emerald-200 flex items-center justify-between gap-1.5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-stone-900 truncate block">
+                        {item.quantity}× {item.menuItemName}
+                      </span>
+                      <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                        {item.kotStatus}
+                      </span>
+                    </div>
+                    {menuItem && (
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(menuItem, item.breadOption, item.variantName ? { name: item.variantName, price: item.unitPrice } : undefined)}
+                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg flex items-center gap-0.5 shadow-2xs active:scale-95 transition-all shrink-0"
+                        title="Add this item again to current order"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Again</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -788,6 +793,15 @@ export default function WaiterOrderClient({
               </div>
             </button>
 
+            {/* Clear All */}
+            <button
+              type="button"
+              onClick={() => { if (confirm("Clear all items from cart?")) setCart([]); }}
+              className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors px-1.5 py-1 shrink-0"
+            >
+              Clear All
+            </button>
+
             {/* Big 1-Tap Send KOT Button */}
             <button
               type="button"
@@ -845,9 +859,14 @@ export default function WaiterOrderClient({
                     <span className="font-black text-stone-900 block truncate text-xs">
                       {c.menuItem.name} {c.variantName ? `(${c.variantName})` : ""}
                     </span>
-                    <span className="text-[11px] text-stone-500 font-mono">
-                      ₹{c.unitPrice} each
-                    </span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[11px] text-stone-500 font-mono">
+                        ₹{c.unitPrice} × {c.quantity}
+                      </span>
+                      <span className="text-[11px] font-mono font-black text-stone-800">
+                        = ₹{c.unitPrice * c.quantity}
+                      </span>
+                    </div>
 
                     {/* Bread Option Switcher in Cart */}
                     {c.breadOption && (
@@ -869,24 +888,38 @@ export default function WaiterOrderClient({
                     )}
                   </div>
 
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-xl shrink-0">
+                  {/* Quantity Stepper + Trash */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateCartQuantity(idx, -1)}
+                        className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="font-mono font-black text-xs px-1 min-w-4 text-center">
+                        {c.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateCartQuantity(idx, 1)}
+                        className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleUpdateCartQuantity(idx, -1)}
-                      className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
+                      onClick={() => {
+                        const updated = [...cart];
+                        updated.splice(idx, 1);
+                        setCart(updated);
+                      }}
+                      className="w-6 h-6 flex items-center justify-center rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 active:scale-90 transition-all"
+                      title="Remove item"
                     >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="font-mono font-black text-xs px-1 min-w-4 text-center">
-                      {c.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateCartQuantity(idx, 1)}
-                      className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

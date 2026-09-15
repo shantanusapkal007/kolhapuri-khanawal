@@ -675,11 +675,11 @@ export default function SettingsPage() {
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsPrinterModalOpen(true)}
-                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-red-700 hover:bg-red-800 text-white p-3 text-xs font-bold shadow-xs active:scale-95 transition-all touch-manipulation"
+                  onClick={() => router.push("/printers")}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white p-3 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation"
                 >
-                  <Sliders className="w-4 h-4" />
-                  <span>Configure Multi-Device Fleet ({store.printerSettings.devices?.length || 5} Printers)</span>
+                  <Printer className="w-4 h-4 text-amber-200" />
+                  <span>प्रगत प्रिंटर व्यवस्थापन (Open /printers Fleet)</span>
                 </button>
 
                 <button
