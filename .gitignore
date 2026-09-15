@@ -35,5 +35,8 @@ ui-debug.log*
 # vercel
 .vercel
 
+# firebase
+.firebase
+
 # typescript
 *.tsbuildinfo

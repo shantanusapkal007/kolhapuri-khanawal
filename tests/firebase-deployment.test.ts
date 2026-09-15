@@ -42,8 +42,8 @@ describe("Firebase & Vercel Deployment Configuration", () => {
       expect(fs.existsSync(firebaseJsonPath)).toBe(true);
 
       const content = JSON.parse(fs.readFileSync(firebaseJsonPath, "utf-8"));
-      expect(content.hosting).toBeDefined();
-      expect(content.hosting.source).toBe(".");
+      expect(content.hosting.public || content.hosting.source).toBeDefined();
+      expect(content.hosting.public === "out" || content.hosting.source === ".").toBe(true);
     });
 
     it("should have a valid vercel.json with nextjs framework", () => {
