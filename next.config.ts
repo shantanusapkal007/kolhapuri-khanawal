@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: "export",
+  output: process.env.STATIC_EXPORT === "true" ? "export" : undefined,
 };
 
 export default nextConfig;

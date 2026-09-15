@@ -1,5 +1,5 @@
 // Kolhapuri Khanawal Restaurant OS — Service Worker
-const CACHE_NAME = "khanawal-pwa-v1";
+const CACHE_NAME = "khanawal-pwa-v2";
 const STATIC_ASSETS = [
   "/",
   "/dashboard",
@@ -29,6 +29,13 @@ self.addEventListener("install", (event) => {
   );
 });
 
+// Message listener for skip waiting prompt from client
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 // 2. Activate: Clean old caches and claim clients immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -38,7 +45,10 @@ self.addEventListener("activate", (event) => {
         return Promise.all(
           keys
             .filter((key) => key !== CACHE_NAME)
-            .map((key) => caches.delete(key))
+            .map((key) => {
+              console.log("PWA: Evicting obsolete cache", key);
+              return caches.delete(key);
+            })
         );
       })
       .then(() => self.clients.claim())
@@ -89,7 +99,12 @@ self.addEventListener("fetch", (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            // Never cache HTML fallback pages as stylesheets/scripts
+            !networkResponse.headers.get("content-type")?.includes("text/html")
+          ) {
             const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }

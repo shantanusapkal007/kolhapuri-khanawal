@@ -10,16 +10,45 @@ export function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Register Service Worker
+    // 1. Register Service Worker with instant auto-update
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker
         .register("/sw.js")
         .then((reg) => {
           console.log("Khanawal PWA Service Worker active with scope:", reg.scope);
+
+          // Force check for updates every time app opens
+          reg.update().catch(() => {});
+
+          // If a new worker is waiting, activate it immediately
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+
+          reg.addEventListener("updatefound", () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener("statechange", () => {
+                if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                  // New content available, tell new worker to activate
+                  newWorker.postMessage({ type: "SKIP_WAITING" });
+                }
+              });
+            }
+          });
         })
         .catch((err) => {
           console.warn("Khanawal PWA Service Worker registration skipped:", err);
         });
+
+      // Reload page once when the controller changes to load fresh styles & scripts
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!refreshing) {
+          refreshing = true;
+          window.location.reload();
+        }
+      });
     }
 
     // 2. Network connection listeners
