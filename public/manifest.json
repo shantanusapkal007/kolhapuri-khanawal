@@ -1,0 +1,21 @@
+{
+  "name": "Kolhapuri Khanawal Restaurant OS",
+  "short_name": "Kolhapuri Khanawal",
+  "description": "Production Restaurant Operating System for Kolhapuri Khanawal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDFBF7",
+  "theme_color": "#DC2626",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

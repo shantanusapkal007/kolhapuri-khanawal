@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #F9F7F4;
+    --card-bg: #FFFFFF;
+    --primary: #991B1B;
+    --primary-hover: #7F1D1D;
+    --accent: #D97706;
+    --accent-gold: #B45309;
+    --text-main: #1C1917;
+    --text-muted: #78716C;
+    --border-warm: #E7E2DA;
+  }
+}
+
+body {
+  background-color: #F9F7F4;
+  color: #1C1917;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  background-image: 
+    radial-gradient(at 100% 0%, rgba(217, 119, 6, 0.02) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(153, 27, 27, 0.02) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+/* Custom sleek warm scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D6D0C7;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A8A29E;
+}
+
+/* Luxury & Premium Card Styles */
+.luxury-card {
+  background: #FFFFFF;
+  border: 1px solid #E7E2DA;
+  box-shadow: 0 1px 3px 0 rgba(28, 25, 23, 0.04), 0 1px 2px -1px rgba(28, 25, 23, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-card:hover {
+  border-color: #D6CEBE;
+  box-shadow: 0 10px 25px -4px rgba(28, 25, 23, 0.06), 0 4px 10px -2px rgba(28, 25, 23, 0.03);
+}
+
+.premium-card {
+  background: #FFFFFF;
+  border: 1px solid #E5DFD5;
+  border-top-color: #F3EFEA;
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.03), 0 6px 16px -2px rgba(28, 25, 23, 0.04);
+  border-radius: 1.25rem;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.premium-card:hover {
+  border-color: #D4CABE;
+  box-shadow: 0 12px 30px -4px rgba(28, 25, 23, 0.08), 0 4px 12px -2px rgba(28, 25, 23, 0.03);
+  transform: translateY(-1px);
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(231, 226, 218, 0.85);
+}
+
+.glass-dark {
+  background: rgba(24, 21, 19, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(68, 64, 60, 0.6);
+}
+
+.glass-bottom-bar {
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(231, 226, 218, 0.9);
+  box-shadow: 0 -4px 20px -2px rgba(28, 25, 23, 0.08);
+}
+
+/* Mobile Touch & Ergonomics Utilities */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Hide scrollbar for clean horizontal category swiping on mobile */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Safe area inset for modern mobile notched devices */
+.safe-area-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+}
+
+/* Smooth pulse animation */
+@keyframes urgent-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.92; transform: scale(1.012); box-shadow: 0 0 20px rgba(185, 28, 28, 0.25); }
+}
+
+.animate-urgent {
+  animation: urgent-pulse 1.6s infinite ease-in-out;
+}
+
+/* Print Styles for 80mm Thermal Receipts */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #thermal-receipt-printable,
+  #thermal-receipt-printable * {
+    visibility: visible !important;
+  }
+  #thermal-receipt-printable {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+
