@@ -41,6 +41,29 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
   const store = globalRestaurantStore;
   const [, setTick] = React.useState(0);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState(true);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+      const handleOnline = () => setIsOnline(true);
+      const handleOffline = () => setIsOnline(false);
+      const handleSync = () => {
+        store.evaluateLiveOperationalAlerts();
+        setTick((t) => t + 1);
+      };
+
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      window.addEventListener("kk-state-changed", handleSync);
+
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+        window.removeEventListener("kk-state-changed", handleSync);
+      };
+    }
+  }, []);
 
   React.useEffect(() => {
     // Immediate first check
@@ -191,6 +214,23 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
             </Link>
           )
         )}
+
+        {/* Real-time Local Sync Pill */}
+        <div
+          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all ${
+            isOnline
+              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+              : "bg-amber-50 text-amber-900 border-amber-300 animate-pulse"
+          }`}
+          title={isOnline ? "Local Wi-Fi Mesh & Sync Active" : "Operating in Offline Mode"}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isOnline ? "bg-emerald-500 ring-2 ring-emerald-200" : "bg-amber-500 ring-2 ring-amber-200"
+            }`}
+          />
+          <span className="hidden sm:inline">{isOnline ? "Wi-Fi Sync" : "Offline"}</span>
+        </div>
 
         {/* Real-time Notification & Reminder Bell */}
         <button

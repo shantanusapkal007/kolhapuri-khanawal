@@ -16,6 +16,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
+import { triggerHaptic } from "@/lib/mobile/haptics";
 
 interface MobileBottomNavProps {
   onOpenMoreDrawer: () => void;
@@ -30,7 +31,16 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
     const interval = setInterval(() => {
       setTick((t) => t + 1);
     }, 1000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("kk-state-changed", handleSync);
+    };
   }, []);
 
   const occupiedTables = store.tables.filter(
@@ -136,6 +146,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => triggerHaptic("tap")}
               className={`relative flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl transition-all touch-manipulation active:scale-95 ${
                 active
                   ? "text-red-700 font-black"
@@ -177,7 +188,10 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
         {/* More / Back-Office Drawer Trigger */}
         <button
           type="button"
-          onClick={onOpenMoreDrawer}
+          onClick={() => {
+            triggerHaptic("tap");
+            onOpenMoreDrawer();
+          }}
           className="flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-semibold"
           aria-label="Open staff & back-office options"
         >

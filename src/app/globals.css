@@ -23,6 +23,9 @@ body {
   padding: 0;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain; /* Prevents accidental pull-to-refresh on mobile Android APK */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   background-image: 
     radial-gradient(at 100% 0%, rgba(217, 119, 6, 0.02) 0px, transparent 50%),
     radial-gradient(at 0% 100%, rgba(153, 27, 27, 0.02) 0px, transparent 50%);
@@ -32,6 +35,12 @@ body {
 /* Eliminate 300ms mobile touch delay and prevent double-tap zoom accidents during fast order taking */
 button, a, input, select, textarea, [role="button"] {
   touch-action: manipulation;
+}
+
+/* Prevent accidental text selection during rapid POS and waiter tapping */
+button, a, [role="button"], .no-select {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 h1, h2, h3, h4, h5, h6 {

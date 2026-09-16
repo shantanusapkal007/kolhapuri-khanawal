@@ -1,5 +1,5 @@
 // Kolhapuri Khanawal Restaurant OS — Service Worker
-const CACHE_NAME = "khanawal-pwa-v2";
+const CACHE_NAME = "khanawal-pwa-v3";
 const STATIC_ASSETS = [
   "/",
   "/dashboard",
@@ -59,8 +59,13 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
-  // Ignore non-GET and chrome-extension / API requests
+  // Ignore non-GET and chrome-extension requests
   if (request.method !== "GET" || !request.url.startsWith("http")) {
+    return;
+  }
+
+  // Never intercept or cache API endpoints (/api/sync, /api/print/network, etc.)
+  if (request.url.includes("/api/")) {
     return;
   }
 

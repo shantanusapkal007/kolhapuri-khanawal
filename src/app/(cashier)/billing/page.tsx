@@ -36,6 +36,8 @@ import {
 } from "@/lib/printing/thermal-printer";
 import { ThermalReceiptModal } from "@/components/printing/ThermalReceiptModal";
 import { PrinterSettingsModal } from "@/components/printing/PrinterSettingsModal";
+import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
+import { triggerHaptic } from "@/lib/mobile/haptics";
 
 export default function CashierBillingPage() {
   const store = globalRestaurantStore;
@@ -96,11 +98,48 @@ export default function CashierBillingPage() {
   });
   const [voidReason, setVoidReason] = useState<string>("Customer item dispute / accidental bill entry");
 
+  // Android Back Button Trap: Dismiss open modals or return from bill preview to table list
+  const isAnyModalOpen =
+    isPaymentModalOpen ||
+    isZReportModalOpen ||
+    isPrinterSettingsOpen ||
+    isPrintModalOpen ||
+    discountPinModal.open ||
+    voidBillModal.open ||
+    mobileView === "BILL";
+
+  useAndroidBackButton(isAnyModalOpen, () => {
+    if (isPaymentModalOpen) {
+      setIsPaymentModalOpen(false);
+    } else if (isZReportModalOpen) {
+      setIsZReportModalOpen(false);
+    } else if (isPrinterSettingsOpen) {
+      setIsPrinterSettingsOpen(false);
+    } else if (isPrintModalOpen) {
+      setIsPrintModalOpen(false);
+    } else if (discountPinModal.open) {
+      setDiscountPinModal({ open: false, targetPct: 0 });
+    } else if (voidBillModal.open) {
+      setVoidBillModal({ open: false, billId: "" });
+    } else if (mobileView === "BILL") {
+      setMobileView("LIST");
+    }
+  });
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((t) => t + 1);
     }, 1000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("kk-state-changed", handleSync);
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -276,6 +315,7 @@ export default function CashierBillingPage() {
       setTick((t) => t + 1);
 
       if (result.isFullyPaid) {
+        triggerHaptic("success");
         showToast(
           changeReturn > 0
             ? `Bill ${result.bill.billNumber} PAID IN FULL! Return change: ₹${changeReturn}`

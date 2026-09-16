@@ -22,6 +22,8 @@ import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { DiningTable, DiningParty } from "@/types/tables";
 import { printTableCheck, printBillReceipt, printKotTicket } from "@/lib/printing/thermal-printer";
 import { WaiterPrinterSettingsModal } from "@/components/waiter/WaiterPrinterSettingsModal";
+import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
+import { triggerHaptic } from "@/lib/mobile/haptics";
 
 export default function WaiterFloorPage() {
   const router = useRouter();
@@ -55,11 +57,32 @@ export default function WaiterFloorPage() {
   // Feedback Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Android Back Button Trap: Close active modals or sheets before leaving floor
+  const isAnyModalOpen = Boolean(activeModal) || showPrinterModal || Boolean(activeTableForDetail);
+  useAndroidBackButton(isAnyModalOpen, () => {
+    if (activeModal) {
+      setActiveModal(null);
+    } else if (showPrinterModal) {
+      setShowPrinterModal(false);
+    } else if (activeTableForDetail) {
+      setActiveTableForDetail(null);
+    }
+  });
+
   useEffect(() => {
     const interval = setInterval(() => {
       setTick((t) => t + 1);
     }, 1000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("kk-state-changed", handleSync);
+    };
   }, []);
 
   const showToast = (msg: string) => {
@@ -68,6 +91,7 @@ export default function WaiterFloorPage() {
   };
 
   const handleOpenAddParty = (tableNum: number) => {
+    triggerHaptic("tap");
     setSelectedTableNumber(tableNum);
     setGuestCount(2);
     setDescriptor("");
@@ -79,6 +103,7 @@ export default function WaiterFloorPage() {
 
   const handleQuickSeatAndOrder = (tableNum: number, guests: number = 2) => {
     try {
+      triggerHaptic("success");
       const party = store.createPartyAtTable(tableNum, guests, "", false, "", "", 0);
       setTick((t) => t + 1);
       showToast(`Party ${party.partyCode} opened at Table ${tableNum}! Opening order screen...`);
@@ -91,6 +116,7 @@ export default function WaiterFloorPage() {
   const handleCreatePartySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      triggerHaptic("success");
       const party = store.createPartyAtTable(
         selectedTableNumber,
         guestCount,
@@ -113,6 +139,7 @@ export default function WaiterFloorPage() {
   const handleTransferSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      triggerHaptic("success");
       const updated = store.transferPartyToTable(transferPartyId, targetTableNumber);
       setTick((t) => t + 1);
       setActiveModal(null);
@@ -125,6 +152,7 @@ export default function WaiterFloorPage() {
   const handleMergeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      triggerHaptic("success");
       const merged = store.mergePartiesTogether(selectedPartyIdsForMerge);
       setTick((t) => t + 1);
       setActiveModal(null);
@@ -137,6 +165,7 @@ export default function WaiterFloorPage() {
   const handleSplitSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      triggerHaptic("success");
       const { newParty } = store.splitPartyItemsAction(
         splitSourcePartyId,
         splitTargetTableNumber,

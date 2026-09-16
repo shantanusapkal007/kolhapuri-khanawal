@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Coins,
   QrCode,
@@ -13,6 +13,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
+import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
+import { triggerHaptic } from "@/lib/mobile/haptics";
 
 export default function CashUPIReconciliationPage() {
   const store = globalRestaurantStore;
@@ -29,6 +31,16 @@ export default function CashUPIReconciliationPage() {
   const [entryType, setEntryType] = useState<"INFLOW" | "OUTFLOW">("INFLOW");
   const [amount, setAmount] = useState<number>(500);
   const [description, setDescription] = useState("");
+
+  // Android hardware back button trap
+  useAndroidBackButton(showAddModal, () => setShowAddModal(false));
+
+  // Multi-terminal local sync listener
+  useEffect(() => {
+    const handleSync = () => setTick((t) => t + 1);
+    window.addEventListener("kk-state-changed", handleSync);
+    return () => window.removeEventListener("kk-state-changed", handleSync);
+  }, []);
 
   const currentExpectedCash = store.cashLedger[0]?.balance ?? 5000;
   const currentExpectedUpi = store.upiLedger[0]?.balance ?? 15000;
@@ -74,6 +86,8 @@ export default function CashUPIReconciliationPage() {
 
     setShowAddModal(false);
     setDescription("");
+    triggerHaptic("success");
+    store.notifyStateChange("reconcileCashFloat");
     setTick((t) => t + 1);
   };
 
