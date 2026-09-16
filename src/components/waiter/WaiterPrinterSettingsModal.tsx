@@ -250,6 +250,19 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </div>
         )}
 
+        {/* Hotel Wi-Fi Highlight Banner */}
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-950 flex items-start gap-2.5">
+          <Wifi className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <span className="font-black text-[11px] block text-blue-900">
+              हॉटेल वाय-फायवरून प्रिंटिंग (100% Recommended):
+            </span>
+            <p className="text-[10.5px] text-blue-800 leading-tight">
+              प्रिंटर हॉटेलच्या वाय-फाय राउटरला जोडलेला असल्यास, सर्व वेटर व काऊंटर फोन एकाच वेळी विनाअडथळा प्रिंट करू शकतात!
+            </p>
+          </div>
+        </div>
+
         {/* Print Mode Selector */}
         <div className="space-y-1.5">
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-500 flex items-center justify-between">
@@ -258,28 +271,33 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </label>
 
           <div className="space-y-2">
-            {/* Mode 1: Android System Print */}
+            {/* Mode 1: Hotel Wi-Fi (Primary Best Choice) */}
             <button
               type="button"
-              onClick={() => setPrintMode("SYSTEM")}
+              onClick={() => setPrintMode("NETWORK")}
               className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                printMode === "SYSTEM"
-                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
+                printMode === "NETWORK"
+                  ? "bg-blue-50/90 border-blue-500 text-blue-950 ring-2 ring-blue-400/40 font-black shadow-xs"
                   : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
-                  <Smartphone className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-800 flex items-center justify-center shrink-0">
+                  <Wifi className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-xs block font-black">📱 Android सिस्टीम प्रिंट (सर्वात सोपे)</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs block font-black">🌐 हॉटेल वाय-फाय प्रिंटर (POSIFLOW)</span>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
+                      सर्वोत्तम ⭐
+                    </span>
+                  </div>
                   <span className="text-[10px] text-stone-500 font-normal">
-                    कोणतेही ॲप नको • फोनच्या ब्लूटूथवरून थेट प्रिंट
+                    राउटर LAN IP वरून सर्व फोनसाठी • कोणत्याही पेअरिंगशिवाय
                   </span>
                 </div>
               </div>
-              {printMode === "SYSTEM" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+              {printMode === "NETWORK" && <Check className="w-4 h-4 text-blue-600 stroke-[3]" />}
             </button>
 
             {/* Mode 2: RawBT Bluetooth */}
@@ -297,7 +315,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
                   <Zap className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-xs block font-black">⚡ RawBT ब्लूटूथ (सुपरफास्ट)</span>
+                  <span className="text-xs block font-black">⚡ RawBT मोबाईल ब्लूटूथ (सुपरफास्ट)</span>
                   <span className="text-[10px] text-stone-500 font-normal">
                     0.1 सेकंदात थेट प्रिंट • RawBT ॲप आवश्यक
                   </span>
@@ -306,28 +324,28 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
               {printMode === "RAWBT" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
             </button>
 
-            {/* Mode 3: Hotel Wi-Fi */}
+            {/* Mode 3: Android System Print */}
             <button
               type="button"
-              onClick={() => setPrintMode("NETWORK")}
+              onClick={() => setPrintMode("SYSTEM")}
               className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                printMode === "NETWORK"
+                printMode === "SYSTEM"
                   ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
                   : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-800 flex items-center justify-center shrink-0">
-                  <Wifi className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                  <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <span className="text-xs block font-black">🌐 हॉटेल वाय-फाय प्रिंटर (POSIFLOW)</span>
+                  <span className="text-xs block font-black">📱 सिस्टीम प्रिंट (कोणत्याही ॲपशिवाय)</span>
                   <span className="text-[10px] text-stone-500 font-normal">
-                    राउटर LAN IP वरून सर्व फोनसाठी
+                    Android चा अधिकृत प्रिंट डायलॉग • झीरो सेटअप
                   </span>
                 </div>
               </div>
-              {printMode === "NETWORK" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+              {printMode === "SYSTEM" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
             </button>
           </div>
 

@@ -1247,7 +1247,13 @@ export default function PrintersManagementPage() {
                           {dev.paperWidth}
                         </span>
                         <span className="text-[10px] bg-stone-100 text-stone-600 px-2 py-0.5 rounded-md font-bold">
-                          {dev.connectionType.replace(/_/g, " ")}
+                          {dev.connectionType === "BLUETOOTH_SPP" || dev.connectionType === "RAWBT"
+                            ? "📱 BLUETOOTH (KP307-UEWB)"
+                            : dev.connectionType === "NETWORK"
+                            ? "🌐 WI-FI NETWORK"
+                            : dev.connectionType === "SERIAL_USB"
+                            ? "🖥️ DESKTOP SERIAL (PC ONLY)"
+                            : dev.connectionType.replace(/_/g, " ")}
                         </span>
                       </div>
                     </div>
@@ -1639,16 +1645,16 @@ export default function PrintersManagementPage() {
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, connectionType: "BLUETOOTH_BLE" })}
+                    onClick={() => setFormData({ ...formData, connectionType: "RAWBT" })}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
-                      formData.connectionType === "BLUETOOTH_BLE"
-                        ? "bg-purple-50 border-purple-500 text-purple-950 font-bold ring-2 ring-purple-300/40"
+                      formData.connectionType === "RAWBT"
+                        ? "bg-orange-50 border-orange-500 text-orange-950 font-bold ring-2 ring-orange-300/40"
                         : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50"
                     }`}
                   >
-                    <Bluetooth className="w-4 h-4 mb-1 text-purple-600" />
-                    <div className="text-xs">iOS BT BLE</div>
-                    <div className="text-[10px] text-stone-500 font-normal">Low Energy GATT</div>
+                    <Zap className="w-4 h-4 mb-1 text-orange-600" />
+                    <div className="text-xs">⚡ RawBT Bluetooth</div>
+                    <div className="text-[10px] text-stone-500 font-normal">Android सुपरफास्ट</div>
                   </button>
 
                   <button
@@ -1662,7 +1668,7 @@ export default function PrintersManagementPage() {
                   >
                     <Laptop className="w-4 h-4 mb-1 text-amber-600" />
                     <div className="text-xs">USB / Serial COM</div>
-                    <div className="text-[10px] text-stone-500 font-normal">Desktop Terminal</div>
+                    <div className="text-[10px] text-amber-700 font-bold">🖥️ PC Only (Desktop)</div>
                   </button>
 
                   <button
@@ -1783,7 +1789,10 @@ export default function PrintersManagementPage() {
                 </div>
               )}
 
-              {(formData.connectionType === "BLUETOOTH_SPP" || formData.connectionType === "BLUETOOTH_BLE" || formData.connectionType === "BLUETOOTH") && (
+              {(formData.connectionType === "BLUETOOTH_SPP" ||
+                formData.connectionType === "BLUETOOTH_BLE" ||
+                formData.connectionType === "BLUETOOTH" ||
+                formData.connectionType === "RAWBT") && (
                 <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-2xl space-y-2.5">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -1810,9 +1819,22 @@ export default function PrintersManagementPage() {
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-indigo-900/80">
-                    💡 Android फोनच्या Settings मधून <strong>KP307-UEWB</strong> पेअर करा (PIN: 0000 किंवा 1234).
-                  </p>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[10.5px] text-indigo-900/90 pt-1 border-t border-indigo-200/60">
+                    <span>
+                      💡 Android फोनच्या Settings मधून <strong>KP307-UEWB</strong> पेअर करा (PIN: 0000 किंवा 1234).
+                    </span>
+                    {formData.connectionType === "RAWBT" && (
+                      <a
+                        href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-0.5 bg-orange-600 text-white rounded-lg font-bold text-[10px] flex items-center gap-1 shrink-0"
+                      >
+                        <span>RawBT ॲप</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 
