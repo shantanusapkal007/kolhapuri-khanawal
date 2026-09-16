@@ -55,7 +55,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
   // Active print mode
   const [printMode, setPrintMode] = useState<SimplePrintMode>("SYSTEM");
   const [bluetoothName, setBluetoothName] = useState<string>("");
-  const [networkIp, setNetworkIp] = useState<string>("192.168.1.200");
+  const [networkIp, setNetworkIp] = useState<string>("192.168.0.108");
   const [paperWidth, setPaperWidth] = useState<"80mm" | "58mm">("80mm");
   const [autoPrintKot, setAutoPrintKot] = useState<boolean>(true);
   const [autoPrintReceipt, setAutoPrintReceipt] = useState<boolean>(true);
@@ -547,7 +547,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
                         setNetworkIp(e.target.value);
                         setNetworkPingResult(null);
                       }}
-                      placeholder="192.168.1.100"
+                      placeholder="192.168.0.108"
                       className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold focus:border-blue-600 focus:outline-hidden"
                     />
                     <button
@@ -565,7 +565,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
                   <div className="space-y-1">
                     <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {["192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
+                      {["192.168.0.108", "192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
                         <button
                           key={ip}
                           type="button"

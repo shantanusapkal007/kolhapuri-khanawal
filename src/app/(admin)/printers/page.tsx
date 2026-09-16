@@ -84,18 +84,23 @@ export default function PrintersManagementPage() {
   const [pingResults, setPingResults] = useState<Record<string, { online: boolean; message?: string; latencyMs?: number }>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Quick Mobile & Online KP307-UEWB Setup State
+  // Quick Mobile & Online KPC307-UEWB Setup State
   const [mobileSetupTab, setMobileSetupTab] = useState<"WIFI" | "BLUETOOTH">("WIFI");
   const [quickWifiIp, setQuickWifiIp] = useState<string>(() => {
     const existing = store.printerSettings.devices?.find((d) => d.connectionType === "NETWORK" && d.ipAddress);
-    return existing?.ipAddress || "192.168.1.100";
+    if (existing?.ipAddress && existing.ipAddress !== "192.168.1.100" && existing.ipAddress !== "192.168.1.50") {
+      return existing.ipAddress;
+    }
+    return "192.168.0.108";
   });
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isEditingIp, setIsEditingIp] = useState(false);
   const [isScanningWifi, setIsScanningWifi] = useState(false);
   const [foundPrinters, setFoundPrinters] = useState<{ ip: string; port: number; latencyMs?: number }[]>([]);
   const [wifiPingStatus, setWifiPingStatus] = useState<{ online: boolean; message: string; latencyMs?: number } | null>(null);
   const [isPingingWifi, setIsPingingWifi] = useState(false);
   const [isTestingQuick, setIsTestingQuick] = useState(false);
-  const [showStepGuide, setShowStepGuide] = useState(true);
+  const [showStepGuide, setShowStepGuide] = useState(false);
 
   // Modal Network helper states
   const [modalPingStatus, setModalPingStatus] = useState<{ online: boolean; message: string; latencyMs?: number } | null>(null);
@@ -150,6 +155,19 @@ export default function PrintersManagementPage() {
     const unsub = globalPrinterManager.subscribe((updatedJobs) => {
       setJobs(updatedJobs);
     });
+
+    // Automatically sync default network printer to 192.168.0.108
+    const netDev = devices.find((d) => d.connectionType === "NETWORK");
+    if (netDev && (netDev.ipAddress === "192.168.1.100" || netDev.ipAddress === "192.168.1.50" || !netDev.ipAddress)) {
+      const updated = devices.map((d) =>
+        d.id === netDev.id ? { ...d, ipAddress: "192.168.0.108", status: "ONLINE" as PrinterStatus } : d
+      );
+      setDevices(updated);
+      const updatedSettings = { ...settings, devices: updated };
+      setSettings(updatedSettings);
+      store.updatePrinterSettings(updatedSettings);
+    }
+
     return () => unsub();
   }, []);
 
@@ -412,6 +430,7 @@ export default function PrintersManagementPage() {
   const isWifiActive = devices.some(
     (d) => d.isEnabled && d.isDefaultReceiptPrinter && d.connectionType === "NETWORK"
   );
+  const primaryNetDev = devices.find((d) => d.connectionType === "NETWORK") || devices[0];
 
   // 1-Click Quick Setup Handlers
   const handleActivateAndroidSystemPrint = () => {
@@ -723,14 +742,15 @@ export default function PrintersManagementPage() {
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-black text-stone-900">
-              प्रिंटर व्यवस्थापन व हार्डवेअर (Printer Management)
+              प्रिंटर व्यवस्थापन (Printer Setup)
             </h1>
-            <span className="bg-red-100 text-red-800 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-red-200">
-              POSIFLOW KP307-UEWB Certified
+            <span className="bg-emerald-100 text-emerald-800 text-[11px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              POSIFLOW KPC307-UEWB जोडलेला आहे
             </span>
           </div>
           <p className="text-xs text-stone-500 mt-1 font-medium">
-            वाय-फाय, ब्लूटूथ व सिरीयल थर्मल प्रिंटर्स, KOT स्टेशन राउटिंग व ऑटो-कट सेटिंग्ज
+            हॉटेल वाय-फाय (Kolhapuri khanaval) वर थेट 80mm ESC/POS प्रिंटिंग
           </p>
         </div>
 
@@ -740,37 +760,296 @@ export default function PrintersManagementPage() {
           <button
             type="button"
             onClick={() => setIsQueueOpen(true)}
-            className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold shadow-2xs transition-all flex items-center gap-2 active:scale-95"
+            className="px-3.5 py-2 rounded-xl bg-white border border-stone-300 hover:bg-stone-50 text-stone-800 text-xs font-bold shadow-2xs transition-all flex items-center gap-2 active:scale-95 cursor-pointer"
           >
             <Clock className="w-4 h-4 text-stone-500" />
-            <span>प्रिंट रांग (Queue)</span>
+            <span>प्रिंट रांग</span>
             {queuedCount > 0 ? (
               <span className="bg-amber-500 text-white font-black text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
                 {queuedCount}
               </span>
             ) : failedCount > 0 ? (
               <span className="bg-red-600 text-white font-black text-[10px] px-1.5 py-0.2 rounded-full">
-                {failedCount} Offline
+                {failedCount}
               </span>
             ) : null}
-          </button>
-
-          {/* Add Printer Button */}
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal("POSIFLOW_WIFI")}
-            className="px-4 py-2 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 text-amber-200" />
-            <span>+ प्रिंटर जोडा (Add Printer)</span>
           </button>
         </div>
       </div>
 
-      {/* 📱 मोबाईल व ऑनलाइन प्रिंटर सोपे सेटअप (Mobile & Online Printer Hub) */}
-      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 text-white shadow-xl border border-stone-700/80 space-y-5">
-        {/* Hub Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* 🖨️ मुख्य प्रिंटर: POSIFLOW KPC307-UEWB (Primary Dedicated Card) */}
+      <div className="rounded-3xl p-6 bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-white shadow-2xl border border-stone-800 space-y-6 relative overflow-hidden">
+        {/* Background glow accents */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
+
+        {/* Top Details */}
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/25 shrink-0">
+              <Printer className="w-7 h-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl font-black text-white tracking-tight">
+                  POSIFLOW KPC307-UEWB
+                </h2>
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  सक्रिय (Active • Online)
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-stone-300 mt-1 flex-wrap">
+                <span className="flex items-center gap-1 text-amber-300 font-bold">
+                  <Wifi className="w-3.5 h-3.5" />
+                  Kolhapuri khanaval
+                </span>
+                <span className="text-stone-600">•</span>
+                <span className="font-mono bg-stone-800 px-2 py-0.5 rounded-md text-stone-200 font-bold">
+                  {quickWifiIp || "192.168.0.108"}:9100
+                </span>
+                <span className="text-stone-600">•</span>
+                <span className="text-stone-400">80mm ESC/POS</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick IP edit toggle */}
+          <button
+            type="button"
+            onClick={() => setIsEditingIp(!isEditingIp)}
+            className="self-start sm:self-auto text-xs text-stone-400 hover:text-stone-200 font-bold flex items-center gap-1.5 bg-stone-900/80 px-3 py-1.5 rounded-xl border border-stone-800 hover:border-stone-700 transition-all cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+            <span>{isEditingIp ? "IP संपादन बंद करा" : "IP बदला (Edit IP)"}</span>
+          </button>
+        </div>
+
+        {/* IP editor when toggled */}
+        {isEditingIp && (
+          <div className="relative z-10 p-4 rounded-2xl bg-stone-900/90 border border-amber-500/30 space-y-3 animate-in fade-in">
+            <label className="text-xs font-bold text-amber-300 block">
+              प्रिंटरचा Wi-Fi IP पत्ता (Printer Wi-Fi IP):
+            </label>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={quickWifiIp}
+                  onChange={(e) => {
+                    setQuickWifiIp(e.target.value);
+                    setWifiPingStatus(null);
+                  }}
+                  placeholder="192.168.0.108"
+                  className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-700 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:border-amber-400"
+                />
+                <span className="absolute right-3 top-2.5 text-[11px] font-mono text-stone-500 font-bold">
+                  :9100
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleActivateWifiNetworkPrint}
+                className="px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl text-xs font-black transition-all cursor-pointer shadow-md"
+              >
+                हा IP सेव्ह करा
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Ping status banner if available */}
+        {wifiPingStatus && (
+          <div
+            className={`relative z-10 p-3 rounded-2xl border text-xs font-bold flex items-center justify-between gap-2 ${
+              wifiPingStatus.online
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                : "bg-red-500/15 border-red-500/40 text-red-300"
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate">
+              {wifiPingStatus.online ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+              )}
+              <span className="truncate">
+                {wifiPingStatus.online
+                  ? `प्रिंटर ऑनलाइन आहे! Port 9100 तयार (${wifiPingStatus.latencyMs ? `${wifiPingStatus.latencyMs}ms` : "Active"})`
+                  : wifiPingStatus.message || "संपर्क अयशस्वी"}
+              </span>
+            </div>
+            {wifiPingStatus.latencyMs && (
+              <span className="text-[10px] font-mono bg-stone-900/80 px-2 py-0.5 rounded-md border border-emerald-500/30 text-emerald-200">
+                {wifiPingStatus.latencyMs}ms
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Primary Action Buttons */}
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-stone-800">
+          <button
+            type="button"
+            onClick={() => handleQuickTestPrint("WIFI")}
+            disabled={isTestingQuick}
+            className="py-3 px-5 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-300 text-stone-950 font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <FileText className={`w-4 h-4 ${isTestingQuick ? "animate-spin" : ""}`} />
+            <span>{isTestingQuick ? "पावती पाठवत आहे..." : "📄 टेस्ट पावती प्रिंट करा (Print Test Slip)"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePingWifi}
+            disabled={isPingingWifi}
+            className="py-3 px-5 bg-stone-800 hover:bg-stone-700 text-white font-black rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 border border-stone-700 active:scale-98 transition-all cursor-pointer disabled:opacity-50"
+          >
+            <Radio className={`w-4 h-4 text-amber-400 ${isPingingWifi ? "animate-pulse" : ""}`} />
+            <span>{isPingingWifi ? "कनेक्शन तपासत आहे..." : "📶 पिंग तपासा (Check Ping)"}</span>
+          </button>
+        </div>
+
+        {/* Essential 4 Automation Toggles */}
+        <div className="relative z-10 pt-4 border-t border-stone-800 space-y-3">
+          <h3 className="text-xs font-black uppercase tracking-wider text-stone-400">
+            प्रिंटर ऑटोमेशन (Print Automation Settings)
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 hover:border-stone-700 transition-colors cursor-pointer">
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  ऑर्डर झाल्यावर आपोआप KOT प्रिंट करा
+                </span>
+                <span className="text-[10px] text-stone-400">
+                  वेटरने ऑर्डर देताच किचनमध्ये KOT निघेल
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.autoPrintKotOnOrder}
+                onChange={(e) => handleToggleAutomation("autoPrintKotOnOrder", e.target.checked)}
+                className="h-4 w-4 rounded border-stone-600 text-amber-500 focus:ring-amber-400 cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 hover:border-stone-700 transition-colors cursor-pointer">
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  बिल केल्यावर पावती आपोआप प्रिंट करा
+                </span>
+                <span className="text-[10px] text-stone-400">
+                  काऊंटरवर पेमेंट होताच ग्राहकाची पावती निघेल
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.autoPrintReceiptOnPayment}
+                onChange={(e) => handleToggleAutomation("autoPrintReceiptOnPayment", e.target.checked)}
+                className="h-4 w-4 rounded border-stone-600 text-amber-500 focus:ring-amber-400 cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 hover:border-stone-700 transition-colors cursor-pointer">
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  प्रिंट झाल्यावर कागद कापा (Auto-Cut)
+                </span>
+                <span className="text-[10px] text-stone-400">
+                  KPC307 चा इनबिल्ट कटर कागद कापेल
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={primaryNetDev?.autoCut ?? true}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  const updated = devices.map((d) =>
+                    d.connectionType === "NETWORK" ? { ...d, autoCut: checked } : d
+                  );
+                  setDevices(updated);
+                  const updatedSettings = { ...settings, devices: updated };
+                  setSettings(updatedSettings);
+                  store.updatePrinterSettings(updatedSettings);
+                }}
+                className="h-4 w-4 rounded border-stone-600 text-amber-500 focus:ring-amber-400 cursor-pointer"
+              />
+            </label>
+
+            <label className="flex items-center justify-between p-3.5 rounded-2xl bg-stone-900/90 border border-stone-800 hover:border-stone-700 transition-colors cursor-pointer">
+              <div>
+                <span className="text-xs font-bold text-white block">
+                  कॅश भरल्यावर गल्ला उघडा (Cash Drawer)
+                </span>
+                <span className="text-[10px] text-stone-400">
+                  कॅश पेमेंटवर प्रिंटरचा ड्रॉवर आपोआप उघडेल
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.autoKickCashDrawerOnCash}
+                onChange={(e) => handleToggleAutomation("autoKickCashDrawerOnCash", e.target.checked)}
+                className="h-4 w-4 rounded border-stone-600 text-amber-500 focus:ring-amber-400 cursor-pointer"
+              />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* ⚙️ अधिक प्रगत पर्याय (Advanced Options Accordion) */}
+      <div className="space-y-4 pt-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+          className="w-full p-4 sm:p-5 rounded-3xl bg-white border border-stone-200 hover:border-stone-300 hover:bg-stone-50/80 transition-all flex items-center justify-between text-left shadow-xs cursor-pointer group"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-stone-100 group-hover:bg-amber-100 text-stone-700 group-hover:text-amber-800 flex items-center justify-center transition-colors shrink-0">
+              <Sliders className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm sm:text-base font-black text-stone-900">
+                  ⚙️ अधिक प्रगत पर्याय (More Options / Advanced Fleet Settings)
+                </span>
+                <span className="text-[10px] font-bold bg-stone-100 text-stone-600 px-2.5 py-0.5 rounded-full border border-stone-200">
+                  {showAdvancedSettings ? "उघडे आहे" : "इतर पर्याय लपवलेले आहेत"}
+                </span>
+              </div>
+              <p className="text-xs text-stone-500 mt-0.5">
+                ब्लूटूथ (RawBT / System), सिरीयल USB, इतर प्रिंटर्स, प्रिंट रांग व स्टेशन राउटिंग
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-stone-400 group-hover:text-stone-700 shrink-0">
+            <span className="text-xs font-bold hidden sm:inline">
+              {showAdvancedSettings ? "पर्याय लपवा" : "पर्याय उघडा"}
+            </span>
+            {showAdvancedSettings ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+          </div>
+        </button>
+
+        {showAdvancedSettings && (
+          <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Action Bar inside Advanced Settings: Add Printer */}
+            <div className="flex items-center justify-between gap-2 p-3.5 bg-stone-100/90 rounded-2xl border border-stone-200">
+              <div className="text-xs font-bold text-stone-700">
+                अतिरिक्त प्रिंटर जोडणी किंवा मॅन्युअल कॉन्फिगरेशन:
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenAddModal("POSIFLOW_WIFI")}
+                className="px-3.5 py-2 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 text-amber-200" />
+                <span>+ नवीन प्रिंटर जोडा (Add Printer)</span>
+              </button>
+            </div>
+
+            {/* 📱 मोबाईल व ऑनलाइन प्रिंटर सोपे सेटअप (Mobile & Online Printer Hub) */}
+            <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 text-white shadow-xl border border-stone-700/80 space-y-5">
+              {/* Hub Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
               <Smartphone className="w-6 h-6" />
@@ -1547,6 +1826,9 @@ export default function PrintersManagementPage() {
             />
           </label>
         </div>
+      </div>
+          </div>
+        )}
       </div>
 
       {/* ADD / EDIT PRINTER MODAL */}

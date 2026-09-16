@@ -15,6 +15,8 @@ import {
   RefreshCw,
   Radio,
   Search,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { globalPrinterManager } from "@/lib/printing/printer-connection-manager";
@@ -56,6 +58,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
   const [isScanningWifi, setIsScanningWifi] = useState<boolean>(false);
   const [isPingingWifi, setIsPingingWifi] = useState<boolean>(false);
   const [wifiPingStatus, setWifiPingStatus] = useState<{ online: boolean; message: string } | null>(null);
+  const [showMoreOptions, setShowMoreOptions] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -250,246 +253,202 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </div>
         )}
 
-        {/* Hotel Wi-Fi Highlight Banner */}
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-950 flex items-start gap-2.5">
-          <Wifi className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-black text-[11px] block text-blue-900">
-              हॉटेल वाय-फायवरून प्रिंटिंग (100% Recommended):
+        {/* Main Dedicated Printer Card (POSIFLOW KPC307-UEWB) */}
+        <div className="p-4 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 rounded-2xl text-white space-y-3.5 border border-stone-700 shadow-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-sm">
+                <Printer className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-white leading-tight">POSIFLOW KPC307-UEWB</h4>
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-mono mt-0.5">
+                  <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                  <span>{wifiIp || "192.168.0.108"}:9100</span>
+                  <span className="text-stone-400">• 80mm</span>
+                </div>
+              </div>
+            </div>
+            <span className="bg-emerald-500 text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-stone-950 animate-pulse" />
+              तयार (Ready)
             </span>
-            <p className="text-[10.5px] text-blue-800 leading-tight">
-              प्रिंटर हॉटेलच्या वाय-फाय राउटरला जोडलेला असल्यास, सर्व वेटर व काऊंटर फोन एकाच वेळी विनाअडथळा प्रिंट करू शकतात!
-            </p>
           </div>
-        </div>
 
-        {/* Print Mode Selector */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-black uppercase tracking-wider text-stone-500 flex items-center justify-between">
-            <span>प्रिंट पद्धत (Print Mode)</span>
-            <span className="text-amber-700 font-bold lowercase text-[10px]">1-क्लिक निवडा</span>
-          </label>
-
-          <div className="space-y-2">
-            {/* Mode 1: Hotel Wi-Fi (Primary Best Choice) */}
+          <div className="pt-2 border-t border-stone-700/80 flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setPrintMode("NETWORK")}
-              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                printMode === "NETWORK"
-                  ? "bg-blue-50/90 border-blue-500 text-blue-950 ring-2 ring-blue-400/40 font-black shadow-xs"
-                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
-              }`}
+              onClick={handleTestPrint}
+              disabled={isPrintingTest}
+              className="flex-1 py-3 px-3 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-800 flex items-center justify-center shrink-0">
-                  <Wifi className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs block font-black">🌐 हॉटेल वाय-फाय प्रिंटर (POSIFLOW)</span>
-                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full">
-                      सर्वोत्तम ⭐
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone-500 font-normal">
-                    राउटर LAN IP वरून सर्व फोनसाठी • कोणत्याही पेअरिंगशिवाय
-                  </span>
-                </div>
-              </div>
-              {printMode === "NETWORK" && <Check className="w-4 h-4 text-blue-600 stroke-[3]" />}
+              <Printer className={`w-4 h-4 ${isPrintingTest ? "animate-spin" : ""}`} />
+              <span>{isPrintingTest ? "प्रिंट होत आहे..." : "📄 टेस्ट पावती प्रिंट करा"}</span>
             </button>
-
-            {/* Mode 2: RawBT Bluetooth */}
             <button
               type="button"
-              onClick={() => setPrintMode("RAWBT")}
-              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                printMode === "RAWBT"
-                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
-                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
-              }`}
+              onClick={handlePingWifi}
+              disabled={isPingingWifi}
+              title="Ping Test"
+              className="py-3 px-3 bg-stone-800 hover:bg-stone-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer border border-stone-700"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-800 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs block font-black">⚡ RawBT मोबाईल ब्लूटूथ (सुपरफास्ट)</span>
-                  <span className="text-[10px] text-stone-500 font-normal">
-                    0.1 सेकंदात थेट प्रिंट • RawBT ॲप आवश्यक
-                  </span>
-                </div>
-              </div>
-              {printMode === "RAWBT" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
-            </button>
-
-            {/* Mode 3: Android System Print */}
-            <button
-              type="button"
-              onClick={() => setPrintMode("SYSTEM")}
-              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                printMode === "SYSTEM"
-                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
-                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
-                  <Smartphone className="w-4 h-4" />
-                </div>
-                <div>
-                  <span className="text-xs block font-black">📱 सिस्टीम प्रिंट (कोणत्याही ॲपशिवाय)</span>
-                  <span className="text-[10px] text-stone-500 font-normal">
-                    Android चा अधिकृत प्रिंट डायलॉग • झीरो सेटअप
-                  </span>
-                </div>
-              </div>
-              {printMode === "SYSTEM" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+              <Radio className={`w-3.5 h-3.5 text-amber-400 ${isPingingWifi ? "animate-pulse" : ""}`} />
+              <span>{isPingingWifi ? "..." : "पिंग"}</span>
             </button>
           </div>
 
-          {printMode === "NETWORK" && (
-            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5 animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-blue-950 block">
-                  प्रिंटर IP पत्ता (Printer IP):
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAutoScanNetwork}
-                  disabled={isScanningWifi}
-                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
-                >
-                  <RefreshCw className={`w-3 h-3 ${isScanningWifi ? "animate-spin" : ""}`} />
-                  <span>{isScanningWifi ? "शोधत आहे..." : "🔍 आपोआप शोधा"}</span>
-                </button>
-              </div>
-
-              <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={wifiIp}
-                  onChange={(e) => {
-                    setWifiIp(e.target.value);
-                    setWifiPingStatus(null);
-                  }}
-                  placeholder="192.168.1.100"
-                  className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-blue-600"
-                />
-                <button
-                  type="button"
-                  onClick={handlePingWifi}
-                  disabled={isPingingWifi}
-                  className="px-3 py-2 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
-                >
-                  <Radio className={`w-3.5 h-3.5 ${isPingingWifi ? "animate-pulse text-blue-600" : ""}`} />
-                  <span>{isPingingWifi ? "तपासत आहे..." : "पिंग करा"}</span>
-                </button>
-              </div>
-
-              {/* Subnet Chips */}
-              <div className="space-y-1">
-                <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {["192.168.0.108", "192.168.223.1", "192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100"].map((ip) => (
-                    <button
-                      key={ip}
-                      type="button"
-                      onClick={() => {
-                        setWifiIp(ip);
-                        setWifiPingStatus(null);
-                      }}
-                      className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
-                        wifiIp === ip
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-stone-700 border-stone-300 hover:border-stone-400"
-                      }`}
-                    >
-                      {ip}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Ping Status */}
-              {wifiPingStatus && (
-                <div
-                  className={`p-2 rounded-xl border text-[11px] flex items-center gap-1.5 ${
-                    wifiPingStatus.online
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-800"
-                      : "bg-red-50 border-red-300 text-red-800"
-                  }`}
-                >
-                  {wifiPingStatus.online ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  ) : (
-                    <X className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                  )}
-                  <span>{wifiPingStatus.message}</span>
-                </div>
+          {wifiPingStatus && (
+            <div
+              className={`p-2 rounded-xl border text-[11px] flex items-center gap-1.5 ${
+                wifiPingStatus.online
+                  ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                  : "bg-red-500/10 border-red-500/40 text-red-300"
+              }`}
+            >
+              {wifiPingStatus.online ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              ) : (
+                <X className="w-3.5 h-3.5 text-red-400 shrink-0" />
               )}
-
-              <p className="text-[9.5px] text-blue-900/80 leading-relaxed border-t border-blue-200/60 pt-1.5">
-                💡 <strong>IP शोधण्यासाठी:</strong> प्रिंटर बंद करा ➔ समोरील <strong>FEED बटण दाबून धरून</strong> चालू करा. २ सेकंदांनी सोडा, पावतीवर IP पत्ता दिसेल.
-              </p>
-            </div>
-          )}
-
-          {printMode === "RAWBT" && (
-            <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-between text-xs text-orange-950">
-              <span className="text-[11px] font-medium">RawBT ॲप नसेल तर Play Store वरून घ्या:</span>
-              <a
-                href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 bg-orange-600 text-white rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-xs"
-              >
-                <span>Play Store</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
+              <span>{wifiPingStatus.message}</span>
             </div>
           )}
         </div>
 
-        {/* Paper Width Picker */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-black uppercase tracking-wider text-stone-500">
-            Thermal Roll Size (कागदाचा आकार)
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setPaperWidth("80mm")}
-              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                paperWidth === "80mm"
-                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black"
-                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
-              }`}
-            >
-              <div>
-                <span className="text-xs block">80mm Standard</span>
-                <span className="text-[10px] text-stone-400 font-normal">3-inch Large POS</span>
-              </div>
-              {paperWidth === "80mm" && <CheckCircle2 className="w-4 h-4 text-amber-600" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setPaperWidth("58mm")}
-              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
-                paperWidth === "58mm"
-                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black"
-                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
-              }`}
-            >
-              <div>
-                <span className="text-xs block">58mm Compact</span>
-                <span className="text-[10px] text-stone-400 font-normal">2-inch Handheld</span>
-              </div>
-              {paperWidth === "58mm" && <CheckCircle2 className="w-4 h-4 text-amber-600" />}
-            </button>
+        {/* Essential Quick Toggle */}
+        <div className="flex items-center justify-between p-3.5 bg-[#FAF8F5] rounded-2xl border border-[#E7E2DA]">
+          <div className="space-y-0.5">
+            <span className="text-xs font-black text-stone-900 block">
+              ऑर्डर दिल्यावर आपोआप KOT प्रिंट करा
+            </span>
+            <span className="text-[10.5px] text-stone-500 font-medium">
+              वेटरने &apos;Send KOT&apos; दाबल्यावर थेट किचनमध्ये पावती निघेल
+            </span>
           </div>
+          <input
+            type="checkbox"
+            checked={autoPrintKot}
+            onChange={(e) => setAutoPrintKot(e.target.checked)}
+            className="w-5 h-5 accent-amber-600 cursor-pointer rounded-lg"
+          />
+        </div>
+
+        {/* Primary Save Button */}
+        <button
+          type="button"
+          onClick={handleSaveSettings}
+          className="w-full py-3.5 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white font-black text-xs sm:text-sm rounded-2xl shadow-md active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+        >
+          <Check className="w-4 h-4 text-amber-200 stroke-[3]" />
+          <span>सेटिंग्ज सेव्ह करा (Save & Ready)</span>
+        </button>
+
+        {/* ⚙️ अधिक प्रगत पर्याय (More Options - Collapsed by Default) */}
+        <div className="pt-2 border-t border-stone-200">
+          <button
+            type="button"
+            onClick={() => setShowMoreOptions(!showMoreOptions)}
+            className="w-full py-2 px-1 text-stone-500 hover:text-stone-800 text-xs font-bold flex items-center justify-between cursor-pointer rounded-xl hover:bg-stone-50 transition-colors"
+          >
+            <span>⚙️ इतर पर्याय (More Options: Bluetooth / System Print / Change IP)</span>
+            {showMoreOptions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {showMoreOptions && (
+            <div className="mt-3 space-y-3.5 p-3.5 bg-stone-50 rounded-2xl border border-stone-200 animate-in fade-in">
+              {/* Change IP Address */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-stone-700 block">
+                  वाय-फाय IP पत्ता बदला (Change IP):
+                </label>
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={wifiIp}
+                    onChange={(e) => {
+                      setWifiIp(e.target.value);
+                      setWifiPingStatus(null);
+                    }}
+                    placeholder="192.168.0.108"
+                    className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-amber-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAutoScanNetwork}
+                    disabled={isScanningWifi}
+                    className="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                  >
+                    {isScanningWifi ? "..." : "शोधा"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Alternative Print Modes */}
+              <div className="space-y-2 pt-2 border-t border-stone-200">
+                <span className="text-[11px] font-bold text-stone-700 block">
+                  पर्यायी प्रिंटिंग पद्धत (Alternative Mode):
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("RAWBT")}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      printMode === "RAWBT"
+                        ? "bg-orange-50 border-orange-500 text-orange-950 font-bold"
+                        : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    <Zap className="w-4 h-4 mb-1 text-orange-600" />
+                    <div className="text-xs font-black">RawBT Bluetooth</div>
+                    <div className="text-[9.5px] text-stone-500">Android ॲप आवश्यक</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("SYSTEM")}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      printMode === "SYSTEM"
+                        ? "bg-emerald-50 border-emerald-500 text-emerald-950 font-bold"
+                        : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    <Smartphone className="w-4 h-4 mb-1 text-emerald-600" />
+                    <div className="text-xs font-black">सिस्टीम प्रिंट</div>
+                    <div className="text-[9.5px] text-stone-500">Android प्रिंटर डायलॉग</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Paper Width */}
+              <div className="space-y-1.5 pt-2 border-t border-stone-200">
+                <span className="text-[11px] font-bold text-stone-700 block">कागदाचा आकार:</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaperWidth("80mm")}
+                    className={`flex-1 py-1.5 rounded-xl border text-xs font-bold text-center cursor-pointer ${
+                      paperWidth === "80mm"
+                        ? "bg-amber-100 border-amber-500 text-amber-950 font-black"
+                        : "bg-white border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    80mm (Standard)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaperWidth("58mm")}
+                    className={`flex-1 py-1.5 rounded-xl border text-xs font-bold text-center cursor-pointer ${
+                      paperWidth === "58mm"
+                        ? "bg-amber-100 border-amber-500 text-amber-950 font-black"
+                        : "bg-white border-stone-200 text-stone-600"
+                    }`}
+                  >
+                    58mm (Small)
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Auto-Print KOT Toggle */}
