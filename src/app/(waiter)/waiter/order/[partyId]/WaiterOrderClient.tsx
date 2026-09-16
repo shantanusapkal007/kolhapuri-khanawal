@@ -694,22 +694,22 @@ export default function WaiterOrderClient({
                             type="button"
                             disabled={isOut}
                             onClick={() => handleAddToCart(item, bread.id)}
-                            className={`px-2 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between border transition-all active:scale-95 touch-manipulation ${
+                            className={`min-h-[40px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-between border transition-all active:scale-95 touch-manipulation ${
                               count > 0
                                 ? "bg-amber-500 border-amber-600 text-stone-950 font-black shadow-2xs"
                                 : "bg-stone-50 hover:bg-amber-50/60 border-stone-200 text-stone-800"
                             }`}
                           >
-                            <span className="flex items-center gap-1 truncate text-[11px]">
-                              <span>{bread.emoji}</span>
+                            <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
+                              <span className="text-sm">{bread.emoji}</span>
                               <span className="truncate">{bread.localName}</span>
                             </span>
                             {count > 0 ? (
-                              <span className="bg-stone-900 text-amber-300 font-mono text-[10px] px-1.5 rounded-full">
+                              <span className="bg-stone-900 text-amber-300 font-mono text-[10px] px-1.5 py-0.5 rounded-full shrink-0">
                                 ×{count}
                               </span>
                             ) : (
-                              <Plus className="w-3 h-3 text-red-600 shrink-0" />
+                              <Plus className="w-3.5 h-3.5 text-red-600 shrink-0" />
                             )}
                           </button>
                         );
@@ -727,24 +727,24 @@ export default function WaiterOrderClient({
                   </span>
 
                   {inCartTotal > 0 ? (
-                    <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-xl">
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-xl">
                       <button
                         type="button"
                         onClick={() => handleCardDecrement(item)}
-                        className="w-7 h-7 rounded-lg bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90"
+                        className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="font-mono font-black text-xs text-red-700 px-1 min-w-4 text-center">
+                      <span className="font-mono font-black text-sm text-red-700 px-1 min-w-5 text-center">
                         {inCartTotal}
                       </span>
                       <button
                         type="button"
                         disabled={isOut}
                         onClick={() => handleAddToCart(item)}
-                        className="w-7 h-7 rounded-lg bg-red-600 text-white flex items-center justify-center font-black active:scale-90"
+                        className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
@@ -752,13 +752,13 @@ export default function WaiterOrderClient({
                       type="button"
                       disabled={isOut}
                       onClick={() => handleAddToCart(item)}
-                      className={`px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs active:scale-95 transition-all touch-manipulation ${
+                      className={`min-h-[38px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation ${
                         isOut
                           ? "bg-stone-200 text-stone-400 cursor-not-allowed"
                           : "bg-red-600 hover:bg-red-700 text-white"
                       }`}
                     >
-                      <Plus className="w-3 h-3 text-amber-200" />
+                      <Plus className="w-3.5 h-3.5 text-amber-200" />
                       <span>Add</span>
                     </button>
                   )}
@@ -771,19 +771,19 @@ export default function WaiterOrderClient({
 
       {/* 5. Floating Bottom Bar (Clear, Prominent, Lightning-Fast KOT) */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200 shadow-2xl p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 shadow-2xl p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
             {/* Cart Preview Button */}
             <button
               type="button"
               onClick={() => setIsCartSheetOpen(true)}
-              className="flex items-center gap-2.5 text-left p-1 rounded-xl active:scale-95 transition-all min-w-0"
+              className="flex items-center gap-2.5 text-left p-1 rounded-xl active:scale-95 transition-all min-w-0 touch-manipulation"
             >
-              <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-mono font-black text-sm shrink-0 shadow-md">
+              <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex items-center justify-center font-mono font-black text-sm shrink-0 shadow-md">
                 {totalCartCount}
               </div>
               <div className="min-w-0">
-                <span className="text-xs font-black text-stone-900 block leading-tight">
+                <span className="text-xs sm:text-sm font-black text-stone-900 block leading-tight">
                   ₹{cartSubtotal}
                 </span>
                 <span className="text-[10px] text-stone-500 font-bold flex items-center gap-0.5">
@@ -797,7 +797,7 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => { if (confirm("Clear all items from cart?")) setCart([]); }}
-              className="text-[10px] font-bold text-stone-400 hover:text-red-500 transition-colors px-1.5 py-1 shrink-0"
+              className="text-[11px] font-bold text-stone-400 hover:text-red-500 transition-colors px-2 py-1.5 shrink-0 touch-manipulation"
             >
               Clear All
             </button>
@@ -807,10 +807,10 @@ export default function WaiterOrderClient({
               type="button"
               disabled={isSending}
               onClick={handleSendKot}
-              className="flex-1 max-w-sm py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 active:scale-95 transition-all touch-manipulation"
+              className="flex-1 max-w-sm py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 active:scale-95 transition-all touch-manipulation"
             >
               <Send className="w-4 h-4 text-emerald-200" />
-              <span>{isSending ? "Sending..." : `KOT पाठवा (${totalCartCount} Items) →`}</span>
+              <span>{isSending ? "Sending..." : `KOT पाठवा (${totalCartCount}) →`}</span>
             </button>
           </div>
         </div>

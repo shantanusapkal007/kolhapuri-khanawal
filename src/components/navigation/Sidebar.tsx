@@ -309,7 +309,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-xs lg:hidden animate-in fade-in"
+          className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs lg:hidden animate-in fade-in"
         />
       )}
 
@@ -346,8 +346,10 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
             {/* Mobile Close Button */}
             {onCloseMobile && (
               <button
+                type="button"
                 onClick={onCloseMobile}
-                className="lg:hidden p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100"
+                className="lg:hidden p-2 text-stone-500 hover:text-stone-800 rounded-xl hover:bg-stone-100 touch-manipulation active:scale-95"
+                aria-label="Close navigation drawer"
               >
                 <X className="w-5 h-5" />
               </button>

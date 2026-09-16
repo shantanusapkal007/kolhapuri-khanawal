@@ -12,6 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const pathname = usePathname();
   const isWaiterFloor = pathname === "/waiter";
+  const isOrderScreen = pathname.startsWith("/waiter/order");
 
   if (pathname === "/login") {
     return <main className="min-h-screen bg-[#0F172A]">{children}</main>;
@@ -29,19 +30,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
         <TopHeader onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)} />
 
-        {/* Responsive main padding: tailored for waiter floor to fit all 12 tables */}
+        {/* Responsive main padding: tailored for waiter floor, order screen, and other views */}
         <main
           className={`flex-1 ${
-            isWaiterFloor
-              ? "p-1.5 sm:p-6 lg:p-8 pb-16 lg:pb-8"
-              : "p-3.5 sm:p-6 lg:p-8 pb-24 lg:pb-8"
+            isOrderScreen
+              ? "p-2.5 sm:p-6 lg:p-8 pb-36 lg:pb-8"
+              : isWaiterFloor
+              ? "p-2 sm:p-6 lg:p-8 pb-24 lg:pb-8"
+              : "p-3.5 sm:p-6 lg:p-8 pb-28 lg:pb-8"
           } max-w-7xl w-full mx-auto`}
         >
           <AuthGuard>{children}</AuthGuard>
         </main>
 
-        {/* Mobile Sticky Thumb-Friendly Bottom Navigation */}
-        <MobileBottomNav onOpenMoreDrawer={() => setIsMobileSidebarOpen(true)} />
+        {/* Mobile Sticky Thumb-Friendly Bottom Navigation (Hidden on focused order taking screen to prevent overlap) */}
+        {!isOrderScreen && (
+          <MobileBottomNav onOpenMoreDrawer={() => setIsMobileSidebarOpen(true)} />
+        )}
 
         {/* Global Floating Toast Alert Manager */}
         <GlobalToastManager />

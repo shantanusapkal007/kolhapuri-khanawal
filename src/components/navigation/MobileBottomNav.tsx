@@ -136,7 +136,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`relative flex flex-col items-center justify-center py-1 px-0.5 rounded-xl transition-all touch-manipulation active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl transition-all touch-manipulation active:scale-95 ${
                 active
                   ? "text-red-700 font-black"
                   : "text-stone-500 hover:text-stone-900 font-semibold"
@@ -144,7 +144,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
             >
               {/* Active Indicator Backdrop */}
               {active && (
-                <div className="absolute inset-x-1 inset-y-0.5 bg-red-50/80 rounded-lg -z-10 border border-red-200/50" />
+                <div className="absolute inset-x-0.5 inset-y-0.5 bg-red-50/80 rounded-lg -z-10 border border-red-200/50" />
               )}
 
               <div className="relative">
@@ -164,10 +164,10 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
                 )}
               </div>
 
-              <span className="text-[9px] leading-tight mt-1 font-bold truncate max-w-[45px] text-center">
+              <span className="text-[9.5px] leading-tight mt-0.5 font-bold truncate max-w-[50px] text-center">
                 {item.label}
               </span>
-              <span className="text-[7.5px] leading-none text-stone-400 font-medium truncate max-w-[45px] text-center">
+              <span className="text-[7.5px] leading-none text-stone-400 font-medium truncate max-w-[50px] text-center">
                 {item.localLabel}
               </span>
             </Link>
@@ -178,13 +178,13 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
         <button
           type="button"
           onClick={onOpenMoreDrawer}
-          className="flex flex-col items-center justify-center py-1 px-0.5 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-semibold"
+          className="flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-semibold"
           aria-label="Open staff & back-office options"
         >
           <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-lg bg-stone-100 border border-stone-200 text-stone-700">
             {isWaiter ? <KeyRound className="w-3 h-3" /> : <LayoutGrid className="w-3 h-3" />}
           </div>
-          <span className="text-[9px] leading-tight mt-1 font-bold">
+          <span className="text-[9.5px] leading-tight mt-0.5 font-bold">
             {isWaiter ? "Staff" : "More"}
           </span>
           <span className="text-[7.5px] leading-none text-stone-400 font-medium">

@@ -49,6 +49,9 @@ export default function CashierBillingPage() {
   // Item View Mode (Unified vs By Seat)
   const [itemViewTab, setItemViewTab] = useState<"ALL" | "BY_SEAT">("ALL");
 
+  // Mobile navigation view (Table list vs Bill receipt)
+  const [mobileView, setMobileView] = useState<"LIST" | "BILL">("LIST");
+
   // Day-End Z-Report Modal
   const [isZReportModalOpen, setIsZReportModalOpen] = useState<boolean>(false);
   const [dayEndReportData, setDayEndReportData] = useState<DayEndReport | null>(null);
@@ -131,6 +134,7 @@ export default function CashierBillingPage() {
       setActiveBill(bill);
       setTenderAmount(bill.balanceDue);
     }
+    setMobileView("BILL");
   };
 
   const handleApplyDiscount = (pct: number) => {
@@ -324,7 +328,7 @@ export default function CashierBillingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Active Dining Parties vs Settled Bills List */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className={`lg:col-span-4 space-y-3 ${mobileView === "BILL" && activeBill ? "hidden lg:block" : "block"}`}>
           {/* Tab Switcher */}
           <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-xl border border-[#E7E2DA] text-xs font-bold">
             <button
@@ -414,6 +418,7 @@ export default function CashierBillingPage() {
                     onClick={() => {
                       setActiveBill(b);
                       setSelectedPartyId("");
+                      setMobileView("BILL");
                     }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                       isSelected
@@ -480,7 +485,23 @@ export default function CashierBillingPage() {
         </div>
 
         {/* Right Column: Live Bill Receipt Calculation */}
-        <div className="lg:col-span-8">
+        <div className={`lg:col-span-8 ${mobileView === "LIST" && activeBill ? "hidden lg:block" : "block"}`}>
+          {/* Mobile Back Button when viewing bill on small screens */}
+          {activeBill && (
+            <div className="lg:hidden flex items-center justify-between bg-stone-900 text-white p-3 rounded-2xl mb-3 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setMobileView("LIST")}
+                className="flex items-center gap-1.5 text-xs font-bold text-amber-300 hover:text-white touch-manipulation active:scale-95"
+              >
+                <span>← Back to Table List</span>
+              </button>
+              <span className="text-xs font-black bg-stone-800 px-2 py-0.5 rounded text-amber-200">
+                Table {activeBill.tableNumber} • {activeBill.partyCode}
+              </span>
+            </div>
+          )}
+
           {!activeBill ? (
             <div className="bg-white p-12 text-center rounded-2xl border border-stone-200 text-stone-400">
               <Receipt className="w-12 h-12 mx-auto mb-2 opacity-30" />
@@ -781,22 +802,23 @@ export default function CashierBillingPage() {
 
       {/* MODAL: PAYMENT SETTLEMENT IN LIGHT THEME */}
       {isPaymentModalOpen && activeBill && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-base">
                 <QrCode className="w-5 h-5 text-emerald-600" />
                 <span>Collect Payment for {activeBill.partyCode}</span>
               </div>
               <button
+                type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg touch-manipulation"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleRecordPaymentSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleRecordPaymentSubmit} className="p-4 sm:p-5 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
                   Payment Tender Method
@@ -814,7 +836,7 @@ export default function CashierBillingPage() {
                         type="button"
                         key={m.code}
                         onClick={() => setPaymentMethod(m.code as any)}
-                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 font-bold text-xs transition-all ${
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-1 font-bold text-xs transition-all touch-manipulation active:scale-95 ${
                           isSel
                             ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                             : "bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100"
@@ -849,10 +871,11 @@ export default function CashierBillingPage() {
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="1"
                   value={tenderAmount}
                   onChange={(e) => setTenderAmount(Number(e.target.value))}
-                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-base font-black text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-base font-black text-stone-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 />
                 <span className="text-[10px] text-stone-400 mt-1 block font-medium">
@@ -868,11 +891,11 @@ export default function CashierBillingPage() {
 
                 {paymentMethod === "CASH" && (
                   <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-1 text-xs">
-                    <span className="text-stone-400 font-bold text-[10px] uppercase">Quick:</span>
+                    <span className="text-stone-400 font-bold text-[10px] uppercase shrink-0">Quick:</span>
                     <button
                       type="button"
                       onClick={() => setTenderAmount(activeBill.balanceDue)}
-                      className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded font-bold text-xs"
+                      className="px-2.5 py-1.5 min-h-[34px] bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg font-bold text-xs touch-manipulation active:scale-95 shrink-0"
                     >
                       Exact (₹{activeBill.balanceDue})
                     </button>
@@ -884,7 +907,7 @@ export default function CashierBillingPage() {
                           type="button"
                           key={amt}
                           onClick={() => setTenderAmount(amt)}
-                          className="px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded font-bold text-xs"
+                          className="px-2.5 py-1.5 min-h-[34px] bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-lg font-bold text-xs touch-manipulation active:scale-95 shrink-0"
                         >
                           ₹{amt}
                         </button>
@@ -908,17 +931,17 @@ export default function CashierBillingPage() {
                 </div>
               )}
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl touch-manipulation"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs active:scale-95"
+                  className="px-5 py-3 text-xs sm:text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs active:scale-95 touch-manipulation"
                 >
                   Confirm Payment of ₹{tenderAmount}
                 </button>

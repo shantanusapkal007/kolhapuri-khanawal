@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   ChefHat,
   Printer,
+  MoreVertical,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { DiningTable, DiningParty } from "@/types/tables";
@@ -345,8 +346,8 @@ export default function WaiterFloorPage() {
         )}
       </div>
 
-      {/* 12 Physical Tables Grid: Exactly 3 Tables per Line in Strict Square Boxes */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3 max-w-[390px] sm:max-w-xl md:max-w-3xl mx-auto w-full">
+      {/* 12 Physical Tables Grid: Exactly 3 Tables per Line on Mobile, Responsive & Touch-Friendly */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
             (p) => p.tableId === table.id && p.status !== "CLOSED" && p.status !== "CANCELLED"
@@ -369,7 +370,7 @@ export default function WaiterFloorPage() {
           return (
             <div
               key={table.id}
-              className={`aspect-square w-full min-h-0 luxury-card rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between p-1 sm:p-2 md:p-2.5 relative overflow-hidden shadow-2xs hover:shadow-md touch-manipulation select-none ${
+              className={`min-h-[140px] sm:min-h-[165px] w-full luxury-card rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between p-1.5 sm:p-2.5 md:p-3 relative overflow-hidden shadow-2xs hover:shadow-md touch-manipulation select-none ${
                 hasBillRequested
                   ? "border-amber-400 bg-amber-50/40 ring-2 ring-amber-300"
                   : isShared
@@ -390,7 +391,7 @@ export default function WaiterFloorPage() {
                       else handleOpenAddParty(table.tableNumber);
                     }}
                     title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table"}
-                    className="w-5 h-5 sm:w-7 sm:h-7 rounded-md sm:rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-black text-[10px] sm:text-xs md:text-sm flex items-center justify-center shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all"
+                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-black text-[11px] sm:text-xs md:text-sm flex items-center justify-center shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation"
                   >
                     T{table.tableNumber}
                   </button>
@@ -407,7 +408,7 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       setActiveTableForDetail(table);
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-2xs animate-pulse cursor-pointer"
+                    className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-2xs animate-pulse cursor-pointer touch-manipulation"
                   >
                     Bill 🔥
                   </button>
@@ -418,16 +419,16 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       setActiveTableForDetail(table);
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 cursor-pointer"
+                    className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 cursor-pointer touch-manipulation"
                   >
                     {tableParties.length}P•{totalGuests}G
                   </button>
                 ) : isOccupied ? (
-                  <span className="text-[8px] sm:text-[9px] font-black px-1 sm:px-1.5 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
-                    {totalGuests} Guests
+                  <span className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
+                    {totalGuests} G
                   </span>
                 ) : (
-                  <span className="text-[8px] sm:text-[9px] font-bold px-1 sm:px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
+                  <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Free
                   </span>
@@ -438,7 +439,7 @@ export default function WaiterFloorPage() {
               {isOccupied ? (
                 <div
                   onClick={() => isShared ? setActiveTableForDetail(table) : router.push(`/waiter/order/${primaryParty.id}`)}
-                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-0.5 px-0.5"
+                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-1 px-0.5 touch-manipulation"
                 >
                   <span className="text-[9px] sm:text-[11px] font-bold text-stone-600 truncate max-w-full leading-tight">
                     {isShared
@@ -450,7 +451,7 @@ export default function WaiterFloorPage() {
                   </span>
                   <div className="flex items-center gap-1 mt-0.5">
                     {totalItemsCount > 0 && (
-                      <span className="text-[7px] sm:text-[8px] font-black px-1 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">
+                      <span className="text-[7px] sm:text-[8px] font-black px-1 py-0.2 rounded bg-red-100 text-red-700 border border-red-200">
                         {totalItemsCount} items
                       </span>
                     )}
@@ -462,23 +463,23 @@ export default function WaiterFloorPage() {
               ) : (
                 <div
                   onClick={() => handleOpenAddParty(table.tableNumber)}
-                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-0.5"
+                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-1 touch-manipulation"
                 >
                   <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
                   <span className="text-[9px] sm:text-[10px] text-emerald-600 font-bold leading-tight mt-0.5">Tap to seat</span>
                 </div>
               )}
 
-              {/* Bottom Row: 1-Tap Actions */}
+              {/* Bottom Row: 1-Tap Touch-Friendly Actions */}
               {isOccupied ? (
                 isShared ? (
-                  <div className="pt-1 border-t border-stone-100 shrink-0 flex items-center gap-1">
+                  <div className="pt-1.5 border-t border-stone-100 shrink-0 flex items-center gap-1">
                     <button
                       type="button"
                       onClick={() => setActiveTableForDetail(table)}
-                      className="flex-1 py-0.5 sm:py-1 px-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-[9px] sm:text-[10px] rounded-md sm:rounded-lg shadow-2xs active:scale-95 transition-all text-center truncate"
+                      className="flex-1 min-w-0 py-1.5 sm:py-2 px-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all text-center truncate touch-manipulation"
                     >
-                      View {tableParties.length}P →
+                      {tableParties.length}P View →
                     </button>
                     <button
                       type="button"
@@ -487,18 +488,19 @@ export default function WaiterFloorPage() {
                         setActiveTableForDetail(table);
                       }}
                       title="Manage Table / Shared Parties"
-                      className="p-1 sm:p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md sm:rounded-lg active:scale-90 transition-all shrink-0 font-black text-[10px] leading-none"
+                      className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl active:scale-90 transition-all shrink-0 flex items-center justify-center font-black text-xs shadow-2xs border border-stone-200 touch-manipulation"
                     >
-                      ⋯
+                      <MoreVertical className="w-3.5 h-3.5 text-stone-700" />
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-0.5 sm:gap-1 pt-1 border-t border-stone-100 shrink-0">
+                  <div className="flex items-center gap-1 pt-1.5 border-t border-stone-100 shrink-0">
                     <Link
                       href={`/waiter/order/${primaryParty.id}`}
-                      className="flex-1 py-0.5 sm:py-1 px-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[9px] sm:text-[10px] rounded-md sm:rounded-lg shadow-2xs active:scale-95 transition-all text-center truncate"
+                      className="flex-1 min-w-0 py-1.5 sm:py-2 px-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-0.5 text-center truncate touch-manipulation"
                     >
-                      + Order
+                      <Plus className="w-3 h-3 text-amber-200 shrink-0" />
+                      <span className="truncate">Order</span>
                     </Link>
                     <button
                       type="button"
@@ -507,21 +509,22 @@ export default function WaiterFloorPage() {
                         setActiveTableForDetail(table);
                       }}
                       title="Table Actions: KOT, Bill, Move, Merge, Split"
-                      className="p-1 sm:p-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-md sm:rounded-lg active:scale-90 transition-all shrink-0 font-black text-[10px] leading-none"
+                      className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl active:scale-90 transition-all shrink-0 flex items-center justify-center font-black text-xs shadow-2xs border border-stone-200 touch-manipulation"
                     >
-                      ⋯
+                      <MoreVertical className="w-3.5 h-3.5 text-stone-700" />
                     </button>
                   </div>
                 )
               ) : (
-                <div className="pt-1 border-t border-stone-100 shrink-0">
+                <div className="pt-1.5 border-t border-stone-100 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
-                    className="w-full py-0.5 sm:py-1 px-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[9px] sm:text-[10px] rounded-md sm:rounded-lg shadow-2xs active:scale-95 transition-all text-center truncate"
+                    className="w-full py-1.5 sm:py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
-                    + Seat
+                    <Plus className="w-3 h-3 shrink-0" />
+                    <span>Seat</span>
                   </button>
                 </div>
               )}
@@ -649,13 +652,13 @@ export default function WaiterFloorPage() {
                         <span>Bill</span>
                       </button>
                     </div>
-                    <div className="grid grid-cols-3 gap-1 text-[10px]">
+                    <div className="grid grid-cols-3 gap-1.5 text-xs">
                       <button
                         type="button"
                         onClick={() => handlePrintKotForParty(party.id)}
-                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-0.5"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
                       >
-                        <ChefHat className="w-3 h-3 text-red-600" />
+                        <ChefHat className="w-3.5 h-3.5 text-red-600" />
                         <span>KOT</span>
                       </button>
                       <button
@@ -666,17 +669,17 @@ export default function WaiterFloorPage() {
                           setActiveTableForDetail(null);
                           setActiveModal("TRANSFER");
                         }}
-                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-0.5"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
                       >
-                        <ArrowRightLeft className="w-3 h-3" />
+                        <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
                         <span>Move</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handlePrintFinalBill(party.id)}
-                        className="py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg flex items-center justify-center gap-0.5"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
                       >
-                        <Printer className="w-3 h-3" />
+                        <Printer className="w-3.5 h-3.5 text-stone-700" />
                         <span>Print</span>
                       </button>
                     </div>
@@ -819,21 +822,22 @@ export default function WaiterFloorPage() {
       {/* MODAL: TRANSFER PARTY IN LIGHT THEME */}
       {activeModal === "TRANSFER" && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-base">
                 <ArrowRightLeft className="w-5 h-5 text-blue-600" />
                 <span>Transfer Dining Party</span>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveModal(null)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg touch-manipulation"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleTransferSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleTransferSubmit} className="p-5 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
                   Destination Table
@@ -841,7 +845,7 @@ export default function WaiterFloorPage() {
                 <select
                   value={targetTableNumber}
                   onChange={(e) => setTargetTableNumber(Number(e.target.value))}
-                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   {store.tables.map((t) => (
                     <option key={t.id} value={t.tableNumber}>
@@ -858,13 +862,13 @@ export default function WaiterFloorPage() {
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl touch-manipulation"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs active:scale-95"
+                  className="px-5 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xs active:scale-95 touch-manipulation"
                 >
                   Confirm Transfer
                 </button>
@@ -877,24 +881,25 @@ export default function WaiterFloorPage() {
       {/* MODAL: MERGE PARTIES IN LIGHT THEME */}
       {activeModal === "MERGE" && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-base">
                 <Merge className="w-5 h-5 text-purple-600" />
                 <span>Merge Dining Parties</span>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setActiveModal(null);
                   setSelectedPartyIdsForMerge([]);
                 }}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg touch-manipulation"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleMergeSubmit} className="p-5 space-y-4">
+            <form onSubmit={handleMergeSubmit} className="p-5 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-2">
                   Select 2 or more active parties to merge into one
@@ -907,7 +912,7 @@ export default function WaiterFloorPage() {
                       return (
                         <label
                           key={p.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all touch-manipulation ${
                             isChecked
                               ? "bg-purple-50 border-purple-400 ring-1 ring-purple-300/40"
                               : "bg-stone-50 border-stone-200 hover:bg-stone-100"
@@ -952,18 +957,14 @@ export default function WaiterFloorPage() {
                     setActiveModal(null);
                     setSelectedPartyIdsForMerge([]);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl touch-manipulation"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={selectedPartyIdsForMerge.length < 2}
-                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs active:scale-95 ${
-                    selectedPartyIdsForMerge.length < 2
-                      ? "bg-stone-300 text-stone-500 cursor-not-allowed"
-                      : "bg-purple-600 hover:bg-purple-700 text-white"
-                  }`}
+                  className="px-5 py-2.5 text-xs font-bold bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl shadow-xs active:scale-95 touch-manipulation"
                 >
                   Merge {selectedPartyIdsForMerge.length} Parties
                 </button>
@@ -976,24 +977,25 @@ export default function WaiterFloorPage() {
       {/* MODAL: SPLIT PARTY & ORDER ITEMS */}
       {activeModal === "SPLIT" && (
         <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-base">
                 <Scissors className="w-5 h-5 text-rose-600" />
                 <span>Split Party & Order Items</span>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setActiveModal(null);
                   setSelectedOrderItemIdsForSplit([]);
                 }}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg touch-manipulation"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSplitSubmit} className="p-5 space-y-4 text-xs">
+            <form onSubmit={handleSplitSubmit} className="p-5 space-y-4 text-xs flex-1 overflow-y-auto">
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
                   Destination Table for New Split Party
@@ -1001,7 +1003,7 @@ export default function WaiterFloorPage() {
                 <select
                   value={splitTargetTableNumber}
                   onChange={(e) => setSplitTargetTableNumber(Number(e.target.value))}
-                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2.5 text-xs font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   {store.tables.map((t) => {
                     const isSameTable = store.parties.find((p) => p.id === splitSourcePartyId)?.tableNumber === t.tableNumber;
@@ -1040,7 +1042,7 @@ export default function WaiterFloorPage() {
                         return (
                           <label
                             key={it.id}
-                            className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all ${
+                            className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer transition-all touch-manipulation ${
                               isChecked
                                 ? "bg-rose-50 border-rose-400 ring-1 ring-rose-300/40"
                                 : "bg-stone-50 border-stone-200 hover:bg-stone-100"
@@ -1075,21 +1077,21 @@ export default function WaiterFloorPage() {
                 })()}
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-stone-100">
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-stone-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveModal(null);
                     setSelectedOrderItemIdsForSplit([]);
                   }}
-                  className="px-4 py-2 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl"
+                  className="px-4 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-100 rounded-xl touch-manipulation"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={selectedOrderItemIdsForSplit.length === 0}
-                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs active:scale-95 ${
+                  className={`px-5 py-2.5 text-xs font-bold rounded-xl shadow-xs active:scale-95 touch-manipulation ${
                     selectedOrderItemIdsForSplit.length === 0
                       ? "bg-stone-300 text-stone-500 cursor-not-allowed"
                       : "bg-rose-600 hover:bg-rose-700 text-white"

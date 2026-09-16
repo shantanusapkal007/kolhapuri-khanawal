@@ -95,8 +95,9 @@ export default function CashUPIReconciliationPage() {
         </div>
 
         <button
+          type="button"
           onClick={() => setShowAddModal(true)}
-          className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black px-5 py-3 rounded-xl text-sm shadow-md shadow-red-700/20 active:scale-95 transition-all"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black px-5 py-3 rounded-xl text-sm shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>+ Manual Adjustment Entry</span>
@@ -131,16 +132,18 @@ export default function CashUPIReconciliationPage() {
 
           <div className="space-y-3 pt-1">
             <label className="text-xs font-bold text-stone-700">Verify Physical Cash Count (मोजलेली रोख)</label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <input
                 type="number"
+                inputMode="decimal"
                 value={actualCashCount}
                 onChange={(e) => setActualCashCount(parseFloat(e.target.value) || 0)}
-                className="flex-1 p-3 rounded-xl border border-stone-200 font-black font-mono text-lg bg-stone-50/50 focus:bg-white focus:border-red-500"
+                className="flex-1 min-w-0 p-3 rounded-xl border border-stone-200 font-black font-mono text-base sm:text-lg bg-stone-50/50 focus:bg-white focus:border-red-500"
               />
               <button
+                type="button"
                 onClick={() => setIsReconciled(true)}
-                className="px-4 py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow-xs"
+                className="px-4 py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 touch-manipulation active:scale-95"
               >
                 Match Float
               </button>
@@ -188,16 +191,18 @@ export default function CashUPIReconciliationPage() {
 
           <div className="space-y-3 pt-1">
             <label className="text-xs font-bold text-stone-700">Verify Net Banking Balance (बँक स्टेटमेंट)</label>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <input
                 type="number"
+                inputMode="decimal"
                 value={actualUpiCount}
                 onChange={(e) => setActualUpiCount(parseFloat(e.target.value) || 0)}
-                className="flex-1 p-3 rounded-xl border border-stone-200 font-black font-mono text-lg bg-stone-50/50 focus:bg-white focus:border-red-500"
+                className="flex-1 min-w-0 p-3 rounded-xl border border-stone-200 font-black font-mono text-base sm:text-lg bg-stone-50/50 focus:bg-white focus:border-red-500"
               />
               <button
+                type="button"
                 onClick={() => setActualUpiCount(currentExpectedUpi)}
-                className="px-4 py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow-xs"
+                className="px-4 py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 touch-manipulation active:scale-95"
               >
                 Sync App
               </button>
@@ -305,19 +310,20 @@ export default function CashUPIReconciliationPage() {
 
       {/* Manual Entry Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3 shrink-0">
               <h3 className="text-base font-black text-stone-900">Manual Cash/UPI Entry</h3>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 font-bold"
+                className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 font-bold flex items-center justify-center touch-manipulation"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleAddLedgerEntry} className="space-y-3.5">
+            <form onSubmit={handleAddLedgerEntry} className="space-y-3.5 flex-1 overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-stone-700">Account</label>
@@ -347,6 +353,7 @@ export default function CashUPIReconciliationPage() {
                 <label className="text-xs font-bold text-stone-700">Amount (₹)</label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   min="1"
                   value={amount}
                   onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
@@ -367,17 +374,17 @@ export default function CashUPIReconciliationPage() {
                 />
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-stone-100 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 font-bold text-xs"
+                  className="px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 font-bold text-xs touch-manipulation"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs"
+                  className="px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs touch-manipulation active:scale-95 shadow-xs"
                 >
                   Save Entry
                 </button>
