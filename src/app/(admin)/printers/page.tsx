@@ -32,6 +32,11 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
+  Search,
+  RefreshCw,
+  Globe,
+  Radio,
+  Info,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -79,10 +84,23 @@ export default function PrintersManagementPage() {
   const [pingResults, setPingResults] = useState<Record<string, { online: boolean; message?: string; latencyMs?: number }>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Quick Android Setup State
-  const [quickWifiIp, setQuickWifiIp] = useState<string>("192.168.1.50");
+  // Quick Mobile & Online KP307-UEWB Setup State
+  const [mobileSetupTab, setMobileSetupTab] = useState<"WIFI" | "BLUETOOTH">("WIFI");
+  const [quickWifiIp, setQuickWifiIp] = useState<string>(() => {
+    const existing = store.printerSettings.devices?.find((d) => d.connectionType === "NETWORK" && d.ipAddress);
+    return existing?.ipAddress || "192.168.1.100";
+  });
+  const [isScanningWifi, setIsScanningWifi] = useState(false);
+  const [foundPrinters, setFoundPrinters] = useState<{ ip: string; port: number; latencyMs?: number }[]>([]);
+  const [wifiPingStatus, setWifiPingStatus] = useState<{ online: boolean; message: string; latencyMs?: number } | null>(null);
+  const [isPingingWifi, setIsPingingWifi] = useState(false);
   const [isTestingQuick, setIsTestingQuick] = useState(false);
-  const [showStepGuide, setShowStepGuide] = useState(false);
+  const [showStepGuide, setShowStepGuide] = useState(true);
+
+  // Modal Network helper states
+  const [modalPingStatus, setModalPingStatus] = useState<{ online: boolean; message: string; latencyMs?: number } | null>(null);
+  const [isModalPinging, setIsModalPinging] = useState(false);
+  const [isModalScanning, setIsModalScanning] = useState(false);
 
   // Form State for Add / Edit Printer
   const [formData, setFormData] = useState<{
@@ -426,6 +444,150 @@ export default function PrintersManagementPage() {
     showToast("⚡ RawBT ब्लूटूथ प्रिंटर चालू केला! (RawBT Activated)");
   };
 
+  // Auto-scan local network for POSIFLOW KP307-UEWB (port 9100)
+  const handleAutoScanNetwork = async () => {
+    setIsScanningWifi(true);
+    setWifiPingStatus(null);
+    showToast("🔍 वाय-फायवर KP307 प्रिंटर शोधत आहे...");
+    try {
+      const candidates = [
+        "192.168.1.100",
+        "192.168.1.87",
+        "192.168.1.50",
+        "192.168.1.200",
+        "192.168.0.100",
+        "192.168.0.87",
+        "192.168.29.100",
+        "192.168.31.100",
+        "192.168.1.101",
+      ];
+      const found = await globalPrinterManager.scanNetworkPrinters(candidates);
+      setFoundPrinters(found);
+      if (found.length > 0) {
+        setQuickWifiIp(found[0].ip);
+        setWifiPingStatus({
+          online: true,
+          message: `सापडला! (${found[0].latencyMs ? `${found[0].latencyMs}ms` : "Active"})`,
+          latencyMs: found[0].latencyMs,
+        });
+        showToast(`✅ KP307 प्रिंटर सापडला: ${found[0].ip}!`);
+      } else {
+        showToast("⚠️ वाय-फायवर प्रिंटर सापडला नाही. कृपया FEED दाबून IP तपासा किंवा मॅन्युअली IP टाका.");
+      }
+    } catch {
+      showToast("⚠️ स्कॅनिंग अयशस्वी. कृपया मॅन्युअली IP टाका.");
+    } finally {
+      setIsScanningWifi(false);
+    }
+  };
+
+  // Ping test the current quickWifiIp
+  const handlePingWifi = async () => {
+    if (!quickWifiIp.trim()) {
+      showToast("कृपया IP पत्ता टाका");
+      return;
+    }
+    setIsPingingWifi(true);
+    try {
+      const res = await fetch(`/api/print/network?ip=${encodeURIComponent(quickWifiIp.trim())}&port=9100&timeoutMs=2500`);
+      const data = await res.json();
+      if (data.online) {
+        setWifiPingStatus({
+          online: true,
+          message: `जोडणी यशस्वी (${data.latencyMs}ms)`,
+          latencyMs: data.latencyMs,
+        });
+        showToast(`✅ प्रिंटर ऑनलाइन आहे! (${data.latencyMs}ms)`);
+      } else {
+        setWifiPingStatus({
+          online: false,
+          message: `संपर्क होऊ शकला नाही (${data.error || "Offline"})`,
+        });
+        showToast(`❌ संपर्क अयशस्वी: ${data.error || "Offline"}`);
+      }
+    } catch (err: any) {
+      setWifiPingStatus({
+        online: false,
+        message: err?.message || "Ping error",
+      });
+      showToast(`❌ एरर: ${err?.message || "Ping error"}`);
+    } finally {
+      setIsPingingWifi(false);
+    }
+  };
+
+  // Modal Auto-Scan
+  const handleModalAutoScan = async () => {
+    setIsModalScanning(true);
+    setModalPingStatus(null);
+    showToast("🔍 नेटवर्कवर KP307 शोधत आहे...");
+    try {
+      const candidates = [
+        "192.168.1.100",
+        "192.168.1.87",
+        "192.168.1.50",
+        "192.168.1.200",
+        "192.168.0.100",
+        "192.168.0.87",
+        "192.168.29.100",
+        "192.168.31.100",
+      ];
+      const found = await globalPrinterManager.scanNetworkPrinters(candidates);
+      if (found.length > 0) {
+        setFormData((prev) => ({ ...prev, ipAddress: found[0].ip }));
+        setModalPingStatus({
+          online: true,
+          message: `प्रिंटर सापडला (${found[0].latencyMs ? `${found[0].latencyMs}ms` : "Active"})`,
+          latencyMs: found[0].latencyMs,
+        });
+        showToast(`✅ प्रिंटर सापडला: ${found[0].ip}!`);
+      } else {
+        showToast("⚠️ वाय-फायवर प्रिंटर सापडला नाही. मॅन्युअली IP टाका.");
+      }
+    } catch {
+      showToast("⚠️ स्कॅनिंग अयशस्वी.");
+    } finally {
+      setIsModalScanning(false);
+    }
+  };
+
+  // Modal Ping Test
+  const handleModalPing = async () => {
+    if (!formData.ipAddress.trim()) {
+      showToast("कृपया IP पत्ता टाका");
+      return;
+    }
+    setIsModalPinging(true);
+    try {
+      const res = await fetch(
+        `/api/print/network?ip=${encodeURIComponent(formData.ipAddress.trim())}&port=${formData.port || 9100}&timeoutMs=2500`
+      );
+      const data = await res.json();
+      if (data.online) {
+        setModalPingStatus({
+          online: true,
+          message: `जोडणी चालू आहे (${data.latencyMs}ms)`,
+          latencyMs: data.latencyMs,
+        });
+        showToast(`✅ प्रिंटर ऑनलाइन आहे! (${data.latencyMs}ms)`);
+      } else {
+        setModalPingStatus({
+          online: false,
+          message: `ऑफलाइन (${data.error || "Cannot connect"})`,
+        });
+        showToast(`❌ संपर्क अयशस्वी: ${data.error || "Offline"}`);
+      }
+    } catch (err: any) {
+      setModalPingStatus({
+        online: false,
+        message: err?.message || "Ping error",
+      });
+      showToast(`❌ एरर: ${err?.message || "Ping error"}`);
+    } finally {
+      setIsModalPinging(false);
+    }
+  };
+
   const handleActivateWifiNetworkPrint = () => {
     if (!quickWifiIp.trim()) {
       showToast("कृपया वाय-फाय IP टाका (Enter IP)");
@@ -442,7 +604,11 @@ export default function PrintersManagementPage() {
     const updatedSettings = { ...settings, devices: updatedDevs };
     setSettings(updatedSettings);
     store.updatePrinterSettings(updatedSettings);
-    showToast(`🌐 वाय-फाय प्रिंटर (${quickWifiIp.trim()}) सेव्ह केला!`);
+    setWifiPingStatus({
+      online: true,
+      message: "सक्रिय मुख्य प्रिंटर (Universal Default)",
+    });
+    showToast(`⭐ वाय-फाय प्रिंटर (${quickWifiIp.trim()}) सर्व बिल व KOT साठी मुख्य प्रिंटर झाला!`);
   };
 
   const handleQuickTestPrint = async (type: "SYSTEM" | "RAWBT" | "WIFI") => {
@@ -601,8 +767,9 @@ export default function PrintersManagementPage() {
         </div>
       </div>
 
-      {/* 📱 Android फोन व टॅबलेट सोपे प्रिंटर 1-क्लिक सेटअप (Quick 1-Tap Android Setup) */}
-      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 text-white shadow-xl border border-stone-700/80 space-y-4">
+      {/* 📱 मोबाईल व ऑनलाइन प्रिंटर सोपे सेटअप (Mobile & Online Printer Hub) */}
+      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 text-white shadow-xl border border-stone-700/80 space-y-5">
+        {/* Hub Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
@@ -611,297 +778,428 @@ export default function PrintersManagementPage() {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-black text-white">
-                  📱 Android फोन प्रिंटर सोपे सेटअप (Easy Mobile Printing)
+                  मोबाईल व टॅबलेट प्रिंटर सेटअप (Mobile Printer Hub)
                 </h2>
                 <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full">
-                  1-क्लिक चालू करा
+                  POSIFLOW KP307-UEWB
                 </span>
               </div>
               <p className="text-xs text-stone-300 mt-0.5">
-                Android फोनवर ब्लूटूथ किंवा वाय-फाय प्रिंटर जोडणे आता झाले सोपे! खालीलपैकी 1 पर्याय निवडा:
+                Android फोन, iPhone किंवा टॅबलेटवरून थेट प्रिंटिंगसाठी सोपे पर्याय
               </p>
             </div>
           </div>
 
+          {/* Guide Toggle */}
           <button
             type="button"
             onClick={() => setShowStepGuide(!showStepGuide)}
-            className="self-start sm:self-auto text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1 bg-stone-800/80 px-3 py-1.5 rounded-xl border border-stone-700 active:scale-95 transition-all cursor-pointer"
+            className="self-start sm:self-auto text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1.5 bg-stone-800/90 px-3.5 py-1.5 rounded-xl border border-stone-700 active:scale-95 transition-all cursor-pointer shadow-2xs"
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>{showStepGuide ? "मार्गदर्शन लपवा" : "सोपे मार्गदर्शन (Guide)"}</span>
+            <span>{showStepGuide ? "मार्गदर्शन लपवा" : "मदत व सूचना (Guide)"}</span>
             {showStepGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
 
-        {/* Collapsible Step-by-Step Guide */}
-        {showStepGuide && (
-          <div className="p-4 rounded-2xl bg-stone-950/60 border border-stone-700/80 text-xs text-stone-300 space-y-3 animate-in fade-in duration-200">
-            <div className="font-bold text-amber-300 flex items-center gap-1.5">
-              <span>💡 Android फोनवर थर्मल प्रिंटर कसे जोडावे? (How to Connect on Android):</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] leading-relaxed">
-              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
-                <span className="font-black text-amber-400 block">पायरी १: फोन ब्लूटूथ पेअर करा</span>
-                <p className="text-stone-400">
-                  फोनच्या <strong>Settings ➔ Bluetooth</strong> मध्ये जा. &apos;Pair new device&apos; दाबा आणि प्रिंटरचे नाव निवडा (पिन: <strong>0000</strong> किंवा <strong>1234</strong>).
-                </p>
-              </div>
-              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
-                <span className="font-black text-amber-400 block">पायरी २: &apos;Android सिस्टीम&apos; चालू करा</span>
-                <p className="text-stone-400">
-                  खालील पहिल्या कार्डवरील <strong>&apos;हे चालू करा&apos;</strong> दाबा. हे Android च्या इन-बिल्ट प्रिंट सेवेद्वारे 100% काम करते.
-                </p>
-              </div>
-              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
-                <span className="font-black text-amber-400 block">पायरी ३: थेट ऑटोमॅटिक प्रिंट</span>
-                <p className="text-stone-400">
-                  डायलॉगशिवाय 0.1 सेकंदात डायरेक्ट प्रिंट हवे असल्यास Play Store वरून <strong>RawBT ॲप</strong> घेऊन &apos;RawBT चालू करा&apos; दाबा.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Detected Working Printer Callout (e.g. Serial COM Port / KP307-UEWB) */}
-        {devices.some((d) => d.connectionType === "BLUETOOTH_SPP" || d.bluetoothDeviceName?.includes("KP307") || d.name.toLowerCase().includes("serial")) && (
-          <div className="p-3.5 bg-amber-500/20 border border-amber-400/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-            <div className="space-y-0.5">
-              <span className="font-black text-amber-300 flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-400" />
-                <span>तुमचा KP307-UEWB (Serial / Bluetooth) प्रिंटर कॉन्फिगर केलेला आहे!</span>
-              </span>
-              <p className="text-[11px] text-stone-300">
-                जर तुम्हाला चाचणी प्रिंट मिळाली असेल, तर सर्व बिल व KOT याच प्रिंटरवर आपोआप पाठवण्यासाठी येथे दाबा:
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const workingDev = devices.find(
-                  (d) =>
-                    d.connectionType === "BLUETOOTH_SPP" ||
-                    d.bluetoothDeviceName?.includes("KP307") ||
-                    d.name.toLowerCase().includes("serial")
-                );
-                if (workingDev) handleSetAsDefaultAll(workingDev);
-              }}
-              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5 shrink-0 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              <Star className="w-3.5 h-3.5 fill-current" />
-              <span>KP307-UEWB मुख्य प्रिंटर बनवा (One Click)</span>
-            </button>
-          </div>
-        )}
-
-        {/* 3 Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
-          {/* Card 1: Android System Print */}
-          <div
-            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
-              isAndroidSystemActive
-                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
-                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+        {/* Tab Selection: Wi-Fi Online vs Direct Bluetooth */}
+        <div className="flex items-center gap-2 border-b border-stone-700/70 pb-3">
+          <button
+            type="button"
+            onClick={() => setMobileSetupTab("WIFI")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              mobileSetupTab === "WIFI"
+                ? "bg-amber-400 text-stone-950 shadow-md shadow-amber-400/20"
+                : "bg-stone-800/80 text-stone-300 hover:bg-stone-700/80"
             }`}
           >
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center">
-                    <Smartphone className="w-4 h-4" />
-                  </div>
-                  <h3 className="font-black text-sm text-white">१. Android सिस्टीम प्रिंट</h3>
-                </div>
-                {isAndroidSystemActive && (
-                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-stone-300 leading-normal">
-                <strong>सर्वात सोपे!</strong> कोणतेही नवीन ॲप नको. फोनच्या Bluetooth Settings मध्ये प्रिंटर पेअर करा व थेट प्रिंट करा.
-              </p>
-            </div>
+            <Wifi className="w-4 h-4" />
+            <span>🌐 हॉटेल वाय-फाय / ऑनलाइन (Wi-Fi Online - शिफारस)</span>
+          </button>
 
-            <div className="space-y-2 pt-2 border-t border-stone-700/60">
-              <button
-                type="button"
-                onClick={handleActivateAndroidSystemPrint}
-                className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>{isAndroidSystemActive ? "सध्या सक्रिय आहे ✓" : "हे चालू करा (Set Default)"}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickTestPrint("SYSTEM")}
-                disabled={isTestingQuick}
-                className="w-full py-1.5 px-3 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5 text-stone-400" />
-                <span>📄 पावती चाचणी प्रिंट (Test Slip)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: RawBT Instant Print */}
-          <div
-            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
-              isRawBtActive
-                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
-                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+          <button
+            type="button"
+            onClick={() => setMobileSetupTab("BLUETOOTH")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              mobileSetupTab === "BLUETOOTH"
+                ? "bg-amber-400 text-stone-950 shadow-md shadow-amber-400/20"
+                : "bg-stone-800/80 text-stone-300 hover:bg-stone-700/80"
             }`}
           >
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-300 flex items-center justify-center">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <h3 className="font-black text-sm text-white">२. RawBT ब्लूटूथ प्रिंट</h3>
-                </div>
-                {isRawBtActive && (
-                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+            <Bluetooth className="w-4 h-4" />
+            <span>📱 फोन थेट ब्लूटूथ (Bluetooth Direct)</span>
+          </button>
+        </div>
+
+        {/* TAB 1: Wi-Fi / Online Print Setup */}
+        {mobileSetupTab === "WIFI" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Step-by-Step Visual: How to find Printer IP Online */}
+            {showStepGuide && (
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-amber-500/30 text-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-amber-300 flex items-center gap-1.5">
+                    <Info className="w-4 h-4 text-amber-400" />
+                    <span>प्रिंटरचा IP पत्ता कसा शोधायचा? (Find KP307-UEWB IP Online):</span>
                   </span>
-                )}
+                  <span className="text-[10px] text-stone-400 font-mono">Self-Test Method</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-[11px]">
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी १: स्विच बंद करा</span>
+                    <p className="text-stone-400">
+                      प्रिंटरचा मुख्य पॉवर स्विच <strong>OFF (बंद)</strong> करा. कागदाचा रोल व्यवस्थित असल्याची खात्री करा.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी २: FEED बटन दाबा</span>
+                    <p className="text-stone-400">
+                      समोरील <strong>FEED बटण दाबून ठेवा</strong> आणि त्याच वेळी पॉवर स्विच <strong>ON (चालू)</strong> करा.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी ३: २ सेकंदांनंतर सोडा</span>
+                    <p className="text-stone-400">
+                      २ सेकंदांनी FEED बटन सोडा. प्रिंटर आपोआप <strong>Self-Test स्लिप</strong> बाहेर काढेल.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी ४: IP पत्ता वाचा</span>
+                    <p className="text-stone-400">
+                      स्लिपवर खाली छापलेला <strong>IP Address</strong> (उदा. 192.168.1.100) खालील बॉक्समध्ये टाका.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-stone-300 leading-normal">
-                <strong>सुपरफास्ट ०.१ सेकंद!</strong> डायलॉगशिवाय थेट ब्लूटूथवर आपोआप पावती प्रिंट होते.
-              </p>
-            </div>
+            )}
 
-            <div className="space-y-2 pt-2 border-t border-stone-700/60">
-              <button
-                type="button"
-                onClick={handleActivateAndroidRawBtPrint}
-                className="w-full py-2.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Zap className="w-4 h-4" />
-                <span>{isRawBtActive ? "RawBT सक्रिय आहे ✓" : "RawBT चालू करा (Activate)"}</span>
-              </button>
+            {/* Scanner & Presets Box */}
+            <div className="p-4 rounded-2xl bg-stone-800/80 border border-stone-700 space-y-3.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="space-y-0.5">
+                  <h3 className="font-black text-sm text-white flex items-center gap-2">
+                    <Wifi className="w-4 h-4 text-amber-400" />
+                    <span>हॉटेल वाय-फाय नेटवर्क प्रिंटर (POSIFLOW KP307-UEWB)</span>
+                  </h3>
+                  <p className="text-xs text-stone-400">
+                    सर्व Android फोन, iPhone व काऊंटर कॉम्प्युटर एकाच प्रिंटरवर एकाच वेळी चालतात.
+                  </p>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
+                {/* Auto-Scan Button */}
                 <button
                   type="button"
-                  onClick={() => handleQuickTestPrint("RAWBT")}
-                  disabled={isTestingQuick}
-                  className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                  onClick={handleAutoScanNetwork}
+                  disabled={isScanningWifi}
+                  className="px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer shrink-0"
                 >
-                  <FileText className="w-3 h-3 text-stone-400" />
-                  <span>⚡ टेस्ट</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${isScanningWifi ? "animate-spin" : ""}`} />
+                  <span>{isScanningWifi ? "स्कॅन करत आहे..." : "🔍 आपोआप KP307 शोधा (Auto-Scan)"}</span>
                 </button>
-
-                <a
-                  href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-amber-300 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                  <span>Play Store</span>
-                </a>
               </div>
-            </div>
-          </div>
 
-          {/* Card 3: Hotel Wi-Fi Printer */}
-          <div
-            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
-              isWifiActive
-                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
-                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
-            }`}
-          >
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center">
-                    <Wifi className="w-4 h-4" />
+              {/* Found Printers Announcement */}
+              {foundPrinters.length > 0 && (
+                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs text-emerald-300 animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>नेटवर्कवर प्रिंटर सापडला: <strong>{foundPrinters[0].ip}</strong> (Latency: {foundPrinters[0].latencyMs}ms)</span>
                   </div>
-                  <h3 className="font-black text-sm text-white">३. हॉटेल वाय-फाय प्रिंटर</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickWifiIp(foundPrinters[0].ip);
+                      handlePingWifi();
+                    }}
+                    className="px-2 py-0.5 bg-emerald-500 text-stone-950 font-bold rounded-lg text-[10px]"
+                  >
+                    हा IP वापरा
+                  </button>
                 </div>
-                {isWifiActive && (
-                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-stone-300 leading-normal">
-                <strong>POSIFLOW KP307-UEWB</strong> किंवा LAN प्रिंटर. सर्व फोन व कॅशियर कॉम्प्युटरवरून चालतो.
-              </p>
-            </div>
+              )}
 
-            <div className="space-y-2 pt-2 border-t border-stone-700/60">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={quickWifiIp}
-                  onChange={(e) => setQuickWifiIp(e.target.value)}
-                  placeholder="उदा. 192.168.1.50"
-                  className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-600 rounded-xl text-xs font-mono text-white placeholder-stone-500 focus:outline-none focus:border-amber-400"
-                />
+              {/* Quick Presets Row */}
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[11px] font-bold text-stone-400 block">
+                  सामान्य IP पत्ते (Quick Subnet Presets):
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    "192.168.1.100",
+                    "192.168.1.87",
+                    "192.168.1.50",
+                    "192.168.0.100",
+                    "192.168.29.100",
+                    "192.168.31.100",
+                  ].map((presetIp) => (
+                    <button
+                      key={presetIp}
+                      type="button"
+                      onClick={() => {
+                        setQuickWifiIp(presetIp);
+                        setWifiPingStatus(null);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border transition-all cursor-pointer ${
+                        quickWifiIp === presetIp
+                          ? "bg-amber-400 text-stone-950 border-amber-400"
+                          : "bg-stone-900/90 text-stone-300 border-stone-700 hover:border-stone-500"
+                      }`}
+                    >
+                      {presetIp}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* IP Input, Ping & Test Actions */}
+              <div className="pt-2 border-t border-stone-700/60 space-y-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={quickWifiIp}
+                      onChange={(e) => {
+                        setQuickWifiIp(e.target.value);
+                        setWifiPingStatus(null);
+                      }}
+                      placeholder="उदा. 192.168.1.100"
+                      className="w-full px-3.5 py-2.5 bg-stone-950 border border-stone-600 rounded-xl text-xs font-mono font-bold text-white placeholder-stone-500 focus:outline-none focus:border-amber-400"
+                    />
+                    <span className="absolute right-3 top-2.5 text-[11px] font-mono text-stone-500 font-bold">
+                      :9100
+                    </span>
+                  </div>
+
+                  {/* Ping Test Button */}
+                  <button
+                    type="button"
+                    onClick={handlePingWifi}
+                    disabled={isPingingWifi}
+                    className="px-3.5 py-2.5 bg-stone-700 hover:bg-stone-600 active:scale-95 text-stone-100 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <Radio className={`w-3.5 h-3.5 text-amber-400 ${isPingingWifi ? "animate-pulse" : ""}`} />
+                    <span>{isPingingWifi ? "तपासत आहे..." : "📶 पिंग तपासा (Ping)"}</span>
+                  </button>
+
+                  {/* Test Slip Print */}
+                  <button
+                    type="button"
+                    onClick={() => handleQuickTestPrint("WIFI")}
+                    disabled={isTestingQuick}
+                    className="px-3.5 py-2.5 bg-stone-700 hover:bg-stone-600 active:scale-95 text-stone-100 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-blue-400" />
+                    <span>📄 टेस्ट पावती (Test Slip)</span>
+                  </button>
+                </div>
+
+                {/* Live Ping Status Badge */}
+                {wifiPingStatus && (
+                  <div
+                    className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+                      wifiPingStatus.online
+                        ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
+                        : "bg-red-500/10 border-red-500/40 text-red-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {wifiPingStatus.online ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      ) : (
+                        <XCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      )}
+                      <span>
+                        {wifiPingStatus.online
+                          ? `🟢 प्रिंटर ऑनलाइन आहे! (${wifiPingStatus.latencyMs ? `${wifiPingStatus.latencyMs}ms` : "Active"}) - Port 9100 तयार`
+                          : `🔴 ${wifiPingStatus.message || "संपर्क अयशस्वी"}`}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1-Click Set as Universal Default for All Bills & KOT */}
                 <button
                   type="button"
                   onClick={handleActivateWifiNetworkPrint}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-300 text-stone-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-98 transition-all cursor-pointer"
                 >
-                  सेव्ह करा
+                  <Star className="w-4 h-4 fill-current text-stone-950" />
+                  <span>⭐ सर्व फोन व बिलांसाठी हाच मुख्य प्रिंटर बनवा (Make Universal Default)</span>
                 </button>
               </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={() => handleQuickTestPrint("WIFI")}
-                disabled={isTestingQuick}
-                className="w-full py-1.5 px-3 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            {/* Helper: Printer Web Firmware Portal */}
+            <div className="p-3.5 bg-stone-950/60 rounded-2xl border border-stone-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+              <div className="space-y-0.5">
+                <span className="font-bold text-stone-300 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-blue-400" />
+                  <span>प्रिंटरला हॉटेलच्या नवीन Wi-Fi शी कनेक्ट करायचे आहे का? (Wi-Fi Setup Portal)</span>
+                </span>
+                <p className="text-[11px] text-stone-400">
+                  प्रिंटरचे वेब पेज उघडा ➔ लॉगिन: <strong>admin</strong> | पासवर्ड: <strong>password</strong> किंवा <strong>123456</strong> ➔ Wireless Settings मध्ये Wi-Fi पासवर्ड टाका.
+                </p>
+              </div>
+              <a
+                href={`http://${quickWifiIp || "192.168.1.100"}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-amber-300 rounded-xl font-bold text-[11px] flex items-center gap-1.5 shrink-0 border border-stone-700 transition-all cursor-pointer"
               >
-                <Wifi className="w-3.5 h-3.5 text-blue-400" />
-                <span>🌐 वाय-फाय टेस्ट करा</span>
-              </button>
+                <span>प्रिंटर वेब पेज उघडा</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* POSIFLOW KP307-UEWB Architecture Tip Banner */}
-      <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-r from-red-50 via-amber-50/50 to-white border border-red-200/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-red-700 text-white flex items-center justify-center shrink-0 shadow-md shadow-red-700/20">
-            <Cpu className="w-6 h-6 text-amber-200" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-sm font-black text-stone-900">
-                POSIFLOW KP307-UEWB: हॉटेल Wi-Fi नेटवर्क प्रिंटिंग (शिफारस केलेले मॉडेल)
-              </h3>
-              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
-                100% क्रॉस-डिव्हाइस सपोर्ट
-              </span>
+        {/* TAB 2: Direct Bluetooth Print Setup */}
+        {mobileSetupTab === "BLUETOOTH" && (
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Bluetooth Step Guide */}
+            {showStepGuide && (
+              <div className="p-4 rounded-2xl bg-stone-950/70 border border-stone-800 text-xs space-y-2.5">
+                <span className="font-black text-amber-300 block">
+                  💡 Android फोन ब्लूटूथ पेअरिंग कसे करावे? (Bluetooth Pairing Guide):
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-[11px]">
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी १: फोन ब्लूटूथ चालू करा</span>
+                    <p className="text-stone-400">
+                      फोनच्या <strong>Settings ➔ Bluetooth</strong> मध्ये जा आणि ब्लूटूथ ऑन करा.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी २: KP307-UEWB पेअर करा</span>
+                    <p className="text-stone-400">
+                      &apos;Pair new device&apos; दाबा, प्रिंटरचे नाव निवडा. पिन कोड <strong>0000</strong> किंवा <strong>1234</strong> टाका.
+                    </p>
+                  </div>
+                  <div className="p-3 bg-stone-900/90 rounded-xl border border-stone-800 space-y-1">
+                    <span className="font-black text-amber-400 block">पायरी ३: खालील बटण दाबा</span>
+                    <p className="text-stone-400">
+                      कोणतेही ॲप नको असल्यास <strong>&apos;Android सिस्टीम&apos;</strong> किंवा जलद ०.१ सेकंद प्रिंटसाठी <strong>&apos;RawBT&apos;</strong> चालू करा.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2 Action Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Card 1: Android System Print */}
+              <div
+                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+                  isAndroidSystemActive
+                    ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
+                    : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+                }`}
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                        <Smartphone className="w-4 h-4" />
+                      </div>
+                      <h3 className="font-black text-sm text-white">१. Android सिस्टीम प्रिंट</h3>
+                    </div>
+                    {isAndroidSystemActive && (
+                      <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-300 leading-normal">
+                    <strong>सर्वात सोपे!</strong> कोणतेही नवीन ॲप नको. फोनच्या Bluetooth Settings मध्ये पेअर करून थेट प्रिंट डायलॉगवरून प्रिंट करा.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-stone-700/60">
+                  <button
+                    type="button"
+                    onClick={handleActivateAndroidSystemPrint}
+                    className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isAndroidSystemActive ? "सध्या सक्रिय आहे ✓" : "हे चालू करा (Set Default)"}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickTestPrint("SYSTEM")}
+                    disabled={isTestingQuick}
+                    className="w-full py-1.5 px-3 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-stone-400" />
+                    <span>📄 पावती चाचणी प्रिंट (Test Slip)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: RawBT Instant Print */}
+              <div
+                className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+                  isRawBtActive
+                    ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
+                    : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+                }`}
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-300 flex items-center justify-center">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <h3 className="font-black text-sm text-white">२. RawBT ब्लूटूथ प्रिंट</h3>
+                    </div>
+                    {isRawBtActive && (
+                      <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-stone-300 leading-normal">
+                    <strong>सुपरफास्ट ०.१ सेकंद!</strong> डायलॉगशिवाय थेट ब्लूटूथवर आपोआप पावती प्रिंट होते.
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-stone-700/60">
+                  <button
+                    type="button"
+                    onClick={handleActivateAndroidRawBtPrint}
+                    className="w-full py-2.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>{isRawBtActive ? "RawBT सक्रिय आहे ✓" : "RawBT चालू करा (Activate)"}</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickTestPrint("RAWBT")}
+                      disabled={isTestingQuick}
+                      className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <FileText className="w-3 h-3 text-stone-400" />
+                      <span>⚡ टेस्ट</span>
+                    </button>
+
+                    <a
+                      href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-amber-300 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Play Store</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-stone-600 leading-relaxed max-w-3xl">
-              तुमच्या <strong>POSIFLOW KP307-UEWB</strong> प्रिंटरसाठी <strong>Wi-Fi / Ethernet LAN (Port 9100)</strong> पद्धत सर्वोत्तम आहे. रेस्टॉरंटच्या वाय-फाय राउटरवरून <strong>Android फोन, iPhone आणि कॅशियर कॉम्प्युटर</strong> हे सर्व एकाच प्रिंटरवर एकाच वेळी अखंडपणे KOT व बिल प्रिंट करू शकतात. ब्लूटूथ डिस्कनेक्ट होण्याची भीती नाही.
-            </p>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal("POSIFLOW_WIFI")}
-            className="px-3 py-1.5 bg-red-700 text-white rounded-xl text-xs font-bold hover:bg-red-800 transition-colors shadow-2xs"
-          >
-            Wi-Fi प्रिंटर जोडा
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal("POSIFLOW_BT")}
-            className="px-3 py-1.5 bg-white border border-stone-300 text-stone-700 rounded-xl text-xs font-bold hover:bg-stone-50 transition-colors"
-          >
-            ब्लूटूथ जोडा
-          </button>
-        </div>
+        )}
       </div>
 
       {/* Printer Fleet Cards Grid */}
@@ -1386,35 +1684,101 @@ export default function PrintersManagementPage() {
               {/* Dynamic Connection Fields */}
               {formData.connectionType === "NETWORK" && (
                 <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-blue-950 block mb-1">
-                        प्रिंटर IP पत्ता (Printer IP) *
-                      </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-blue-950 block">
+                      प्रिंटर IP पत्ता (Printer IP) *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleModalAutoScan}
+                      disabled={isModalScanning}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isModalScanning ? "animate-spin" : ""}`} />
+                      <span>{isModalScanning ? "शोधत आहे..." : "🔍 आपोआप शोधा"}</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="col-span-2">
                       <input
                         type="text"
                         required
                         value={formData.ipAddress}
-                        onChange={(e) => setFormData({ ...formData, ipAddress: e.target.value })}
-                        placeholder="192.168.1.50"
+                        onChange={(e) => {
+                          setFormData({ ...formData, ipAddress: e.target.value });
+                          setModalPingStatus(null);
+                        }}
+                        placeholder="192.168.1.100"
                         className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold text-stone-900 focus:border-blue-600 focus:outline-hidden"
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-blue-950 block mb-1">
-                        पोर्ट (TCP Port)
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.port}
-                        onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) })}
-                        placeholder="9100"
-                        className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold text-stone-900 focus:border-blue-600 focus:outline-hidden"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          value={formData.port}
+                          onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) })}
+                          placeholder="9100"
+                          className="w-full rounded-xl border border-stone-300 bg-white px-2 py-2 text-xs font-mono font-bold text-stone-900 focus:border-blue-600 focus:outline-hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleModalPing}
+                          disabled={isModalPinging}
+                          title="Ping Test"
+                          className="p-2 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-800 rounded-xl text-xs font-bold cursor-pointer shrink-0"
+                        >
+                          <Radio className={`w-3.5 h-3.5 ${isModalPinging ? "animate-pulse text-blue-600" : ""}`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Subnet Chips */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {["192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
+                        <button
+                          key={ip}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, ipAddress: ip });
+                            setModalPingStatus(null);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                            formData.ipAddress === ip
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-stone-700 border-stone-300 hover:border-stone-400"
+                          }`}
+                        >
+                          {ip}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ping Status inside Modal */}
+                  {modalPingStatus && (
+                    <div
+                      className={`p-2 rounded-xl border text-[11px] flex items-center gap-1.5 ${
+                        modalPingStatus.online
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                          : "bg-red-50 border-red-300 text-red-800"
+                      }`}
+                    >
+                      {modalPingStatus.online ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : (
+                        <XCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                      )}
+                      <span>{modalPingStatus.message}</span>
+                    </div>
+                  )}
+
                   <p className="text-[10px] text-blue-900/80 leading-relaxed">
-                    💡 <strong>KP307-UEWB टीप:</strong> प्रिंटर चालू करताना फीड बटण दाबून धरल्यास टेस्ट पेजवर प्रिंटरचा IP पत्ता छापून येतो (उदा. 192.168.1.50).
+                    💡 <strong>IP शोधण्याची सोपी पद्धत:</strong> प्रिंटर स्विच बंद करा ➔ समोरील <strong>FEED बटण दाबून धरून</strong> चालू करा ➔ २ सेकंदांनी सोडा. पावतीवर IP पत्ता दिसेल.
                   </p>
                 </div>
               )}
@@ -1447,7 +1811,44 @@ export default function PrintersManagementPage() {
                     </div>
                   </div>
                   <p className="text-[10px] text-indigo-900/80">
-                    💡 Android फोनच्या सेटिंग्जमधून <strong>KP307-UEWB</strong> पेअर करा (PIN 0000).
+                    💡 Android फोनच्या Settings मधून <strong>KP307-UEWB</strong> पेअर करा (PIN: 0000 किंवा 1234).
+                  </p>
+                </div>
+              )}
+
+              {formData.connectionType === "SERIAL_USB" && (
+                <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2.5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-amber-950 block mb-1">
+                        सिरीयल COM पोर्ट (COM Port)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.serialPortName}
+                        onChange={(e) => setFormData({ ...formData, serialPortName: e.target.value })}
+                        placeholder="COM3"
+                        className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold text-stone-900 focus:border-amber-600 focus:outline-hidden"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-amber-950 block mb-1">
+                        बाउड रेट (Baud Rate)
+                      </label>
+                      <select
+                        value={formData.baudRate}
+                        onChange={(e) => setFormData({ ...formData, baudRate: Number(e.target.value) })}
+                        className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold text-stone-900 focus:border-amber-600 focus:outline-hidden"
+                      >
+                        <option value="9600">9600 (डिफॉल्ट)</option>
+                        <option value="19200">19200</option>
+                        <option value="38400">38400</option>
+                        <option value="115200">115200</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-amber-900/80">
+                    💻 हे सेटिंग फक्त Windows / Desktop कॉम्प्युटरवरील USB केबलसाठी आहे. मोबाईलवर हे चालत नाही.
                   </p>
                 </div>
               )}

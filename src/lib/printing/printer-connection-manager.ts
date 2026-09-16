@@ -2137,6 +2137,24 @@ class PrinterConnectionManager {
 
     return device;
   }
+
+  /**
+   * Probes candidate network IPs in parallel on TCP port 9100
+   * to automatically discover online KP307-UEWB or ESC/POS printers on the local network.
+   */
+  public async scanNetworkPrinters(
+    candidateIps?: string[]
+  ): Promise<{ ip: string; port: number; latencyMs?: number }[]> {
+    try {
+      const qs = candidateIps && candidateIps.length > 0 ? `&candidates=${encodeURIComponent(candidateIps.join(","))}` : "";
+      const res = await fetch(`/api/print/network?scan=true${qs}&timeoutMs=1500`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.printers || [];
+    } catch {
+      return [];
+    }
+  }
 }
 
 // Global Singleton Instance

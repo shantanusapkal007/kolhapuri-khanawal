@@ -5,10 +5,68 @@ export const dynamic = "force-dynamic";
 
 /**
  * Health check / ping a network thermal printer over raw TCP port 9100
- * Example: GET /api/print/network?ip=192.168.1.100&port=9100
+ * Or scan common candidate IPs for POSIFLOW KP307-UEWB:
+ * - Single IP: GET /api/print/network?ip=192.168.1.100&port=9100
+ * - Auto-scan: GET /api/print/network?scan=true&candidates=192.168.1.100,192.168.1.87
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const isScan = searchParams.get("scan") === "true";
+
+  // Multi-IP scan mode for easy mobile discovery of KP307-UEWB
+  if (isScan) {
+    const rawCandidates = searchParams.get("candidates");
+    const candidates = rawCandidates
+      ? rawCandidates.split(",").map((s) => s.trim()).filter(Boolean)
+      : [
+          "192.168.1.100",
+          "192.168.1.87",
+          "192.168.1.50",
+          "192.168.1.200",
+          "192.168.0.100",
+          "192.168.0.87",
+          "192.168.29.100",
+          "192.168.31.100",
+          "192.168.1.101",
+        ];
+    const port = parseInt(searchParams.get("port") || "9100", 10);
+    const timeoutMs = parseInt(searchParams.get("timeoutMs") || "1200", 10);
+
+    const probeIp = (candidateIp: string) =>
+      new Promise<{ ip: string; port: number; online: boolean; latencyMs?: number }>((resolve) => {
+        const start = Date.now();
+        const socket = new net.Socket();
+        socket.setTimeout(timeoutMs);
+
+        socket.connect(port, candidateIp, () => {
+          const latencyMs = Date.now() - start;
+          socket.destroy();
+          resolve({ ip: candidateIp, port, online: true, latencyMs });
+        });
+
+        socket.on("timeout", () => {
+          socket.destroy();
+          resolve({ ip: candidateIp, port, online: false });
+        });
+
+        socket.on("error", () => {
+          socket.destroy();
+          resolve({ ip: candidateIp, port, online: false });
+        });
+      });
+
+    const results = await Promise.all(candidates.map(probeIp));
+    const onlinePrinters = results.filter((r) => r.online);
+
+    return NextResponse.json({
+      success: true,
+      scannedCount: candidates.length,
+      onlineCount: onlinePrinters.length,
+      printers: onlinePrinters,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   const ip = searchParams.get("ip");
   const port = parseInt(searchParams.get("port") || "9100", 10);
   const timeoutMs = parseInt(searchParams.get("timeoutMs") || "2500", 10);

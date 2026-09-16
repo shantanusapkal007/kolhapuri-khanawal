@@ -159,4 +159,68 @@ describe("POSIFLOW KP307-UEWB Thermal Printer & Spooler Subsystem", () => {
       }
     });
   });
+
+  describe("4. Mobile & Online KP307-UEWB Setup, Auto-Scanner & 1-Tap Defaults", () => {
+    it("activates Wi-Fi network printer and makes it universal default for receipts & KOTs", () => {
+      const dev = globalPrinterManager.activateWifiNetworkPrint("192.168.1.100", "80mm");
+      expect(dev).toBeDefined();
+      expect(dev.connectionType).toBe("NETWORK");
+      expect(dev.ipAddress).toBe("192.168.1.100");
+      expect(dev.port).toBe(9100);
+      expect(dev.isDefaultReceiptPrinter).toBe(true);
+      expect(dev.isDefaultKotPrinter).toBe(true);
+      expect(dev.assignedStations).toContain("CASHIER");
+      expect(dev.assignedStations).toContain("MAIN_KITCHEN");
+      expect(dev.assignedStations).toContain("THALI_SECTION");
+      expect(dev.assignedStations).toContain("TANDOOR_BHAKRI");
+      expect(dev.assignedStations).toContain("FRY_SECTION");
+      expect(dev.assignedStations).toContain("BEVERAGE_DESSERT");
+    });
+
+    it("activates Android System Print Spooler for instant zero-app mobile printing", () => {
+      const dev = globalPrinterManager.activateAndroidSystemPrint("80mm");
+      expect(dev).toBeDefined();
+      expect(dev.connectionType).toBe("BROWSER_SYSTEM");
+      expect(dev.isDefaultReceiptPrinter).toBe(true);
+      expect(dev.isDefaultKotPrinter).toBe(true);
+      expect(dev.assignedStations).toContain("CASHIER");
+      expect(dev.assignedStations).toContain("MAIN_KITCHEN");
+    });
+
+    it("activates Android RawBT Print for 0.1s instant background printing", () => {
+      const dev = globalPrinterManager.activateAndroidRawBtPrint("80mm");
+      expect(dev).toBeDefined();
+      expect(dev.connectionType).toBe("RAWBT");
+      expect(dev.rawbtMethod).toBe("INTENT");
+      expect(dev.isDefaultReceiptPrinter).toBe(true);
+      expect(dev.isDefaultKotPrinter).toBe(true);
+    });
+
+    it("scans network candidates and returns discovered printers or empty array gracefully", async () => {
+      // Mock global fetch to simulate a discovered printer
+      const originalFetch = global.fetch;
+      global.fetch = vi.fn().mockImplementation(async (url: string) => {
+        if (url.includes("scan=true")) {
+          return {
+            ok: true,
+            json: async () => ({
+              success: true,
+              printers: [{ ip: "192.168.1.100", port: 9100, latencyMs: 15 }],
+            }),
+          };
+        }
+        return { ok: false, json: async () => ({}) };
+      }) as any;
+
+      try {
+        const found = await globalPrinterManager.scanNetworkPrinters(["192.168.1.100", "192.168.1.50"]);
+        expect(found).toHaveLength(1);
+        expect(found[0].ip).toBe("192.168.1.100");
+        expect(found[0].port).toBe(9100);
+        expect(found[0].latencyMs).toBe(15);
+      } finally {
+        global.fetch = originalFetch;
+      }
+    });
+  });
 });

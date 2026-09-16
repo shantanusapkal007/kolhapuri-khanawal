@@ -19,6 +19,8 @@ import {
   RefreshCw,
   Layers,
   Laptop,
+  Radio,
+  Search,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -65,6 +67,9 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
   const [showAndroidGuide, setShowAndroidGuide] = useState(false);
   const [showAdvancedRouting, setShowAdvancedRouting] = useState(false);
   const [savedBanner, setSavedBanner] = useState(false);
+  const [isScanningNetwork, setIsScanningNetwork] = useState(false);
+  const [isPingingNetwork, setIsPingingNetwork] = useState(false);
+  const [networkPingResult, setNetworkPingResult] = useState<{ online: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -131,6 +136,74 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
           message: err?.message || "Bluetooth pairing failed. Ensure Bluetooth is enabled.",
         });
       }
+    }
+  };
+
+  // Auto-scan network for KP307-UEWB
+  const handleAutoScanNetwork = async () => {
+    setIsScanningNetwork(true);
+    setNetworkPingResult(null);
+    try {
+      const candidates = [
+        "192.168.1.100",
+        "192.168.1.87",
+        "192.168.1.50",
+        "192.168.1.200",
+        "192.168.0.100",
+        "192.168.0.87",
+        "192.168.29.100",
+        "192.168.31.100",
+      ];
+      const found = await globalPrinterManager.scanNetworkPrinters(candidates);
+      if (found.length > 0) {
+        setNetworkIp(found[0].ip);
+        setNetworkPingResult({
+          online: true,
+          message: `प्रिंटर सापडला (${found[0].latencyMs ? `${found[0].latencyMs}ms` : "Active"})`,
+        });
+      } else {
+        setNetworkPingResult({
+          online: false,
+          message: "वाय-फायवर प्रिंटर सापडला नाही. मॅन्युअली IP टाका किंवा FEED दाबून IP तपासा.",
+        });
+      }
+    } catch {
+      setNetworkPingResult({
+        online: false,
+        message: "स्कॅनिंग अयशस्वी",
+      });
+    } finally {
+      setIsScanningNetwork(false);
+    }
+  };
+
+  // Ping network IP
+  const handlePingNetwork = async () => {
+    if (!networkIp.trim()) return;
+    setIsPingingNetwork(true);
+    try {
+      const res = await fetch(
+        `/api/print/network?ip=${encodeURIComponent(networkIp.trim())}&port=9100&timeoutMs=2500`
+      );
+      const data = await res.json();
+      if (data.online) {
+        setNetworkPingResult({
+          online: true,
+          message: `ऑनलाइन (${data.latencyMs}ms) - Port 9100 तयार`,
+        });
+      } else {
+        setNetworkPingResult({
+          online: false,
+          message: `ऑफलाइन: ${data.error || "Cannot connect"}`,
+        });
+      }
+    } catch (err: any) {
+      setNetworkPingResult({
+        online: false,
+        message: err?.message || "Ping error",
+      });
+    } finally {
+      setIsPingingNetwork(false);
     }
   };
 
@@ -450,22 +523,89 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
 
               {/* Network IP Subpanel */}
               {printMode === "NETWORK" && (
-                <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 space-y-2 animate-in slide-in-from-top-2 duration-150">
-                  <label className="text-[11px] font-bold text-blue-950 block">
-                    प्रिंटर IP पत्ता (Printer IP Address):
-                  </label>
-                  <div className="flex gap-2">
+                <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 space-y-2.5 animate-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-blue-950 block">
+                      प्रिंटर IP पत्ता (Printer IP Address):
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAutoScanNetwork}
+                      disabled={isScanningNetwork}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${isScanningNetwork ? "animate-spin" : ""}`} />
+                      <span>{isScanningNetwork ? "शोधत आहे..." : "🔍 आपोआप शोधा"}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex gap-1.5">
                     <input
                       type="text"
                       value={networkIp}
-                      onChange={(e) => setNetworkIp(e.target.value)}
-                      placeholder="192.168.1.200"
+                      onChange={(e) => {
+                        setNetworkIp(e.target.value);
+                        setNetworkPingResult(null);
+                      }}
+                      placeholder="192.168.1.100"
                       className="flex-1 rounded-xl border border-stone-300 bg-white px-3 py-2 text-xs font-mono font-bold focus:border-blue-600 focus:outline-hidden"
                     />
+                    <button
+                      type="button"
+                      onClick={handlePingNetwork}
+                      disabled={isPingingNetwork}
+                      className="px-3 py-2 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                    >
+                      <Radio className={`w-3.5 h-3.5 ${isPingingNetwork ? "animate-pulse text-blue-600" : ""}`} />
+                      <span>{isPingingNetwork ? "तपासत आहे..." : "पिंग करा"}</span>
+                    </button>
                   </div>
-                  <span className="text-[9.5px] text-blue-800/80 block">
-                    मानक थर्मल पोर्ट: 9100. प्रिंटर व डिव्हाइस एकाच Wi-Fi वर असणे आवश्यक आहे.
-                  </span>
+
+                  {/* Subnet Chips */}
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {["192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
+                        <button
+                          key={ip}
+                          type="button"
+                          onClick={() => {
+                            setNetworkIp(ip);
+                            setNetworkPingResult(null);
+                          }}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                            networkIp === ip
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-white text-stone-700 border-stone-300 hover:border-stone-400"
+                          }`}
+                        >
+                          {ip}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ping Status */}
+                  {networkPingResult && (
+                    <div
+                      className={`p-2 rounded-xl border text-[11px] flex items-center gap-1.5 ${
+                        networkPingResult.online
+                          ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                          : "bg-red-50 border-red-300 text-red-800"
+                      }`}
+                    >
+                      {networkPingResult.online ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                      )}
+                      <span>{networkPingResult.message}</span>
+                    </div>
+                  )}
+
+                  <p className="text-[9.5px] text-blue-900/80 leading-relaxed border-t border-blue-200/60 pt-1.5">
+                    💡 <strong>IP शोधण्यासाठी:</strong> प्रिंटर बंद करून समोरील <strong>FEED बटण दाबून धरून</strong> चालू करा. २ सेकंदांनी सोडा, पावतीवर IP पत्ता दिसेल.
+                  </p>
                 </div>
               )}
             </div>

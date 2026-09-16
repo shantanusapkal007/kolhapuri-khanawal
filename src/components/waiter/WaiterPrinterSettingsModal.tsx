@@ -12,6 +12,9 @@ import {
   Check,
   HelpCircle,
   ExternalLink,
+  RefreshCw,
+  Radio,
+  Search,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { globalPrinterManager } from "@/lib/printing/printer-connection-manager";
@@ -50,6 +53,9 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
   );
   const [isPrintingTest, setIsPrintingTest] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isScanningWifi, setIsScanningWifi] = useState<boolean>(false);
+  const [isPingingWifi, setIsPingingWifi] = useState<boolean>(false);
+  const [wifiPingStatus, setWifiPingStatus] = useState<{ online: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -82,6 +88,72 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
       setStatusMessage(null);
       onClose();
     }, 1200);
+  };
+
+  const handleAutoScanNetwork = async () => {
+    setIsScanningWifi(true);
+    setWifiPingStatus(null);
+    try {
+      const candidates = [
+        "192.168.1.100",
+        "192.168.1.87",
+        "192.168.1.50",
+        "192.168.1.200",
+        "192.168.0.100",
+        "192.168.0.87",
+        "192.168.29.100",
+        "192.168.31.100",
+      ];
+      const found = await globalPrinterManager.scanNetworkPrinters(candidates);
+      if (found.length > 0) {
+        setWifiIp(found[0].ip);
+        setWifiPingStatus({
+          online: true,
+          message: `प्रिंटर सापडला (${found[0].latencyMs ? `${found[0].latencyMs}ms` : "Active"})`,
+        });
+      } else {
+        setWifiPingStatus({
+          online: false,
+          message: "वाय-फायवर प्रिंटर सापडला नाही. मॅन्युअली IP टाका किंवा FEED दाबून तपासा.",
+        });
+      }
+    } catch {
+      setWifiPingStatus({
+        online: false,
+        message: "स्कॅनिंग अयशस्वी",
+      });
+    } finally {
+      setIsScanningWifi(false);
+    }
+  };
+
+  const handlePingWifi = async () => {
+    if (!wifiIp.trim()) return;
+    setIsPingingWifi(true);
+    try {
+      const res = await fetch(
+        `/api/print/network?ip=${encodeURIComponent(wifiIp.trim())}&port=9100&timeoutMs=2500`
+      );
+      const data = await res.json();
+      if (data.online) {
+        setWifiPingStatus({
+          online: true,
+          message: `ऑनलाइन (${data.latencyMs}ms) - Port 9100 तयार`,
+        });
+      } else {
+        setWifiPingStatus({
+          online: false,
+          message: `ऑफलाइन: ${data.error || "Cannot connect"}`,
+        });
+      }
+    } catch (err: any) {
+      setWifiPingStatus({
+        online: false,
+        message: err?.message || "Ping error",
+      });
+    } finally {
+      setIsPingingWifi(false);
+    }
   };
 
   const handleTestPrint = async () => {
@@ -260,17 +332,89 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </div>
 
           {printMode === "NETWORK" && (
-            <div className="pt-2">
-              <label className="text-[10px] font-bold text-stone-500 block mb-1">
-                प्रिंटरचा वाय-फाय IP Address:
-              </label>
-              <input
-                type="text"
-                value={wifiIp}
-                onChange={(e) => setWifiIp(e.target.value)}
-                placeholder="192.168.1.50"
-                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-500"
-              />
+            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-2.5 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-blue-950 block">
+                  प्रिंटर IP पत्ता (Printer IP):
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoScanNetwork}
+                  disabled={isScanningWifi}
+                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isScanningWifi ? "animate-spin" : ""}`} />
+                  <span>{isScanningWifi ? "शोधत आहे..." : "🔍 आपोआप शोधा"}</span>
+                </button>
+              </div>
+
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={wifiIp}
+                  onChange={(e) => {
+                    setWifiIp(e.target.value);
+                    setWifiPingStatus(null);
+                  }}
+                  placeholder="192.168.1.100"
+                  className="flex-1 px-3 py-2 bg-white border border-stone-300 rounded-xl text-xs font-mono font-bold text-stone-900 focus:outline-none focus:border-blue-600"
+                />
+                <button
+                  type="button"
+                  onClick={handlePingWifi}
+                  disabled={isPingingWifi}
+                  className="px-3 py-2 bg-stone-200 hover:bg-stone-300 active:scale-95 text-stone-800 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
+                >
+                  <Radio className={`w-3.5 h-3.5 ${isPingingWifi ? "animate-pulse text-blue-600" : ""}`} />
+                  <span>{isPingingWifi ? "तपासत आहे..." : "पिंग करा"}</span>
+                </button>
+              </div>
+
+              {/* Subnet Chips */}
+              <div className="space-y-1">
+                <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {["192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
+                    <button
+                      key={ip}
+                      type="button"
+                      onClick={() => {
+                        setWifiIp(ip);
+                        setWifiPingStatus(null);
+                      }}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                        wifiIp === ip
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-stone-700 border-stone-300 hover:border-stone-400"
+                      }`}
+                    >
+                      {ip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ping Status */}
+              {wifiPingStatus && (
+                <div
+                  className={`p-2 rounded-xl border text-[11px] flex items-center gap-1.5 ${
+                    wifiPingStatus.online
+                      ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                      : "bg-red-50 border-red-300 text-red-800"
+                  }`}
+                >
+                  {wifiPingStatus.online ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  ) : (
+                    <X className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                  )}
+                  <span>{wifiPingStatus.message}</span>
+                </div>
+              )}
+
+              <p className="text-[9.5px] text-blue-900/80 leading-relaxed border-t border-blue-200/60 pt-1.5">
+                💡 <strong>IP शोधण्यासाठी:</strong> प्रिंटर बंद करा ➔ समोरील <strong>FEED बटण दाबून धरून</strong> चालू करा. २ सेकंदांनी सोडा, पावतीवर IP पत्ता दिसेल.
+              </p>
             </div>
           )}
 
