@@ -11,6 +11,7 @@
 
 import { Bill, DayEndReport } from "@/types/billing";
 import { Kot, BreadOption, BREAD_OPTION_LABELS } from "@/types/orders";
+import { getActiveRestaurantProfile, type ActiveRestaurantProfile } from "./restaurant-profile";
 
 export const ESC = 0x1b;
 export const FS = 0x1c;
@@ -289,10 +290,13 @@ function formatDateTime(isoString: string): string {
 export function buildBillReceiptEscPos(
   bill: Bill,
   isDuplicate: boolean = false,
-  paperWidth: "80mm" | "58mm" = "80mm"
+  paperWidth: "80mm" | "58mm" = "80mm",
+  customProfile?: Partial<ActiveRestaurantProfile>
 ): Uint8Array {
   const p = new EscPosBuilder(paperWidth);
   const is58mm = paperWidth === "58mm";
+  const baseProfile = getActiveRestaurantProfile();
+  const profile = customProfile ? { ...baseProfile, ...customProfile } : baseProfile;
 
   // DUPLICATE OR PARCEL BANNER
   if (isDuplicate) {
@@ -309,16 +313,37 @@ export function buildBillReceiptEscPos(
   }
 
   // Header
-  p.align("CENTER")
-    .bold(true)
-    .size("BIG")
-    .line("कोल्हापुरी खानावळ")
-    .size("NORMAL")
-    .line("KOLHAPURI KHANAWAL")
-    .bold(false)
-    .line("CSMT Road, Shahupuri, Kolhapur")
-    .line("Ph: +91 98230 12345")
-    .line("GSTIN: 27AAAAA0000A1Z5 | FSSAI: 11026999000123");
+  p.align("CENTER");
+  if (profile.nameMr) {
+    p.bold(true).size("BIG").line(profile.nameMr);
+  }
+  if (profile.nameEn) {
+    p.size("NORMAL").bold(true).line(profile.nameEn).bold(false);
+  } else {
+    p.size("NORMAL").bold(false);
+  }
+  if (profile.tagline) {
+    p.line(profile.tagline);
+  }
+  if (profile.address) {
+    p.line(profile.address);
+  }
+  if (profile.phone) {
+    const sec = profile.secondaryPhone ? ` / ${profile.secondaryPhone}` : "";
+    p.line(`Ph: ${profile.phone}${sec}`);
+  }
+
+  // Compliance Line (GSTIN / FSSAI) - ONLY print if there is data!
+  const compParts: string[] = [];
+  if (profile.gstin && profile.gstin.trim()) {
+    compParts.push(`GSTIN: ${profile.gstin.trim()}`);
+  }
+  if (profile.fssai && profile.fssai.trim()) {
+    compParts.push(`FSSAI: ${profile.fssai.trim()}`);
+  }
+  if (compParts.length > 0) {
+    p.line(compParts.join(" | "));
+  }
 
   p.separator();
 
@@ -388,9 +413,19 @@ export function buildBillReceiptEscPos(
   if (bill.packagingCharges && bill.packagingCharges > 0) {
     p.twoColumns("Packaging / Parcel Fee:", `₹${bill.packagingCharges.toFixed(2)}`, true);
   }
-  p.twoColumns("Taxable Amount:", `₹${bill.taxableAmount.toFixed(2)}`);
-  p.twoColumns("CGST (2.5%):", `₹${bill.cgstAmount.toFixed(2)}`);
-  p.twoColumns("SGST (2.5%):", `₹${bill.sgstAmount.toFixed(2)}`);
+
+  const hasGst = Boolean(
+    profile.gstin &&
+    profile.gstin.trim() &&
+    (bill.cgstAmount > 0 || bill.sgstAmount > 0 || bill.totalTaxAmount > 0)
+  );
+
+  if (hasGst) {
+    p.twoColumns("Taxable Amount:", `₹${bill.taxableAmount.toFixed(2)}`);
+    p.twoColumns("CGST (2.5%):", `₹${bill.cgstAmount.toFixed(2)}`);
+    p.twoColumns("SGST (2.5%):", `₹${bill.sgstAmount.toFixed(2)}`);
+  }
+
   if (bill.roundOff !== 0) {
     p.twoColumns("Round Off:", `${bill.roundOff > 0 ? "+" : "-"}₹${Math.abs(bill.roundOff).toFixed(2)}`);
   }
@@ -418,9 +453,15 @@ export function buildBillReceiptEscPos(
     .bold(true)
     .line("धन्यवाद! पुन्हा भेट द्या!")
     .line("Thank you for dining with us!")
-    .bold(false)
-    .line("This is a computer-generated tax invoice.")
-    .line(`Printed: ${formatDateTime(new Date().toISOString())}`);
+    .bold(false);
+
+  if (hasGst) {
+    p.line("HSN/SAC: 996331 | Standalone Restaurant (5% GST)");
+    p.line("This is a computer-generated tax invoice.");
+  } else {
+    p.line("This is a computer-generated bill receipt.");
+  }
+  p.line(`Printed: ${formatDateTime(new Date().toISOString())}`);
 
   p.cut();
   return p.toBytes();
@@ -544,6 +585,8 @@ export function buildTableCheckEscPos(
   paperWidth: "80mm" | "58mm" = "80mm"
 ): Uint8Array {
   const p = new EscPosBuilder(paperWidth);
+  const baseProfile = getActiveRestaurantProfile();
+  const profile = params.profile ? { ...baseProfile, ...params.profile } : baseProfile;
   const tableNum = params.party?.tableNumber || params.tableNumber || 1;
   const partyCode = params.party?.partyCode || params.partyCode || "P-101";
   const subtotal = typeof params.subtotal === "number" ? params.subtotal : 0;
@@ -553,8 +596,13 @@ export function buildTableCheckEscPos(
     .bold(true)
     .line("*** TABLE CHECK / PRE-BILL ESTIMATE ***")
     .line("(Not a Tax Invoice — कच्चा बिल)")
-    .line("THIS IS NOT A TAX INVOICE")
-    .size("BIG")
+    .line("THIS IS NOT A TAX INVOICE");
+
+  if (profile.nameMr) p.size("BIG").line(profile.nameMr);
+  if (profile.nameEn) p.size("NORMAL").bold(true).line(profile.nameEn).bold(false);
+  if (profile.address) p.line(profile.address);
+
+  p.size("BIG")
     .line(`TABLE ${tableNum}`)
     .size("NORMAL")
     .line(`Party: ${partyCode}`)
@@ -577,16 +625,20 @@ export function buildTableCheckEscPos(
   p.separator();
 
   const is58mm = paperWidth === "58mm";
-  const upiUrl = `upi://pay?pa=kolhapurikhanawal@okhdfcbank&pn=KolhapuriKhanawal&am=${grandTotal.toFixed(2)}&cu=INR`;
+  if (profile.upiId && profile.upiId.trim()) {
+    const upiUrl = `upi://pay?pa=${profile.upiId}&pn=${encodeURIComponent(profile.upiMerchantName || profile.nameEn || "KolhapuriKhanawal")}&am=${grandTotal.toFixed(2)}&cu=INR`;
 
-  p.align("CENTER")
-    .bold(true)
-    .line("⚡ SCAN TO PAY VIA UPI ⚡")
-    .bold(false);
-  p.qrCode(upiUrl, is58mm ? 4 : 5);
-  p.align("CENTER")
-    .line("UPI ID: kolhapurikhanawal@okhdfcbank")
-    .line("Please settle with your waiter or at counter.");
+    p.align("CENTER")
+      .bold(true)
+      .line("⚡ SCAN TO PAY VIA UPI ⚡")
+      .bold(false);
+    p.qrCode(upiUrl, is58mm ? 4 : 5);
+    p.align("CENTER")
+      .line(`UPI ID: ${profile.upiId}`)
+      .line("Please settle with your waiter or at counter.");
+  } else {
+    p.align("CENTER").line("Please settle with your waiter or at counter.");
+  }
 
   p.cut();
   return p.toBytes();

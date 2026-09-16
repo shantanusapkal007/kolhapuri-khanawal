@@ -1877,7 +1877,25 @@ export class RestaurantStore {
     const allItems = partyOrders.flatMap((o) => o.items);
 
     const taxRatesMap = new Map(this.taxRates.map((t) => [t.id, t]));
-    const defaultTaxRate = this.taxRates[0];
+    const hasGstin = Boolean(this.settings.profile?.gstin && this.settings.profile.gstin.trim());
+    const gstRate = this.settings.billing?.gstRatePercent ?? 5;
+    const defaultTaxRate =
+      hasGstin && gstRate > 0
+        ? this.taxRates[0]
+        : this.taxRates.find((t) => t.isTaxExempt || t.totalRate === 0) || {
+            id: "tax-exempt",
+            name: "Exempt Goods (0%)",
+            code: "EXEMPT_0",
+            cgstRate: 0,
+            sgstRate: 0,
+            igstRate: 0,
+            vatRate: 0,
+            totalRate: 0,
+            isTaxInclusive: false,
+            isTaxExempt: true,
+            effectiveFrom: "2026-01-01",
+            isActive: true,
+          };
 
     const bill = generatePartyBill({
       party,

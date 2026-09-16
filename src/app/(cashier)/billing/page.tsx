@@ -740,14 +740,18 @@ export default function CashierBillingPage() {
                       <span className="font-bold">-₹{activeBill.discountAmount}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-stone-500">
-                    <span>CGST (2.5%):</span>
-                    <span>₹{activeBill.cgstAmount}</span>
-                  </div>
-                  <div className="flex justify-between text-stone-500">
-                    <span>SGST (2.5%):</span>
-                    <span>₹{activeBill.sgstAmount}</span>
-                  </div>
+                  {(activeBill.cgstAmount > 0 || activeBill.sgstAmount > 0) && (
+                    <>
+                      <div className="flex justify-between text-stone-500">
+                        <span>CGST (2.5%):</span>
+                        <span>₹{activeBill.cgstAmount}</span>
+                      </div>
+                      <div className="flex justify-between text-stone-500">
+                        <span>SGST (2.5%):</span>
+                        <span>₹{activeBill.sgstAmount}</span>
+                      </div>
+                    </>
+                  )}
                   {activeBill.roundOff !== 0 && (
                     <div className="flex justify-between text-stone-500">
                       <span>Round Off:</span>

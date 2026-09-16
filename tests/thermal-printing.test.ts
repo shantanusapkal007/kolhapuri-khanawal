@@ -6,6 +6,7 @@ import {
   generateCancelledKotHtml,
   generatePrinterTestHtml,
 } from "@/lib/printing/thermal-printer";
+import { buildBillReceiptEscPos } from "@/lib/printing/escpos-builder";
 import { Bill } from "@/types/billing";
 import { Kot } from "@/types/orders";
 
@@ -195,6 +196,54 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(duplicateHtml).toContain("*** DUPLICATE COPY / REPRINT ***");
       expect(duplicateHtml).toContain("<title>DUPLICATE — Receipt BILL-2026-001</title>");
     });
+
+    it("omits GSTIN, Taxable Amount, CGST, SGST, and HSN when GSTIN is empty or no tax applies", () => {
+      const billWithoutGst = {
+        ...mockBill,
+        cgstAmount: 0,
+        sgstAmount: 0,
+        totalTaxAmount: 0,
+      } as unknown as Bill;
+
+      const html = generateBillReceiptHtml(billWithoutGst, false, "80mm", {
+        gstin: "",
+        fssai: "",
+      });
+
+      expect(html).not.toContain("GSTIN:");
+      expect(html).not.toContain("FSSAI:");
+      expect(html).not.toContain("Taxable Amount:");
+      expect(html).not.toContain("CGST (2.5%):");
+      expect(html).not.toContain("SGST (2.5%):");
+      expect(html).not.toContain("HSN/SAC: 996331");
+      expect(html).toContain("This is a computer-generated bill receipt.");
+    });
+
+    it("omits empty restaurant profile fields (address, phone) cleanly", () => {
+      const html = generateBillReceiptHtml(mockBill, false, "80mm", {
+        address: "",
+        phone: "",
+        secondaryPhone: "",
+        gstin: "",
+        fssai: "",
+      });
+
+      expect(html).not.toContain("CSMT Road");
+      expect(html).not.toContain("Ph:");
+      expect(html).not.toContain("GSTIN:");
+      expect(html).not.toContain("FSSAI:");
+    });
+
+    it("omits GSTIN and GST lines in ESC/POS byte output when GSTIN is blank", () => {
+      const bytes = buildBillReceiptEscPos(mockBill, false, "80mm", { gstin: "" });
+      const text = new TextDecoder().decode(bytes);
+
+      expect(text).not.toContain("GSTIN:");
+      expect(text).not.toContain("CGST (2.5%):");
+      expect(text).not.toContain("SGST (2.5%):");
+      expect(text).not.toContain("HSN/SAC: 996331");
+      expect(text).toContain("This is a computer-generated bill receipt.");
+    });
   });
 
   describe("Kitchen Order Ticket (KOT — 80mm)", () => {
@@ -275,6 +324,17 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(html).toContain("kolhapurikhanawal@okaxis");
       expect(html).toContain("Total Estimate:");
       expect(html).toContain("₹964.00");
+    });
+
+    it("omits estimated GST in pre-bill when GSTIN is empty", () => {
+      const html = generateTableCheckHtml({
+        ...mockBill,
+        profile: { gstin: "" },
+      });
+
+      expect(html).not.toContain("Estimated GST (5%):");
+      expect(html).toContain("Subtotal:");
+      expect(html).toContain("Total Estimate:");
     });
   });
 

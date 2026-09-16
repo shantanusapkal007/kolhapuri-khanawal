@@ -350,18 +350,18 @@ export interface OfficeGroupOrder {
 
 // ── 7. SYSTEM SETTINGS & RESTAURANT CONFIGURATION ────────────────
 export interface RestaurantProfile {
-  nameMr: string;
-  nameEn: string;
-  tagline: string;
-  address: string;
-  city: string;
-  pincode: string;
-  primaryPhone: string;
+  nameMr?: string;
+  nameEn?: string;
+  tagline?: string;
+  address?: string;
+  city?: string;
+  pincode?: string;
+  primaryPhone?: string;
   secondaryPhone?: string;
-  gstin: string;
-  fssai: string;
-  upiId: string;
-  upiMerchantName: string;
+  gstin?: string;
+  fssai?: string;
+  upiId?: string;
+  upiMerchantName?: string;
 }
 
 export interface BillingRules {

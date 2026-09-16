@@ -328,11 +328,11 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Restaurant Name (Marathi) *
+                    Restaurant Name (Marathi)
                   </label>
                   <input
                     type="text"
-                    value={settings.profile.nameMr}
+                    value={settings.profile.nameMr || ""}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -345,11 +345,11 @@ export default function SettingsPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Restaurant Name (English) *
+                    Restaurant Name (English)
                   </label>
                   <input
                     type="text"
-                    value={settings.profile.nameEn}
+                    value={settings.profile.nameEn || ""}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -367,30 +367,32 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  value={settings.profile.tagline}
+                  value={settings.profile.tagline || ""}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
                       profile: { ...settings.profile, tagline: e.target.value },
                     })
                   }
+                  placeholder="उदा. अस्सल कोल्हापुरी चव"
                   className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Physical Address (Printed on Bills) *
+                  Physical Address (Printed on Bills)
                 </label>
                 <textarea
                   rows={2}
-                  value={settings.profile.address}
+                  value={settings.profile.address || ""}
                   onChange={(e) =>
                     setSettings({
                       ...settings,
                       profile: { ...settings.profile, address: e.target.value },
                     })
                   }
+                  placeholder="दुकान/हॉटेलचा संपूर्ण पत्ता (नसल्यास रिकामे ठेवा)"
                   className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                 />
               </div>
@@ -398,17 +400,18 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Primary Phone Number *
+                    Primary Phone Number
                   </label>
                   <input
                     type="text"
-                    value={settings.profile.primaryPhone}
+                    value={settings.profile.primaryPhone || ""}
                     onChange={(e) =>
                       setSettings({
                         ...settings,
                         profile: { ...settings.profile, primaryPhone: e.target.value },
                       })
                     }
+                    placeholder="+91 98..."
                     className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -426,6 +429,7 @@ export default function SettingsPage() {
                         profile: { ...settings.profile, secondaryPhone: e.target.value },
                       })
                     }
+                    placeholder="दुसरा फोन नंबर (वैकल्पिक)"
                     className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
@@ -433,12 +437,16 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-stone-100">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    GSTIN Registration Number *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-stone-700">
+                      GSTIN Registration Number
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium">वैकल्पिक / Optional</span>
+                  </div>
                   <input
                     type="text"
-                    value={settings.profile.gstin}
+                    value={settings.profile.gstin || ""}
+                    placeholder="उदा. 27AAAAA0000A1Z5 (GST नसल्यास रिकामे ठेवा)"
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -447,15 +455,22 @@ export default function SettingsPage() {
                     }
                     className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none uppercase"
                   />
+                  <span className="text-[10px] text-stone-500 mt-1 block">
+                    जर रिकामे ठेवले तर बिलावर GST, CGST/SGST किंवा HSN छापले जाणार नाही.
+                  </span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    FSSAI License Number *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-stone-700">
+                      FSSAI License Number
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium">वैकल्पिक / Optional</span>
+                  </div>
                   <input
                     type="text"
-                    value={settings.profile.fssai}
+                    value={settings.profile.fssai || ""}
+                    placeholder="उदा. 11026999000123 (नसल्यास रिकामे ठेवा)"
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -464,17 +479,24 @@ export default function SettingsPage() {
                     }
                     className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-mono font-bold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
+                  <span className="text-[10px] text-stone-500 mt-1 block">
+                    रिकामे ठेवल्यास बिलावरून FSSAI ओळ वगळली जाईल.
+                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-stone-100">
                 <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1">
-                    UPI VPA ID (For Table Pre-Bill QR) *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-stone-700">
+                      UPI VPA ID (For Table Pre-Bill QR)
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium">वैकल्पिक / Optional</span>
+                  </div>
                   <input
                     type="text"
-                    value={settings.profile.upiId}
+                    value={settings.profile.upiId || ""}
+                    placeholder="उदा. yourname@okhdfcbank"
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -491,7 +513,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    value={settings.profile.upiMerchantName}
+                    value={settings.profile.upiMerchantName || ""}
+                    placeholder="उदा. Kolhapuri Khanawal"
                     onChange={(e) =>
                       setSettings({
                         ...settings,
@@ -501,6 +524,36 @@ export default function SettingsPage() {
                     className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2 text-xs text-stone-900 font-semibold focus:ring-2 focus:ring-red-500 focus:outline-none"
                   />
                 </div>
+              </div>
+
+              {/* Card Save Button: Directly inside the brand card */}
+              <div className="pt-4 mt-4 border-t border-stone-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-stone-50/80 p-4 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 rounded-b-2xl">
+                <div>
+                  <span className="text-xs font-bold text-stone-800 block">
+                    कोणतीही माहिती सक्तीची नाही (All fields optional)
+                  </span>
+                  <span className="text-[11px] text-stone-500">
+                    माहिती बदलल्यानंतर लगेच खालील बटण दाबून बदल सुरक्षित करा:
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-6 py-3 text-xs sm:text-sm font-black shadow-md shadow-red-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer shrink-0"
+                >
+                  {isSaved ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-300" />
+                      <span>बदल सेव्ह झाले! (Saved!)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 text-amber-200" />
+                      <span>💾 बदल सेव्ह करा (Save Changes)</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -517,16 +570,33 @@ export default function SettingsPage() {
               </p>
 
               <div className="bg-stone-100 p-4 rounded-xl border border-stone-300 font-mono text-[11px] text-black text-center space-y-1 shadow-inner">
-                <div className="font-bold text-xs">{settings.profile.nameMr}</div>
-                <div className="font-bold text-xs">{settings.profile.nameEn}</div>
-                <div className="text-[10px] text-stone-700">{settings.profile.address}</div>
-                <div className="text-[10px] text-stone-700">Ph: {settings.profile.primaryPhone}</div>
-                <div className="text-[9px] text-stone-600 border-t border-dashed border-stone-400 pt-1 mt-1">
-                  GSTIN: {settings.profile.gstin} | FSSAI: {settings.profile.fssai}
-                </div>
-                <div className="text-[9px] text-stone-600">
-                  UPI: {settings.profile.upiId}
-                </div>
+                {settings.profile.nameMr && <div className="font-bold text-xs">{settings.profile.nameMr}</div>}
+                {settings.profile.nameEn && <div className="font-bold text-xs">{settings.profile.nameEn}</div>}
+                {settings.profile.tagline && <div className="text-[10px] text-stone-600 italic">{settings.profile.tagline}</div>}
+                {settings.profile.address && <div className="text-[10px] text-stone-700">{settings.profile.address}</div>}
+                {settings.profile.primaryPhone && (
+                  <div className="text-[10px] text-stone-700">
+                    Ph: {settings.profile.primaryPhone}
+                    {settings.profile.secondaryPhone ? ` / ${settings.profile.secondaryPhone}` : ""}
+                  </div>
+                )}
+                {(settings.profile.gstin?.trim() || settings.profile.fssai?.trim()) ? (
+                  <div className="text-[9px] text-stone-600 border-t border-dashed border-stone-400 pt-1 mt-1">
+                    {[
+                      settings.profile.gstin?.trim() ? `GSTIN: ${settings.profile.gstin.trim()}` : null,
+                      settings.profile.fssai?.trim() ? `FSSAI: ${settings.profile.fssai.trim()}` : null,
+                    ].filter(Boolean).join(" | ")}
+                  </div>
+                ) : (
+                  <div className="text-[9px] text-emerald-800 font-bold bg-emerald-50 border border-emerald-200 rounded p-1 mt-1">
+                    ✓ GST व FSSAI बिलावर छापले जाणार नाही (No GST on bill)
+                  </div>
+                )}
+                {settings.profile.upiId?.trim() && (
+                  <div className="text-[9px] text-stone-600">
+                    UPI: {settings.profile.upiId.trim()}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -657,6 +727,18 @@ export default function SettingsPage() {
                     className="h-4 w-4 rounded border-stone-300 text-red-600 focus:ring-red-500"
                   />
                 </label>
+              </div>
+
+              {/* Hardware Card Save Button */}
+              <div className="pt-4 border-t border-stone-200 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2.5 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-200" />
+                  <span>💾 बदल सेव्ह करा (Save Printer Settings)</span>
+                </button>
               </div>
             </div>
           </div>
@@ -929,7 +1011,7 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    GST Rate (Standalone Restaurant) *
+                    GST Rate (Standalone Restaurant)
                   </label>
                   <div className="relative">
                     <input
@@ -947,13 +1029,13 @@ export default function SettingsPage() {
                     <span className="absolute right-3 top-2 text-xs font-bold text-stone-400">%</span>
                   </div>
                   <span className="text-[10px] text-stone-500 mt-1 block">
-                    Split equally: CGST (2.5%) + SGST (2.5%)
+                    Split equally: CGST (2.5%) + SGST (2.5%) (GSTIN नसल्यास 0% लागू होईल)
                   </span>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Takeaway Packaging Charge Per Parcel *
+                    Takeaway Packaging Charge Per Parcel
                   </label>
                   <div className="relative">
                     <input
@@ -1012,7 +1094,7 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Manager 4-Digit Security PIN *
+                      Manager 4-Digit Security PIN
                     </label>
                     <input
                       type="password"
@@ -1033,7 +1115,7 @@ export default function SettingsPage() {
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Maximum Discount Without PIN (%) *
+                      Maximum Discount Without PIN (%)
                     </label>
                     <div className="relative">
                       <input
@@ -1056,6 +1138,18 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Billing Card Save Button */}
+              <div className="pt-4 border-t border-stone-200 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2.5 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-200" />
+                  <span>💾 बदल सेव्ह करा (Save Billing Rules)</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1157,6 +1251,18 @@ export default function SettingsPage() {
                     Standard 4-seater wooden benches
                   </span>
                 </div>
+              </div>
+
+              {/* Dining Card Save Button */}
+              <div className="pt-4 border-t border-stone-200 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={handleSaveAll}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2.5 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all"
+                >
+                  <Save className="w-3.5 h-3.5 text-amber-200" />
+                  <span>💾 बदल सेव्ह करा (Save Dining Settings)</span>
+                </button>
               </div>
             </div>
           </div>
@@ -1435,6 +1541,39 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* PERSISTENT FLOATING BOTTOM SAVE BAR */}
+      <div className="sticky bottom-3 z-30 bg-stone-900/95 backdrop-blur-md text-white border border-stone-700/80 px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></div>
+          <div>
+            <span className="text-xs font-black text-stone-100 block sm:inline">
+              प्रणाली सेटिंग्ज (System Settings)
+            </span>
+            <span className="text-[11px] text-stone-400 hidden sm:inline sm:ml-2">
+              कोणतीही माहिती बदलल्यानंतर 'बदल सेव्ह करा' बटण दाबा.
+            </span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSaveAll}
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2.5 text-xs font-black shadow-md shadow-red-700/30 active:scale-95 transition-all touch-manipulation cursor-pointer shrink-0"
+        >
+          {isSaved ? (
+            <>
+              <Check className="w-4 h-4 text-emerald-300" />
+              <span>सेव्ह झाले! (Saved!)</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 text-amber-200" />
+              <span>💾 बदल सेव्ह करा (Save All)</span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* MODAL: MULTI-DEVICE THERMAL PRINTER FLEET MANAGER */}
       <PrinterSettingsModal

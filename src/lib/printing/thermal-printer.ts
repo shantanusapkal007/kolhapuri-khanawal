@@ -21,45 +21,29 @@ import { EscPosBuilder } from "./escpos-builder";
 
 export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder };
 
-// ── Restaurant Header Constants ──────────────────────────────────
-export const RESTAURANT_NAME = "कोल्हापुरी खानावळ";
-export const RESTAURANT_NAME_EN = "KOLHAPURI KHANAWAL";
-export const RESTAURANT_ADDRESS = "CSMT Road, Shahupuri, Kolhapur - 416001";
-export const RESTAURANT_PHONE = "+91 98230 12345";
-export const RESTAURANT_GSTIN = "27AAAAA0000A1Z5";
-export const RESTAURANT_FSSAI = "11026999000123";
-export const RESTAURANT_UPI_ID = "kolhapurikhanawal@okhdfcbank";
-
-export function getActiveRestaurantProfile() {
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem("kk_restaurant_settings");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.profile) {
-          return {
-            nameMr: parsed.profile.nameMr || RESTAURANT_NAME,
-            nameEn: parsed.profile.nameEn || RESTAURANT_NAME_EN,
-            address: parsed.profile.address || RESTAURANT_ADDRESS,
-            phone: parsed.profile.primaryPhone || RESTAURANT_PHONE,
-            gstin: parsed.profile.gstin || RESTAURANT_GSTIN,
-            fssai: parsed.profile.fssai || RESTAURANT_FSSAI,
-            upiId: parsed.profile.upiId || RESTAURANT_UPI_ID,
-          };
-        }
-      }
-    } catch {}
-  }
-  return {
-    nameMr: RESTAURANT_NAME,
-    nameEn: RESTAURANT_NAME_EN,
-    address: RESTAURANT_ADDRESS,
-    phone: RESTAURANT_PHONE,
-    gstin: RESTAURANT_GSTIN,
-    fssai: RESTAURANT_FSSAI,
-    upiId: RESTAURANT_UPI_ID,
-  };
-}
+// ── Restaurant Header Constants & Profile Provider ───────────────
+export {
+  RESTAURANT_NAME,
+  RESTAURANT_NAME_EN,
+  RESTAURANT_ADDRESS,
+  RESTAURANT_PHONE,
+  RESTAURANT_GSTIN,
+  RESTAURANT_FSSAI,
+  RESTAURANT_UPI_ID,
+  getActiveRestaurantProfile,
+  type ActiveRestaurantProfile,
+} from "./restaurant-profile";
+import {
+  getActiveRestaurantProfile,
+  type ActiveRestaurantProfile,
+  RESTAURANT_NAME,
+  RESTAURANT_NAME_EN,
+  RESTAURANT_ADDRESS,
+  RESTAURANT_PHONE,
+  RESTAURANT_GSTIN,
+  RESTAURANT_FSSAI,
+  RESTAURANT_UPI_ID,
+} from "./restaurant-profile";
 
 // ── Default Printer Settings ─────────────────────────────────────
 export const DEFAULT_PRINTER_SETTINGS: PrinterSettings = {
@@ -528,7 +512,8 @@ export function triggerRawBtPrint(base64Payload: string): void {
 export function generateBillReceiptHtml(
   bill: Bill,
   isDuplicate: boolean = false,
-  paperWidthOrSettings: "80mm" | "58mm" | { paperWidth?: "80mm" | "58mm" } = "80mm"
+  paperWidthOrSettings: "80mm" | "58mm" | { paperWidth?: "80mm" | "58mm" } = "80mm",
+  customProfile?: Partial<ActiveRestaurantProfile>
 ): string {
   const targetWidth =
     typeof paperWidthOrSettings === "object" && paperWidthOrSettings !== null
@@ -537,6 +522,40 @@ export function generateBillReceiptHtml(
   const now = new Date().toISOString();
   const printTime = formatDateTime(now);
   const billTime = formatDateTime(bill.createdAt);
+
+  const baseProfile = getActiveRestaurantProfile();
+  const profile = customProfile ? { ...baseProfile, ...customProfile } : baseProfile;
+
+  // Header Lines
+  const headerHtmlParts: string[] = [];
+  if (profile.nameMr) {
+    headerHtmlParts.push(`<div class="big">${profile.nameMr}</div>`);
+  }
+  if (profile.nameEn) {
+    headerHtmlParts.push(`<div class="bold">${profile.nameEn}</div>`);
+  }
+  if (profile.tagline) {
+    headerHtmlParts.push(`<div class="small">${profile.tagline}</div>`);
+  }
+  if (profile.address) {
+    headerHtmlParts.push(`<div class="small">${profile.address}</div>`);
+  }
+  if (profile.phone) {
+    const sec = profile.secondaryPhone ? ` / ${profile.secondaryPhone}` : "";
+    headerHtmlParts.push(`<div class="small">Ph: ${profile.phone}${sec}</div>`);
+  }
+
+  // Compliance Line (GSTIN / FSSAI) - ONLY print if there is data!
+  const complianceTokens: string[] = [];
+  if (profile.gstin && profile.gstin.trim()) {
+    complianceTokens.push(`GSTIN: ${profile.gstin.trim()}`);
+  }
+  if (profile.fssai && profile.fssai.trim()) {
+    complianceTokens.push(`FSSAI: ${profile.fssai.trim()}`);
+  }
+  if (complianceTokens.length > 0) {
+    headerHtmlParts.push(`<div class="tiny">${complianceTokens.join(" | ")}</div>`);
+  }
 
   let itemsHtml = "";
   let srNo = 0;
@@ -572,6 +591,12 @@ export function generateBillReceiptHtml(
           .reduce((sum, p) => sum + p.amount, 0) - bill.grandTotal
       : 0;
 
+  const hasGst = Boolean(
+    profile.gstin &&
+    profile.gstin.trim() &&
+    (bill.cgstAmount > 0 || bill.sgstAmount > 0 || bill.totalTaxAmount > 0)
+  );
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -603,11 +628,7 @@ export function generateBillReceiptHtml(
 
   <!-- Restaurant Header -->
   <div class="center">
-    <div class="big">${RESTAURANT_NAME}</div>
-    <div class="bold">${RESTAURANT_NAME_EN}</div>
-    <div class="small">${RESTAURANT_ADDRESS}</div>
-    <div class="small">Ph: ${RESTAURANT_PHONE}</div>
-    <div class="tiny">GSTIN: ${RESTAURANT_GSTIN} | FSSAI: ${RESTAURANT_FSSAI}</div>
+    ${headerHtmlParts.join("\n    ")}
   </div>
 
   <div class="dashed"></div>
@@ -670,18 +691,22 @@ export function generateBillReceiptHtml(
           </tr>`
         : ""
     }
-    <tr class="totals-row">
-      <td colspan="3">Taxable Amount:</td>
-      <td colspan="2" class="right">₹${bill.taxableAmount.toFixed(2)}</td>
-    </tr>
-    <tr class="totals-row">
-      <td colspan="3">CGST (2.5%):</td>
-      <td colspan="2" class="right">₹${bill.cgstAmount.toFixed(2)}</td>
-    </tr>
-    <tr class="totals-row">
-      <td colspan="3">SGST (2.5%):</td>
-      <td colspan="2" class="right">₹${bill.sgstAmount.toFixed(2)}</td>
-    </tr>
+    ${
+      hasGst
+        ? `<tr class="totals-row">
+            <td colspan="3">Taxable Amount:</td>
+            <td colspan="2" class="right">₹${bill.taxableAmount.toFixed(2)}</td>
+          </tr>
+          <tr class="totals-row">
+            <td colspan="3">CGST (2.5%):</td>
+            <td colspan="2" class="right">₹${bill.cgstAmount.toFixed(2)}</td>
+          </tr>
+          <tr class="totals-row">
+            <td colspan="3">SGST (2.5%):</td>
+            <td colspan="2" class="right">₹${bill.sgstAmount.toFixed(2)}</td>
+          </tr>`
+        : ""
+    }
     ${
       bill.roundOff !== 0
         ? `<tr class="totals-row">
@@ -730,9 +755,12 @@ export function generateBillReceiptHtml(
       : ""
   }
 
-  <div class="dashed"></div>
-
-  <div class="tiny center">HSN/SAC: 996331 | Standalone Restaurant (5% GST)</div>
+  ${
+    hasGst
+      ? `<div class="dashed"></div>
+  <div class="tiny center">HSN/SAC: 996331 | Standalone Restaurant (5% GST)</div>`
+      : ""
+  }
 
   <div class="dashed"></div>
 
@@ -740,7 +768,7 @@ export function generateBillReceiptHtml(
   <div class="footer-msg">
     <div class="bold">धन्यवाद! पुन्हा भेट द्या!</div>
     <div>Thank you for dining with us!</div>
-    <div class="tiny" style="padding-top:3px;">This is a computer-generated tax invoice.</div>
+    <div class="tiny" style="padding-top:3px;">${hasGst ? "This is a computer-generated tax invoice." : "This is a computer-generated bill receipt."}</div>
     <div class="tiny">Printed: ${printTime}</div>
   </div>
 
@@ -823,6 +851,14 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
       </tr>`;
   }
 
+  const baseProfile = getActiveRestaurantProfile();
+  const profile = params.profile ? { ...baseProfile, ...params.profile } : baseProfile;
+  const hasGst = Boolean(
+    profile.gstin &&
+    profile.gstin.trim() &&
+    taxEstimate > 0
+  );
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -839,9 +875,10 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   </div>
 
   <div class="center">
-    <div class="big">${RESTAURANT_NAME}</div>
-    <div class="bold">${RESTAURANT_NAME_EN}</div>
-    <div class="small">${RESTAURANT_ADDRESS}</div>
+    ${profile.nameMr ? `<div class="big">${profile.nameMr}</div>` : ""}
+    ${profile.nameEn ? `<div class="bold">${profile.nameEn}</div>` : ""}
+    ${profile.address ? `<div class="small">${profile.address}</div>` : ""}
+    ${profile.phone ? `<div class="small">Ph: ${profile.phone}</div>` : ""}
   </div>
 
   <div class="dashed"></div>
@@ -888,10 +925,14 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
       <td colspan="3">Subtotal:</td>
       <td colspan="2" class="right bold">₹${subtotal.toFixed(2)}</td>
     </tr>
-    <tr class="totals-row">
-      <td colspan="3">Estimated GST (5%):</td>
-      <td colspan="2" class="right">₹${taxEstimate.toFixed(2)}</td>
-    </tr>
+    ${
+      hasGst
+        ? `<tr class="totals-row">
+            <td colspan="3">Estimated GST (5%):</td>
+            <td colspan="2" class="right">₹${taxEstimate.toFixed(2)}</td>
+          </tr>`
+        : ""
+    }
   </table>
 
   <div class="grand-total" style="display:flex; justify-content:space-between;">
@@ -899,16 +940,22 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
     <span>₹${grandTotal.toFixed(2)}</span>
   </div>
 
+  ${
+    profile.upiId && profile.upiId.trim()
+      ? `
   <div class="dashed"></div>
 
   <!-- UPI QR Payment Simulation Instructions -->
   <div style="border:1px dashed #000; padding:4px; text-align:center; margin:4px 0;">
     <div class="bold small">⚡ PAY VIA UPI AT TABLE ⚡</div>
     <div class="tiny" style="padding-top:2px;">GPay • PhonePe • Paytm • BHIM</div>
-    <div class="small bold" style="padding-top:2px;">UPI ID: kolhapurikhanawal@okaxis</div>
-    <div class="tiny" style="word-break:break-all;">upi://pay?pa=kolhapurikhanawal@okaxis&pn=KolhapuriKhanawal&am=${grandTotal.toFixed(2)}</div>
+    <div class="small bold" style="padding-top:2px;">UPI ID: ${profile.upiId}</div>
+    <div class="tiny" style="word-break:break-all;">upi://pay?pa=${profile.upiId}&pn=${encodeURIComponent(profile.upiMerchantName || profile.nameEn || "KolhapuriKhanawal")}&am=${grandTotal.toFixed(2)}</div>
     <div class="bold" style="font-size:13px; padding-top:2px;">Amount: ₹${grandTotal.toFixed(2)}</div>
   </div>
+  `
+      : ""
+  }
 
   <div class="footer-msg">
     <div class="bold">कृपया पेमेंट वेटरकडे किंवा काउंटरवर जमा करा.</div>
