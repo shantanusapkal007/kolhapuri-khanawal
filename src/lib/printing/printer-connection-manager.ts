@@ -910,7 +910,10 @@ class PrinterConnectionManager {
 
     // 1. Virtual COM Port (Web Serial RFCOMM) mode:
     // Windows/Linux/Mac pairs SPP RFCOMM devices as virtual COM ports (e.g. COM3/COM4).
-    if (mode === "VIRTUAL_COM" || (mode === "AUTO" && device.serialPortName)) {
+    if (
+      mode === "VIRTUAL_COM" ||
+      (mode === "AUTO" && (device.serialPortName || (typeof window !== "undefined" && "serial" in navigator)))
+    ) {
       await this.sendSerialPayload(device, bytes);
       return;
     }
@@ -1446,6 +1449,344 @@ class PrinterConnectionManager {
     return { success: true, message: "Queued in spooler" };
   }
 
+  /**
+   * Directly prints a customer bill/receipt with immediate user gesture activation.
+   * On Android / Mobile: Dispatches to openPrintWindow (or RawBT) immediately in the user gesture.
+   * On Desktop: Writes to serial COM port directly or triggers browser prompt if needed.
+   * Enqueues into spooler history as SUCCESS.
+   */
+  public async printDirectBill(
+    bill: Bill,
+    isDuplicate: boolean = false,
+    settings?: PrinterSettings,
+    htmlFallbackFn?: (bill: Bill, isDup: boolean, width?: "80mm" | "58mm") => string
+  ): Promise<{ success: boolean; message?: string }> {
+    const currentSettings = settings || this.getStoredSettings();
+    const devices = this.getActiveDevices(currentSettings);
+    const targetPrinter = this.findPrinterForStation(devices, "CASHIER", "RECEIPT");
+
+    const html = htmlFallbackFn
+      ? htmlFallbackFn(bill, isDuplicate, targetPrinter.paperWidth)
+      : undefined;
+    const title = `${isDuplicate ? "DUPLICATE " : ""}Bill ${bill.billNumber}`;
+
+    const escposBytes = buildBillReceiptEscPos(bill, isDuplicate, targetPrinter.paperWidth);
+    const idempotencyKey = isDuplicate ? undefined : `bill-${bill.id}-${bill.paidAmount || bill.grandTotal}`;
+
+    const job = this.enqueueJob(
+      targetPrinter,
+      title,
+      "RECEIPT",
+      escposBytes,
+      html,
+      "CASHIER",
+      idempotencyKey
+    );
+
+    const markSuccess = (msg: string) => {
+      job.status = "SUCCESS";
+      job.completedAt = new Date().toISOString();
+      this.saveJobsToStorage();
+      this.notifyListeners();
+      return { success: true, message: msg };
+    };
+
+    // 1. Browser System Print
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Browser print window opened");
+    }
+
+    // 2. Serial USB or Bluetooth SPP (Virtual COM / Web Serial)
+    if (
+      targetPrinter.connectionType === "SERIAL_USB" ||
+      targetPrinter.connectionType === "BLUETOOTH_SPP"
+    ) {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+
+      if (isMobile) {
+        if (targetPrinter.sppMode === "RAWBT_RFCOMM") {
+          const b64 = this.bytesToBase64(escposBytes);
+          await this.sendRawBtPayload(targetPrinter, b64);
+          return markSuccess("Sent via RawBT Android");
+        }
+        if (html) openPrintWindow(html, title);
+        return markSuccess("Dispatched to System Print (Mobile mode)");
+      }
+
+      // Desktop: Check Web Serial API
+      if (typeof window !== "undefined" && "serial" in navigator) {
+        try {
+          let port = this.serialPorts.get(targetPrinter.id);
+          if (!port) {
+            const availablePorts = await (navigator as any).serial.getPorts();
+            if (availablePorts && availablePorts.length > 0) {
+              port = availablePorts[0];
+              this.serialPorts.set(targetPrinter.id, port);
+            } else {
+              // Direct user click: prompt port chooser
+              port = await (navigator as any).serial.requestPort();
+              if (port) {
+                this.serialPorts.set(targetPrinter.id, port);
+              }
+            }
+          }
+
+          if (port) {
+            await this.sendSerialPayload(targetPrinter, escposBytes);
+            return markSuccess(
+              `Printed to ${targetPrinter.name} (${targetPrinter.serialPortName || "COM Port"})`
+            );
+          }
+        } catch (err: any) {
+          console.warn("Serial direct bill print failed, falling back to openPrintWindow:", err);
+          if (err.name === "NotFoundError") {
+            if (html) openPrintWindow(html, title);
+            return markSuccess("Dispatched to Print Window");
+          }
+        }
+      }
+
+      // Fallback to openPrintWindow
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Dispatched to Print Window");
+    }
+
+    // 3. RawBT
+    if (targetPrinter.connectionType === "RAWBT") {
+      const b64 = this.bytesToBase64(escposBytes);
+      await this.sendRawBtPayload(targetPrinter, b64);
+      return markSuccess("Sent via RawBT Android");
+    }
+
+    // 4. Network (Wi-Fi / LAN)
+    if (targetPrinter.connectionType === "NETWORK") {
+      if (targetPrinter.ipAddress) {
+        try {
+          const res = await fetch("/api/print/network", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ip: targetPrinter.ipAddress,
+              port: targetPrinter.port || 9100,
+              payloadBase64: this.bytesToBase64(escposBytes),
+              timeoutMs: 2000,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            return markSuccess(`Printed on Network ${targetPrinter.ipAddress}`);
+          }
+        } catch (err) {
+          console.warn("Network print failed, falling back to browser print:", err);
+        }
+      }
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Dispatched to Print Window (Network Fallback)");
+    }
+
+    // Default Fallback
+    if (html) openPrintWindow(html, title);
+    return markSuccess("Dispatched to Print Window");
+  }
+
+  /**
+   * Directly prints a table check / pre-bill estimate with immediate user gesture activation.
+   */
+  public async printDirectTableCheck(
+    params: any,
+    settings?: PrinterSettings,
+    htmlFallbackFn?: (p: any) => string
+  ): Promise<{ success: boolean; message?: string }> {
+    const currentSettings = settings || this.getStoredSettings();
+    const devices = this.getActiveDevices(currentSettings);
+    const targetPrinter = this.findPrinterForStation(devices, "CASHIER", "RECEIPT");
+
+    const html = htmlFallbackFn ? htmlFallbackFn(params) : undefined;
+    const title = `Table Check ${params.party?.partyCode || params.partyCode || "Estimate"}`;
+
+    const escposBytes = buildTableCheckEscPos(params, targetPrinter.paperWidth);
+    const job = this.enqueueJob(targetPrinter, title, "TABLE_CHECK", escposBytes, html, "CASHIER");
+
+    const markSuccess = (msg: string) => {
+      job.status = "SUCCESS";
+      job.completedAt = new Date().toISOString();
+      this.saveJobsToStorage();
+      this.notifyListeners();
+      return { success: true, message: msg };
+    };
+
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Browser print window opened");
+    }
+
+    if (
+      targetPrinter.connectionType === "SERIAL_USB" ||
+      targetPrinter.connectionType === "BLUETOOTH_SPP"
+    ) {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+
+      if (isMobile) {
+        if (targetPrinter.sppMode === "RAWBT_RFCOMM") {
+          const b64 = this.bytesToBase64(escposBytes);
+          await this.sendRawBtPayload(targetPrinter, b64);
+          return markSuccess("Sent via RawBT Android");
+        }
+        if (html) openPrintWindow(html, title);
+        return markSuccess("Dispatched to System Print (Mobile mode)");
+      }
+
+      if (typeof window !== "undefined" && "serial" in navigator) {
+        try {
+          let port = this.serialPorts.get(targetPrinter.id);
+          if (!port) {
+            const availablePorts = await (navigator as any).serial.getPorts();
+            if (availablePorts && availablePorts.length > 0) {
+              port = availablePorts[0];
+              this.serialPorts.set(targetPrinter.id, port);
+            } else {
+              port = await (navigator as any).serial.requestPort();
+              if (port) this.serialPorts.set(targetPrinter.id, port);
+            }
+          }
+          if (port) {
+            await this.sendSerialPayload(targetPrinter, escposBytes);
+            return markSuccess(`Printed to ${targetPrinter.name}`);
+          }
+        } catch (err: any) {
+          console.warn("Serial pre-bill print failed:", err);
+        }
+      }
+
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Dispatched to Print Window");
+    }
+
+    if (html) openPrintWindow(html, title);
+    return markSuccess("Dispatched to Print Window");
+  }
+
+  /**
+   * Directly prints a Kitchen Order Ticket with immediate user gesture activation.
+   */
+  public async printDirectKot(
+    kot: Kot,
+    isReprint: boolean = false,
+    stationFilter?: string,
+    settings?: PrinterSettings,
+    htmlFallbackFn?: (kot: Kot, station?: string, isReprint?: boolean, width?: "80mm" | "58mm") => string
+  ): Promise<{ success: boolean; message?: string }> {
+    const currentSettings = settings || this.getStoredSettings();
+    const devices = this.getActiveDevices(currentSettings);
+    const targetPrinter = this.findPrinterForStation(devices, stationFilter || kot.stationCode, "KOT");
+
+    const html = htmlFallbackFn
+      ? htmlFallbackFn(kot, stationFilter || kot.stationCode, isReprint, targetPrinter.paperWidth)
+      : undefined;
+    const title = `KOT ${kot.kotNumber}${stationFilter ? ` [${stationFilter}]` : ""}`;
+
+    const escposBytes = buildKotEscPos(kot, stationFilter, isReprint, targetPrinter.paperWidth);
+    const idempotencyKey = isReprint ? undefined : `kot-${kot.id || kot.kotNumber}-${stationFilter || "ALL"}`;
+
+    const job = this.enqueueJob(targetPrinter, title, "KOT", escposBytes, html, stationFilter || kot.stationCode, idempotencyKey);
+
+    const markSuccess = (msg: string) => {
+      job.status = "SUCCESS";
+      job.completedAt = new Date().toISOString();
+      this.saveJobsToStorage();
+      this.notifyListeners();
+      return { success: true, message: msg };
+    };
+
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Browser print window opened");
+    }
+
+    if (
+      targetPrinter.connectionType === "SERIAL_USB" ||
+      targetPrinter.connectionType === "BLUETOOTH_SPP"
+    ) {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+
+      if (isMobile) {
+        if (targetPrinter.sppMode === "RAWBT_RFCOMM") {
+          const b64 = this.bytesToBase64(escposBytes);
+          await this.sendRawBtPayload(targetPrinter, b64);
+          return markSuccess("Sent via RawBT Android");
+        }
+        if (html) openPrintWindow(html, title);
+        return markSuccess("Dispatched to System Print (Mobile mode)");
+      }
+
+      if (typeof window !== "undefined" && "serial" in navigator) {
+        try {
+          let port = this.serialPorts.get(targetPrinter.id);
+          if (!port) {
+            const availablePorts = await (navigator as any).serial.getPorts();
+            if (availablePorts && availablePorts.length > 0) {
+              port = availablePorts[0];
+              this.serialPorts.set(targetPrinter.id, port);
+            } else {
+              port = await (navigator as any).serial.requestPort();
+              if (port) this.serialPorts.set(targetPrinter.id, port);
+            }
+          }
+          if (port) {
+            await this.sendSerialPayload(targetPrinter, escposBytes);
+            return markSuccess(`Printed to ${targetPrinter.name}`);
+          }
+        } catch (err: any) {
+          console.warn("Serial KOT print failed:", err);
+        }
+      }
+
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Dispatched to Print Window");
+    }
+
+    if (targetPrinter.connectionType === "RAWBT") {
+      const b64 = this.bytesToBase64(escposBytes);
+      await this.sendRawBtPayload(targetPrinter, b64);
+      return markSuccess("Sent via RawBT Android");
+    }
+
+    if (targetPrinter.connectionType === "NETWORK") {
+      if (targetPrinter.ipAddress) {
+        try {
+          const res = await fetch("/api/print/network", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ip: targetPrinter.ipAddress,
+              port: targetPrinter.port || 9100,
+              payloadBase64: this.bytesToBase64(escposBytes),
+              timeoutMs: 2000,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            return markSuccess(`Printed on Network ${targetPrinter.ipAddress}`);
+          }
+        } catch (err) {
+          console.warn("Network KOT print failed:", err);
+        }
+      }
+      if (html) openPrintWindow(html, title);
+      return markSuccess("Dispatched to Print Window (Network Fallback)");
+    }
+
+    if (html) openPrintWindow(html, title);
+    return markSuccess("Dispatched to Print Window");
+  }
+
   private generateDiagnosticHtml(device: PrinterDevice): string {
     const is58mm = device.paperWidth === "58mm";
     const now = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
@@ -1501,16 +1842,33 @@ class PrinterConnectionManager {
     return configured.filter((d) => d.isEnabled);
   }
 
-  private findPrinterForStation(
+  public findPrinterForStation(
     devices: PrinterDevice[],
     stationCode: string,
     role: "RECEIPT" | "KOT"
   ): PrinterDevice {
-    // 1. Look for a printer explicitly assigned to this stationCode
+    // 1. For RECEIPT: ALWAYS prioritize the designated default receipt printer!
+    if (role === "RECEIPT") {
+      const defaultReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
+      if (defaultReceipt) return defaultReceipt;
+
+      // Check if user has paired a real hardware printer (Serial, Bluetooth SPP, RawBT)
+      const hardwareDev = devices.find(
+        (d) =>
+          d.connectionType === "BLUETOOTH_SPP" ||
+          d.connectionType === "SERIAL_USB" ||
+          d.connectionType === "RAWBT" ||
+          /Serial|POS-80|POS-58/i.test(d.name) ||
+          /Serial|POS-80|POS-58/i.test(d.bluetoothDeviceName || "")
+      );
+      if (hardwareDev) return hardwareDev;
+    }
+
+    // 2. Look for a printer explicitly assigned to this stationCode
     const match = devices.find((d) => d.assignedStations && d.assignedStations.includes(stationCode));
     if (match) return match;
 
-    // 2. Look for default role printer
+    // 3. Look for default role printer
     if (role === "RECEIPT") {
       const defaultReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
       if (defaultReceipt) return defaultReceipt;
@@ -1519,7 +1877,11 @@ class PrinterConnectionManager {
       if (defaultKot) return defaultKot;
     }
 
-    // 3. Fallback to first available device
+    // 4. Fallback to default receipt printer if any
+    const defReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
+    if (defReceipt) return defReceipt;
+
+    // 5. Fallback to first available device
     return devices[0] || DEFAULT_PRINTER_DEVICES[0];
   }
 
@@ -1530,6 +1892,41 @@ class PrinterConnectionManager {
         if (raw) return JSON.parse(raw);
       } catch {}
     }
+
+    const isMobile =
+      typeof window !== "undefined" &&
+      (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+
+    const devices = isMobile
+      ? [
+          {
+            id: "printer-mobile-system",
+            name: "Android System Print (सर्वोत्तम व सोपे)",
+            connectionType: "BROWSER_SYSTEM" as const,
+            paperWidth: "80mm" as const,
+            isEnabled: true,
+            status: "ONLINE" as const,
+            assignedStations: [
+              "CASHIER",
+              "MAIN_KITCHEN",
+              "THALI_SECTION",
+              "TANDOOR_BHAKRI",
+              "FRY_SECTION",
+              "BEVERAGE_DESSERT",
+            ],
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: true,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          },
+          ...DEFAULT_PRINTER_DEVICES.filter((d) => d.id !== "printer-posiflow-counter").map((d) => ({
+            ...d,
+            isDefaultReceiptPrinter: false,
+            isDefaultKotPrinter: false,
+          })),
+        ]
+      : DEFAULT_PRINTER_DEVICES;
+
     return {
       paperWidth: "80mm",
       autoPrintKotOnOrder: true,
@@ -1539,7 +1936,7 @@ class PrinterConnectionManager {
       numberOfReceiptCopies: 1,
       printMarathiHeader: true,
       stationPrinters: [],
-      devices: DEFAULT_PRINTER_DEVICES,
+      devices,
       autoSplitKotByStation: true,
       printMasterKotToKitchen: true,
       printSpoolerEnabled: true,

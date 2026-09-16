@@ -749,20 +749,23 @@ export function generateBillReceiptHtml(
 </html>`;
 }
 
-export function printBillReceipt(
+export async function printBillReceipt(
   bill: Bill,
   isDuplicate: boolean = false,
   paperWidth: "80mm" | "58mm" = "80mm"
-): void {
+): Promise<{ success: boolean; message?: string }> {
   const settings = getStoredPrinterSettings();
   if (paperWidth) {
     settings.paperWidth = paperWidth;
   }
-  globalPrinterManager.dispatchBill(bill, isDuplicate, settings, generateBillReceiptHtml);
+  return await globalPrinterManager.printDirectBill(bill, isDuplicate, settings, generateBillReceiptHtml);
 }
 
-export function printBillDuplicate(bill: Bill, paperWidth: "80mm" | "58mm" = "80mm"): void {
-  printBillReceipt(bill, true, paperWidth);
+export async function printBillDuplicate(
+  bill: Bill,
+  paperWidth: "80mm" | "58mm" = "80mm"
+): Promise<{ success: boolean; message?: string }> {
+  return await printBillReceipt(bill, true, paperWidth);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -918,9 +921,12 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
 </html>`;
 }
 
-export function printTableCheck(params: TableCheckParams): void {
+export async function printTableCheck(
+  params: TableCheckParams
+): Promise<{ success: boolean; message?: string }> {
   const settings = getStoredPrinterSettings();
-  globalPrinterManager.dispatchTableCheck(params, settings, generateTableCheckHtml);
+  if (params.paperWidth) settings.paperWidth = params.paperWidth;
+  return await globalPrinterManager.printDirectTableCheck(params, settings, generateTableCheckHtml);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1051,12 +1057,12 @@ export function generateKotHtml(
 </html>`;
 }
 
-export function printKotTicket(
+export async function printKotTicket(
   kot: Kot,
   stationFilterOrOptions?: string | { stationFilter?: string; isReprint?: boolean; paperWidth?: "80mm" | "58mm" },
   isReprint: boolean = false,
   paperWidth: "80mm" | "58mm" = "80mm"
-): void {
+): Promise<{ success: boolean; message?: string }> {
   let finalStationFilter: string | undefined;
   let finalIsReprint = isReprint;
   let finalPaperWidth = paperWidth;
@@ -1073,10 +1079,11 @@ export function printKotTicket(
   if (finalPaperWidth) {
     settings.paperWidth = finalPaperWidth;
   }
-  globalPrinterManager.dispatchKot(
+  return await globalPrinterManager.printDirectKot(
     kot,
-    settings,
     finalIsReprint,
+    finalStationFilter,
+    settings,
     (k, s, r, w) => generateKotHtml(k, finalStationFilter || s, r, w || finalPaperWidth)
   );
 }

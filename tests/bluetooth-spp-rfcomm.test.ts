@@ -451,4 +451,203 @@ describe("Bluetooth Classic SPP & RFCOMM Thermal Printer System", () => {
       expect(kotJobs[0].printerName).toBe("Serial COM Port");
     });
   });
+
+  describe("6. Direct Synchronous Bill & Receipt Printing (Foolproof User Gesture Execution)", () => {
+    it("findPrinterForStation prioritizes isDefaultReceiptPrinter over generic CASHIER station match", () => {
+      const devices: PrinterDevice[] = [
+        {
+          id: "printer-network-dummy",
+          name: "Mock Network Printer",
+          connectionType: "NETWORK",
+          ipAddress: "192.168.1.50",
+          paperWidth: "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        {
+          id: "printer-user-serial",
+          name: "Serial COM Port",
+          bluetoothDeviceName: "KP307-UEWB",
+          connectionType: "BLUETOOTH_SPP",
+          paperWidth: "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+      ];
+
+      const target = globalPrinterManager.findPrinterForStation(devices, "CASHIER", "RECEIPT");
+      expect(target.id).toBe("printer-user-serial");
+      expect(target.name).toBe("Serial COM Port");
+    });
+
+    it("findPrinterForStation auto-detects real hardware printer (Serial/KP307) when default is not set", () => {
+      const devices: PrinterDevice[] = [
+        {
+          id: "printer-network-dummy",
+          name: "Network Wi-Fi Printer (192.168.1.50)",
+          connectionType: "NETWORK",
+          ipAddress: "192.168.1.50",
+          paperWidth: "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: [],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        {
+          id: "printer-serial-com-port",
+          name: "Serial COM Port",
+          bluetoothDeviceName: "KP307-UEWB",
+          connectionType: "BLUETOOTH_SPP",
+          paperWidth: "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+      ];
+
+      const target = globalPrinterManager.findPrinterForStation(devices, "CASHIER", "RECEIPT");
+      expect(target.id).toBe("printer-serial-com-port");
+    });
+
+    it("printDirectBill executes directly, enqueues job with status SUCCESS, and returns success result", async () => {
+      const uniqueBillId = `bill-direct-uniq-${Date.now()}`;
+      const settings: PrinterSettings = {
+        paperWidth: "80mm",
+        autoPrintKotOnOrder: true,
+        autoPrintReceiptOnPayment: true,
+        autoPrintPreBillOnRequest: true,
+        autoKickCashDrawerOnCash: false,
+        numberOfReceiptCopies: 1,
+        printMarathiHeader: true,
+        stationPrinters: [],
+        devices: [
+          {
+            id: "printer-sys-direct",
+            name: "Android System Print",
+            connectionType: "BROWSER_SYSTEM",
+            paperWidth: "80mm",
+            isEnabled: true,
+            status: "ONLINE",
+            assignedStations: ["CASHIER"],
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: true,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          },
+        ],
+      };
+
+      const res = await globalPrinterManager.printDirectBill(
+        { ...mockBill, id: uniqueBillId },
+        false,
+        settings,
+        () => "<html><body>Receipt</body></html>"
+      );
+
+      expect(res.success).toBe(true);
+      expect(res.message).toBeDefined();
+
+      const jobs = globalPrinterManager.getJobs();
+      const directJob = jobs.find((j) => j.idempotencyKey === `bill-${uniqueBillId}-${mockBill.paidAmount || mockBill.grandTotal}`);
+      expect(directJob).toBeDefined();
+      expect(directJob?.status).toBe("SUCCESS");
+    });
+
+    it("printDirectTableCheck directly dispatches table check without queuing delay", async () => {
+      const settings: PrinterSettings = {
+        paperWidth: "80mm",
+        autoPrintKotOnOrder: true,
+        autoPrintReceiptOnPayment: true,
+        autoPrintPreBillOnRequest: true,
+        autoKickCashDrawerOnCash: false,
+        numberOfReceiptCopies: 1,
+        printMarathiHeader: true,
+        stationPrinters: [],
+        devices: [
+          {
+            id: "printer-sys-check",
+            name: "System Print",
+            connectionType: "BROWSER_SYSTEM",
+            paperWidth: "80mm",
+            isEnabled: true,
+            status: "ONLINE",
+            assignedStations: ["CASHIER"],
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: false,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          },
+        ],
+      };
+
+      const res = await globalPrinterManager.printDirectTableCheck(
+        {
+          party: { id: "p-01", partyCode: "P-101", tableNumber: 1, guestCount: 2 },
+          items: [],
+          subtotal: 500,
+          taxEstimate: 25,
+          grandTotal: 525,
+        },
+        settings,
+        () => "<html><body>Pre-Bill</body></html>"
+      );
+
+      expect(res.success).toBe(true);
+    });
+
+    it("printDirectKot directly dispatches KOT without queuing delay", async () => {
+      const settings: PrinterSettings = {
+        paperWidth: "80mm",
+        autoPrintKotOnOrder: true,
+        autoPrintReceiptOnPayment: true,
+        autoPrintPreBillOnRequest: true,
+        autoKickCashDrawerOnCash: false,
+        numberOfReceiptCopies: 1,
+        printMarathiHeader: true,
+        stationPrinters: [],
+        devices: [
+          {
+            id: "printer-sys-kot",
+            name: "Kitchen System Print",
+            connectionType: "BROWSER_SYSTEM",
+            paperWidth: "80mm",
+            isEnabled: true,
+            status: "ONLINE",
+            assignedStations: ["MAIN_KITCHEN"],
+            isDefaultReceiptPrinter: false,
+            isDefaultKotPrinter: true,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          },
+        ],
+      };
+
+      const res = await globalPrinterManager.printDirectKot(
+        mockKot,
+        false,
+        undefined,
+        settings,
+        () => "<html><body>KOT</body></html>"
+      );
+
+      expect(res.success).toBe(true);
+    });
+  });
 });

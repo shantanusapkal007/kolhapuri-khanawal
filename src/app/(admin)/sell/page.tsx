@@ -91,9 +91,18 @@ export default function SellPage() {
     return matchesQuery && matchesMethod;
   });
 
-  const handlePrintReprint = (bill: Bill) => {
-    printBillDuplicate(bill, store.printerSettings?.paperWidth || "80mm");
-    showToast(`Bill #${bill.billNumber} duplicate printed!`);
+  const handlePrintReprint = async (bill: Bill) => {
+    showToast("रीप्रिंट पावती पाठवत आहे...");
+    try {
+      const res = await printBillDuplicate(bill, store.printerSettings?.paperWidth || "80mm");
+      if (res?.success) {
+        showToast(`✅ Bill #${bill.billNumber} रीप्रिंट झाले! (${res.message || "Success"})`);
+      } else {
+        showToast(`⚠️ Bill #${bill.billNumber}: ${res?.message || "रीप्रिंट पाठवले"}`);
+      }
+    } catch (err: any) {
+      showToast(`❌ एरर: ${err?.message || "Reprint failed"}`);
+    }
   };
 
   return (

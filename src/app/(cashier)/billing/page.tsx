@@ -199,7 +199,57 @@ export default function CashierBillingPage() {
     }
   };
 
-  const handleRecordPaymentSubmit = (e: React.FormEvent) => {
+  const handlePrintReceipt = async (bill: Bill, isDuplicate = false) => {
+    showToast("पावती प्रिंट करत आहे... (Printing receipt...)");
+    try {
+      const res = await printBillReceipt(bill, isDuplicate, store.printerSettings?.paperWidth || "80mm");
+      if (res?.success) {
+        showToast(`✅ ${res.message || "पावती प्रिंट झाली!"}`);
+      } else {
+        showToast(`⚠️ ${res?.message || "पावती पाठवली"}`);
+      }
+    } catch (err: any) {
+      showToast(`❌ प्रिंट एरर: ${err?.message || "Failed"}`);
+    }
+  };
+
+  const handlePrintPreBill = async (bill: Bill) => {
+    const party = store.parties.find((p) => p.id === bill.partyId);
+    if (!party) return;
+    showToast("कच्चा बिल प्रिंट करत आहे... (Printing pre-bill...)");
+    try {
+      const res = await printTableCheck({
+        party,
+        items: bill.items.map((it) => ({
+          id: it.orderItemId,
+          orderId: bill.id,
+          partyId: bill.partyId,
+          menuItemId: it.menuItemId,
+          menuItemName: it.menuItemName,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          totalPrice: it.totalPrice,
+          seatNumber: it.seatNumber,
+          kotStatus: "SERVED",
+          isCancelled: false,
+        })),
+        subtotal: bill.subtotal,
+        taxEstimate: bill.totalTaxAmount,
+        grandTotal: bill.grandTotal,
+        cashierName: bill.cashierName,
+        paperWidth: store.printerSettings?.paperWidth || "80mm",
+      });
+      if (res?.success) {
+        showToast(`✅ Table ${bill.tableNumber} कच्चा बिल प्रिंट झाले!`);
+      } else {
+        showToast(`⚠️ Table ${bill.tableNumber}: ${res?.message || "कच्चा बिल पाठवले"}`);
+      }
+    } catch (err: any) {
+      showToast(`❌ एरर: ${err?.message || "Pre-bill failed"}`);
+    }
+  };
+
+  const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeBill) return;
 
@@ -231,8 +281,8 @@ export default function CashierBillingPage() {
             ? `Bill ${result.bill.billNumber} PAID IN FULL! Return change: ₹${changeReturn}`
             : `Bill ${result.bill.billNumber} PAID IN FULL! Table status updated.`
         );
-        // Auto-print receipt on full payment
-        printBillReceipt(result.bill);
+        // Direct auto-print receipt on full payment
+        await handlePrintReceipt(result.bill, false);
         if (paymentMethod === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
           triggerCashDrawerKick();
         }
@@ -728,15 +778,15 @@ export default function CashierBillingPage() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={() => printBillReceipt(activeBill, false, store.printerSettings?.paperWidth || "80mm")}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation"
+                      onClick={() => activeBill && handlePrintReceipt(activeBill, false)}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation cursor-pointer"
                     >
                       <Printer className="w-4 h-4" />
                       <span>Print Receipt</span>
                     </button>
                     <button
                       onClick={() => setIsPrintModalOpen(true)}
-                      className="flex items-center justify-center gap-1.5 bg-white border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95"
+                      className="flex items-center justify-center gap-1.5 bg-white border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Preview</span>
@@ -744,34 +794,8 @@ export default function CashierBillingPage() {
                     {activeBill.balanceDue > 0 && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const party = store.parties.find((p) => p.id === activeBill.partyId);
-                          if (party) {
-                            printTableCheck({
-                              party,
-                              items: activeBill.items.map((it) => ({
-                                id: it.orderItemId,
-                                orderId: activeBill.id,
-                                partyId: activeBill.partyId,
-                                menuItemId: it.menuItemId,
-                                menuItemName: it.menuItemName,
-                                quantity: it.quantity,
-                                unitPrice: it.unitPrice,
-                                totalPrice: it.totalPrice,
-                                seatNumber: it.seatNumber,
-                                kotStatus: "SERVED",
-                                isCancelled: false,
-                              })),
-                              subtotal: activeBill.subtotal,
-                              taxEstimate: activeBill.totalTaxAmount,
-                              grandTotal: activeBill.grandTotal,
-                              cashierName: activeBill.cashierName,
-                              paperWidth: store.printerSettings?.paperWidth || "80mm",
-                            });
-                            showToast(`Table Check / Pre-Bill printed for Table ${activeBill.tableNumber}`);
-                          }
-                        }}
-                        className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95"
+                        onClick={() => activeBill && handlePrintPreBill(activeBill)}
+                        className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
                         title="Print interim table check / estimate for guest review"
                       >
                         <FileText className="w-3.5 h-3.5 text-amber-700" />
