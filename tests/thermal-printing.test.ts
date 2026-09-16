@@ -110,6 +110,8 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
 
       expect(html).toContain("80mm");
       expect(html).toContain("Courier New");
+      expect(html).toContain("font-weight: 700 !important");
+      expect(html).toContain("print-color-adjust: exact");
       expect(html).toContain("कोल्हापुरी खानावळ");
       expect(html).toContain("KOLHAPURI KHANAWAL");
       expect(html).toContain("GSTIN: 27AAAAA0000A1Z5");
@@ -243,6 +245,10 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(text).not.toContain("SGST (2.5%):");
       expect(text).not.toContain("HSN/SAC: 996331");
       expect(text).toContain("This is a computer-generated bill receipt.");
+
+      // Verify emphasized bold mode (ESC E 1) is present so printout is dark and not blurry
+      const hasEscE1 = bytes.some((b, i) => b === 0x1b && bytes[i + 1] === 0x45 && bytes[i + 2] === 0x01);
+      expect(hasEscE1).toBe(true);
     });
   });
 

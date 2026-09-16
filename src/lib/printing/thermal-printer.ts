@@ -157,29 +157,36 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-weight: 700 !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    text-rendering: geometricPrecision;
   }
   body {
-    font-family: 'Courier New', 'Lucida Console', monospace;
+    font-family: 'Courier New', 'Courier', 'Lucida Console', Monaco, monospace;
     font-size: ${baseFontSize};
-    line-height: 1.4;
-    color: #000;
-    background: #fff;
+    font-weight: 700 !important;
+    line-height: 1.35;
+    color: #000000 !important;
+    background: #ffffff !important;
     width: ${targetWidth};
     max-width: ${targetWidth};
     padding: 4mm 3mm;
+    -webkit-font-smoothing: antialiased;
   }
   .center { text-align: center; }
   .right { text-align: right; }
-  .bold { font-weight: bold; }
-  .big { font-size: ${bigFontSize}; font-weight: bold; }
-  .small { font-size: ${is58mm ? "8.5px" : "10px"}; }
-  .tiny { font-size: ${is58mm ? "7.5px" : "9px"}; }
+  .bold { font-weight: 900 !important; }
+  .big { font-size: ${bigFontSize}; font-weight: 900 !important; }
+  .small { font-size: ${is58mm ? "9.5px" : "10.5px"}; font-weight: 700 !important; }
+  .tiny { font-size: ${is58mm ? "8.5px" : "9.5px"}; font-weight: 700 !important; }
   .dashed {
-    border-top: 1px dashed #000;
+    border-top: 1.5px dashed #000000 !important;
     margin: 4px 0;
   }
   .double-line {
-    border-top: 2px solid #000;
+    border-top: 2.5px solid #000000 !important;
     margin: 4px 0;
   }
   table {
@@ -187,73 +194,80 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     border-collapse: collapse;
   }
   th, td {
-    padding: 1px 0;
+    padding: 1.5px 0;
     vertical-align: top;
+    font-weight: 700 !important;
+    color: #000000 !important;
   }
-  th { font-weight: bold; }
+  th { font-weight: 900 !important; }
   .item-name {
     max-width: ${itemColWidth};
     word-wrap: break-word;
     overflow-wrap: break-word;
+    font-weight: 700 !important;
   }
-  .qty { text-align: center; width: 8mm; }
-  .amt { text-align: right; width: ${is58mm ? "13mm" : "16mm"}; }
-  .rate { text-align: right; width: ${is58mm ? "11mm" : "14mm"}; }
-  .sr { text-align: center; width: 5mm; }
+  .qty { text-align: center; width: 8mm; font-weight: 900 !important; }
+  .amt { text-align: right; width: ${is58mm ? "13mm" : "16mm"}; font-weight: 800 !important; }
+  .rate { text-align: right; width: ${is58mm ? "11mm" : "14mm"}; font-weight: 700 !important; }
+  .sr { text-align: center; width: 5mm; font-weight: 700 !important; }
   .totals-row td {
-    padding: 1px 0;
+    padding: 1.5px 0;
+    font-weight: 700 !important;
   }
   .grand-total {
-    font-size: ${is58mm ? "13px" : "15px"};
-    font-weight: bold;
-    border-top: 2px solid #000;
-    border-bottom: 2px solid #000;
+    font-size: ${is58mm ? "14px" : "16px"};
+    font-weight: 900 !important;
+    border-top: 2.5px solid #000000 !important;
+    border-bottom: 2.5px solid #000000 !important;
     padding: 3px 0;
   }
   .kot-header {
     font-size: ${kotHeaderSize};
-    font-weight: bold;
+    font-weight: 900 !important;
     text-align: center;
     letter-spacing: 1px;
-    border: 2px solid #000;
+    border: 2.5px solid #000000 !important;
     padding: 3px;
     margin-bottom: 4px;
   }
   .kot-table-info {
-    font-size: ${is58mm ? "13px" : "16px"};
-    font-weight: bold;
+    font-size: ${is58mm ? "14px" : "17px"};
+    font-weight: 900 !important;
     text-align: center;
     padding: 2px;
   }
   .kot-item {
-    font-size: ${is58mm ? "12px" : "14px"};
-    font-weight: bold;
+    font-size: ${is58mm ? "13px" : "15px"};
+    font-weight: 900 !important;
     padding: 3px 0;
-    border-bottom: 1px dotted #000;
+    border-bottom: 1.5px dotted #000000 !important;
   }
   .kot-item .qty-badge {
     display: inline-block;
-    border: 1px solid #000;
-    padding: 1px 4px;
+    border: 1.5px solid #000000 !important;
+    padding: 1px 5px;
     margin-right: 4px;
-    font-weight: bold;
-    font-size: ${is58mm ? "12px" : "14px"};
+    font-weight: 900 !important;
+    font-size: ${is58mm ? "13px" : "15px"};
   }
   .kot-notes {
     font-style: italic;
-    font-size: ${is58mm ? "9.5px" : "11px"};
+    font-size: ${is58mm ? "10px" : "11.5px"};
     padding-left: 8mm;
-    color: #222;
+    color: #000000 !important;
+    font-weight: 700 !important;
   }
   .kot-spice {
-    font-size: ${is58mm ? "9px" : "10px"};
+    font-size: ${is58mm ? "10px" : "11.5px"};
     padding-left: 8mm;
-    font-weight: bold;
+    font-weight: 900 !important;
+    color: #000000 !important;
   }
   .footer-msg {
     text-align: center;
-    font-size: ${is58mm ? "8.5px" : "10px"};
+    font-size: ${is58mm ? "9.5px" : "10.5px"};
     padding-top: 4px;
+    font-weight: 700 !important;
   }
   `;
 }
@@ -396,6 +410,24 @@ function directMobilePrint(html: string, title: string): void {
             padding: 0 !important;
             background: #fff !important;
             color: #000 !important;
+            font-weight: 700 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #kk-direct-print-root, #kk-direct-print-root * {
+            font-weight: 700 !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          #kk-direct-print-root .bold,
+          #kk-direct-print-root .big,
+          #kk-direct-print-root th,
+          #kk-direct-print-root .grand-total,
+          #kk-direct-print-root .kot-header,
+          #kk-direct-print-root .kot-table-info,
+          #kk-direct-print-root .kot-item {
+            font-weight: 900 !important;
           }
         }
         @media screen {
@@ -620,7 +652,7 @@ export function generateBillReceiptHtml(
       ? `
   <div style="text-align:center; font-weight:bold; font-size:13px; border:2px solid #000; padding:3px; margin-bottom:5px;">
     🥡 TAKEAWAY / PARCEL (पार्सल)
-    ${bill.customerName ? `<div class="small font-normal">Customer: ${bill.customerName} ${bill.customerPhone ? `(${bill.customerPhone})` : ""}</div>` : ""}
+    ${bill.customerName ? `<div class="small bold">Customer: ${bill.customerName} ${bill.customerPhone ? `(${bill.customerPhone})` : ""}</div>` : ""}
   </div>
   `
       : ""
@@ -870,7 +902,7 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   <!-- Pre-Bill Header Banner -->
   <div style="text-align:center; font-weight:bold; font-size:13px; border:2px solid #000; padding:4px; margin-bottom:5px;">
     *** TABLE CHECK / PRE-BILL ESTIMATE ***
-    <div style="font-size:9.5px; font-weight:normal; letter-spacing:0.5px;">(Not a Tax Invoice — कच्चा बिल / अंदाजे हिशोब)</div>
+    <div style="font-size:9.5px; font-weight:bold; letter-spacing:0.5px;">(Not a Tax Invoice — कच्चा बिल / अंदाजे हिशोब)</div>
     <div style="font-size:8.5px; font-weight:bold;">THIS IS NOT A TAX INVOICE</div>
   </div>
 
@@ -1052,7 +1084,7 @@ export function generateKotHtml(
       ? `
   <div style="text-align:center; font-weight:bold; font-size:13px; border:2px solid #000; padding:2px; margin:3px 0;">
     🥡 TAKEAWAY / PARCEL (पार्सल)
-    ${kot.customerName ? `<div class="small font-normal">Customer: ${kot.customerName}</div>` : ""}
+    ${kot.customerName ? `<div class="small bold">Customer: ${kot.customerName}</div>` : ""}
   </div>
   `
       : ""
@@ -1269,7 +1301,7 @@ export function generateDayEndReportHtml(
 
   <div class="center bold" style="font-size:14px; border:2px solid #000; padding:3px; margin-bottom:4px;">
     *** DAILY CLOSURE / Z-REPORT (दिवसाचा हिशोब) ***
-    ${report.reportId ? `<div class="small font-normal">${report.reportId}</div>` : ""}
+    ${report.reportId ? `<div class="small bold">${report.reportId}</div>` : ""}
   </div>
 
   <table>
@@ -1485,7 +1517,7 @@ export function generatePrinterTestHtml(settings?: PrinterSettings): string {
   <!-- Simulated Barcode Line -->
   <div style="text-align:center; padding:4px 0; font-family:monospace; letter-spacing:3px; font-weight:bold;">
     ||| | |||| || ||| |||| | ||| ||
-    <div class="tiny font-normal">TEST-BARCODE-996331</div>
+    <div class="tiny bold">TEST-BARCODE-996331</div>
   </div>
 
   <div class="double-line"></div>

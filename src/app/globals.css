@@ -139,6 +139,10 @@ h1, h2, h3, h4, h5, h6 {
   #thermal-receipt-printable,
   #thermal-receipt-printable * {
     visibility: visible !important;
+    font-weight: 700 !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   #thermal-receipt-printable {
     position: fixed !important;
@@ -152,6 +156,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: none !important;
     background: #ffffff !important;
     color: #000000 !important;
+    font-weight: 700 !important;
   }
   .no-print {
     display: none !important;

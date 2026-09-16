@@ -39,9 +39,14 @@ export class EscPosBuilder {
 
   /**
    * Reset / Initialize printer to default state
+   * Emphasized (bold) mode and double-strike mode are activated by default
+   * so all thermal printheads fire full heat with double dot density,
+   * eliminating faint, jagged, or blurry text on thermal rolls.
    */
   init(): this {
-    this.buffer.push(ESC, 0x40); // ESC @
+    this.buffer.push(ESC, 0x40); // ESC @ (initialize printer)
+    this.buffer.push(ESC, 0x45, 0x01); // ESC E 1 (emphasized mode on)
+    this.buffer.push(ESC, 0x47, 0x01); // ESC G 1 (double-strike mode on)
     return this;
   }
 
@@ -56,9 +61,11 @@ export class EscPosBuilder {
 
   /**
    * Emphasized (bold) mode
+   * Enforces bold font weight across all receipt text to prevent blurry printouts.
    */
   bold(enable: boolean = true): this {
-    this.buffer.push(ESC, 0x45, enable ? 1 : 0); // ESC E n
+    this.buffer.push(ESC, 0x45, 1); // Always keep ESC E 1 active
+    this.buffer.push(ESC, 0x47, enable ? 1 : 0); // Toggle double-strike
     return this;
   }
 
