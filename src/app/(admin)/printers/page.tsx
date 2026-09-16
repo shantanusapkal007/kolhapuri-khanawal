@@ -926,6 +926,7 @@ export default function PrintersManagementPage() {
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
+                    "192.168.223.1",
                     "192.168.1.100",
                     "192.168.1.87",
                     "192.168.1.50",
