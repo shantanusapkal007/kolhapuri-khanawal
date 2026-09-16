@@ -655,6 +655,14 @@ class PrinterConnectionManager {
 
     // 3. BLUETOOTH (Web Bluetooth GATT) DRIVER
     if (device.connectionType === "BLUETOOTH") {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+      if (isMobile && job.htmlPayload) {
+        openPrintWindow(job.htmlPayload, job.title);
+        return;
+      }
+
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth");
       try {
         await this.sendBluetoothPayload(device, this.base64ToBytes(job.rawPayload));
@@ -666,6 +674,14 @@ class PrinterConnectionManager {
 
     // 3b. BLUETOOTH_BLE (iOS / Web Bluetooth Low Energy) DRIVER
     if (device.connectionType === "BLUETOOTH_BLE") {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+      if (isMobile && job.htmlPayload) {
+        openPrintWindow(job.htmlPayload, job.title);
+        return;
+      }
+
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth BLE");
       try {
         await this.sendBluetoothBlePayload(device, this.base64ToBytes(job.rawPayload));
@@ -677,6 +693,14 @@ class PrinterConnectionManager {
 
     // 3c. BLUETOOTH_SPP (Bluetooth Classic Serial Port Profile / RFCOMM) DRIVER
     if (device.connectionType === "BLUETOOTH_SPP") {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+      if (isMobile && job.htmlPayload) {
+        openPrintWindow(job.htmlPayload, job.title);
+        return;
+      }
+
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Bluetooth SPP");
       try {
         await this.sendBluetoothSppPayload(device, this.base64ToBytes(job.rawPayload), job.rawPayload);
@@ -688,6 +712,14 @@ class PrinterConnectionManager {
 
     // 4. SERIAL_USB (Web Serial COM Port) DRIVER
     if (device.connectionType === "SERIAL_USB") {
+      const isMobile =
+        typeof window !== "undefined" &&
+        (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+      if (isMobile && job.htmlPayload) {
+        openPrintWindow(job.htmlPayload, job.title);
+        return;
+      }
+
       if (!job.rawPayload) throw new Error("No ESC/POS payload for Serial");
       try {
         await this.sendSerialPayload(device, this.base64ToBytes(job.rawPayload));
@@ -1016,9 +1048,22 @@ class PrinterConnectionManager {
 
     // 2. Android App Intent / URL scheme fallback
     if (typeof window !== "undefined") {
-      const intentUrl = `intent:base64,${base64Payload}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+      const intentUrl = `intent:base64,${base64Payload}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
       const schemeUrl = `rawbt:data:application/octet-stream;base64,${base64Payload}`;
       try {
+        if (typeof document !== "undefined") {
+          const a = document.createElement("a");
+          a.href = intentUrl;
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            try {
+              if (a.parentNode) a.parentNode.removeChild(a);
+            } catch {}
+          }, 600);
+          return;
+        }
         window.location.href = intentUrl;
       } catch {
         window.location.href = schemeUrl;
@@ -1527,6 +1572,173 @@ class PrinterConnectionManager {
 
   public getDevices(settings?: PrinterSettings): PrinterDevice[] {
     return this.getActiveDevices(settings);
+  }
+
+  /**
+   * 1-Tap Activation: Android System Print (Recommended for all Android phones/tablets)
+   * Connects via Android's native print spooler. Works with any Bluetooth or Wi-Fi printer paired in Android settings.
+   */
+  public activateAndroidSystemPrint(paperWidth: "80mm" | "58mm" = "80mm"): PrinterDevice {
+    const device: PrinterDevice = {
+      id: "printer-android-system",
+      name: "📱 Android फोन प्रिंटर (System Spooler)",
+      modelName: "Android System Print Spooler",
+      connectionType: "BROWSER_SYSTEM",
+      paperWidth,
+      isEnabled: true,
+      status: "ONLINE",
+      assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+      isDefaultReceiptPrinter: true,
+      isDefaultKotPrinter: true,
+      autoCut: true,
+      openDrawerOnPrint: false,
+    };
+
+    const currentSettings = this.getStoredSettings();
+    const updatedSettings: PrinterSettings = {
+      ...currentSettings,
+      paperWidth,
+      devices: [
+        device,
+        ...(currentSettings.devices || []).filter((d) => d.id !== device.id).map((d) => ({
+          ...d,
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+        })),
+      ],
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("kk_printer_settings", JSON.stringify(updatedSettings));
+      } catch {}
+    }
+
+    return device;
+  }
+
+  /**
+   * 1-Tap Activation: RawBT Bluetooth (Instant 0.1s silent ESC/POS printing on Android)
+   * Works with RawBT Android Driver app paired to any Classic Bluetooth thermal printer.
+   */
+  public activateAndroidRawBtPrint(paperWidth: "80mm" | "58mm" = "80mm"): PrinterDevice {
+    const device: PrinterDevice = {
+      id: "printer-android-rawbt",
+      name: "⚡ RawBT ब्लूटूथ प्रिंटर (Instant Print)",
+      modelName: "RawBT Android Print Service",
+      connectionType: "RAWBT",
+      rawbtMethod: "INTENT",
+      rawbtHost: "localhost",
+      rawbtPort: 40213,
+      paperWidth,
+      isEnabled: true,
+      status: "ONLINE",
+      assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+      isDefaultReceiptPrinter: true,
+      isDefaultKotPrinter: true,
+      autoCut: true,
+      openDrawerOnPrint: true,
+      failoverPrinterId: "printer-android-system",
+    };
+
+    const currentSettings = this.getStoredSettings();
+    const updatedSettings: PrinterSettings = {
+      ...currentSettings,
+      paperWidth,
+      devices: [
+        device,
+        {
+          id: "printer-android-system",
+          name: "📱 Android फोन प्रिंटर (System Fallback)",
+          modelName: "Android System Print Spooler",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        ...(currentSettings.devices || []).filter(
+          (d) => d.id !== device.id && d.id !== "printer-android-system"
+        ).map((d) => ({
+          ...d,
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+        })),
+      ],
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("kk_printer_settings", JSON.stringify(updatedSettings));
+      } catch {}
+    }
+
+    return device;
+  }
+
+  /**
+   * 1-Tap Activation: Wi-Fi / LAN Network Thermal Printer (e.g. POSIFLOW KP307-UEWB)
+   */
+  public activateWifiNetworkPrint(ipAddress: string, paperWidth: "80mm" | "58mm" = "80mm"): PrinterDevice {
+    const device: PrinterDevice = {
+      id: "printer-wifi-network",
+      name: `हॉटेल वाय-फाय प्रिंटर (${ipAddress})`,
+      modelName: "POSIFLOW KP307-UEWB",
+      connectionType: "NETWORK",
+      ipAddress: ipAddress.trim(),
+      port: 9100,
+      paperWidth,
+      isEnabled: true,
+      status: "ONLINE",
+      assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+      isDefaultReceiptPrinter: true,
+      isDefaultKotPrinter: true,
+      autoCut: true,
+      openDrawerOnPrint: true,
+      failoverPrinterId: "printer-android-system",
+    };
+
+    const currentSettings = this.getStoredSettings();
+    const updatedSettings: PrinterSettings = {
+      ...currentSettings,
+      paperWidth,
+      devices: [
+        device,
+        {
+          id: "printer-android-system",
+          name: "📱 Android फोन प्रिंटर (Wi-Fi Fallback)",
+          modelName: "Android System Print Spooler",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        ...(currentSettings.devices || []).filter(
+          (d) => d.id !== device.id && d.id !== "printer-android-system"
+        ).map((d) => ({
+          ...d,
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+        })),
+      ],
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("kk_printer_settings", JSON.stringify(updatedSettings));
+      } catch {}
+    }
+
+    return device;
   }
 }
 

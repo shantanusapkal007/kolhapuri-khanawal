@@ -5,14 +5,13 @@ import {
   Printer,
   X,
   CheckCircle2,
-  RefreshCw,
   FileText,
-  Sliders,
   Smartphone,
   Wifi,
-  Usb,
-  Bluetooth,
-  AlertTriangle,
+  Zap,
+  Check,
+  HelpCircle,
+  ExternalLink,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { globalPrinterManager } from "@/lib/printing/printer-connection-manager";
@@ -26,6 +25,23 @@ interface WaiterPrinterSettingsModalProps {
 
 export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSettingsModalProps) {
   const store = globalRestaurantStore;
+
+  const initialMode = (): "SYSTEM" | "RAWBT" | "NETWORK" => {
+    const devices = store.printerSettings.devices || [];
+    const kotDev = devices.find((d) => d.isDefaultKotPrinter && d.isEnabled) || devices[0];
+    if (kotDev?.connectionType === "RAWBT") return "RAWBT";
+    if (kotDev?.connectionType === "NETWORK") return "NETWORK";
+    return "SYSTEM";
+  };
+
+  const initialIp = (): string => {
+    const devices = store.printerSettings.devices || [];
+    const netDev = devices.find((d) => d.connectionType === "NETWORK");
+    return netDev?.ipAddress || "192.168.1.50";
+  };
+
+  const [printMode, setPrintMode] = useState<"SYSTEM" | "RAWBT" | "NETWORK">(initialMode);
+  const [wifiIp, setWifiIp] = useState<string>(initialIp);
   const [paperWidth, setPaperWidth] = useState<"80mm" | "58mm">(
     store.printerSettings?.paperWidth || "80mm"
   );
@@ -38,12 +54,30 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
   if (!isOpen) return null;
 
   const handleSaveSettings = () => {
+    let activeDev: PrinterDevice;
+    if (printMode === "SYSTEM") {
+      activeDev = globalPrinterManager.activateAndroidSystemPrint(paperWidth);
+    } else if (printMode === "RAWBT") {
+      activeDev = globalPrinterManager.activateAndroidRawBtPrint(paperWidth);
+    } else {
+      activeDev = globalPrinterManager.activateWifiNetworkPrint(wifiIp || "192.168.1.50", paperWidth);
+    }
+
+    const currentDevices = store.printerSettings.devices || [];
+    const updatedDevices = [
+      activeDev,
+      ...currentDevices
+        .filter((d) => d.id !== activeDev.id)
+        .map((d) => ({ ...d, isDefaultReceiptPrinter: false, isDefaultKotPrinter: false })),
+    ];
+
     store.updatePrinterSettings({
-      ...store.printerSettings,
       paperWidth,
       autoPrintKotOnOrder: autoPrintKot,
+      devices: updatedDevices,
     });
-    setStatusMessage("प्रिंटर प्राधान्ये जतन केली! (Saved!)");
+
+    setStatusMessage("प्रिंटर प्राधान्ये जतन केली! (Preferences Saved!)");
     setTimeout(() => {
       setStatusMessage(null);
       onClose();
@@ -54,20 +88,53 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
     setIsPrintingTest(true);
     setStatusMessage(null);
     try {
-      const devices = globalPrinterManager.getActiveDevices(store.printerSettings);
-      const kotDevice: PrinterDevice = devices.find((d) => d.isDefaultKotPrinter) || devices[0] || {
-        id: "waiter-system-dev",
-        name: "Waiter Print Spooler",
-        connectionType: "BROWSER_SYSTEM",
-        paperWidth,
-        isEnabled: true,
-        status: "ONLINE",
-        assignedStations: ["MAIN_KITCHEN"],
-        isDefaultReceiptPrinter: true,
-        isDefaultKotPrinter: true,
-        autoCut: true,
-        openDrawerOnPrint: false,
-      };
+      let kotDevice: PrinterDevice;
+      if (printMode === "SYSTEM") {
+        kotDevice = {
+          id: "waiter-system-dev",
+          name: "📱 Android System Print",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        };
+      } else if (printMode === "RAWBT") {
+        kotDevice = {
+          id: "waiter-rawbt-dev",
+          name: "⚡ RawBT Bluetooth Print",
+          connectionType: "RAWBT",
+          rawbtMethod: "INTENT",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: true,
+        };
+      } else {
+        kotDevice = {
+          id: "waiter-wifi-dev",
+          name: `Wi-Fi (${wifiIp})`,
+          connectionType: "NETWORK",
+          ipAddress: wifiIp.trim() || "192.168.1.50",
+          port: 9100,
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: true,
+        };
+      }
 
       const res = await globalPrinterManager.printDirectDeviceTestSlip(
         kotDevice,
@@ -83,7 +150,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-stone-200 animate-in slide-in-from-bottom-5 duration-300 text-stone-900 space-y-4">
+      <div className="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl border border-stone-200 animate-in slide-in-from-bottom-5 duration-300 text-stone-900 space-y-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-stone-100">
           <div className="flex items-center gap-2.5">
@@ -92,13 +159,13 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
             </div>
             <div>
               <h3 className="text-sm font-black text-stone-900">वेटर प्रिंटर सेटिंग्ज (Printer Settings)</h3>
-              <span className="text-[11px] text-stone-500 font-semibold">Thermal KOT & Bill Configuration</span>
+              <span className="text-[11px] text-stone-500 font-semibold">Android Mobile & Thermal KOT</span>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100"
+            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-xl hover:bg-stone-100 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -111,6 +178,118 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </div>
         )}
 
+        {/* Print Mode Selector */}
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-black uppercase tracking-wider text-stone-500 flex items-center justify-between">
+            <span>प्रिंट पद्धत (Print Mode)</span>
+            <span className="text-amber-700 font-bold lowercase text-[10px]">1-क्लिक निवडा</span>
+          </label>
+
+          <div className="space-y-2">
+            {/* Mode 1: Android System Print */}
+            <button
+              type="button"
+              onClick={() => setPrintMode("SYSTEM")}
+              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
+                printMode === "SYSTEM"
+                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
+                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center shrink-0">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs block font-black">📱 Android सिस्टीम प्रिंट (सर्वात सोपे)</span>
+                  <span className="text-[10px] text-stone-500 font-normal">
+                    कोणतेही ॲप नको • फोनच्या ब्लूटूथवरून थेट प्रिंट
+                  </span>
+                </div>
+              </div>
+              {printMode === "SYSTEM" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+            </button>
+
+            {/* Mode 2: RawBT Bluetooth */}
+            <button
+              type="button"
+              onClick={() => setPrintMode("RAWBT")}
+              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
+                printMode === "RAWBT"
+                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
+                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-800 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs block font-black">⚡ RawBT ब्लूटूथ (सुपरफास्ट)</span>
+                  <span className="text-[10px] text-stone-500 font-normal">
+                    0.1 सेकंदात थेट प्रिंट • RawBT ॲप आवश्यक
+                  </span>
+                </div>
+              </div>
+              {printMode === "RAWBT" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+            </button>
+
+            {/* Mode 3: Hotel Wi-Fi */}
+            <button
+              type="button"
+              onClick={() => setPrintMode("NETWORK")}
+              className={`w-full p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
+                printMode === "NETWORK"
+                  ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black shadow-xs"
+                  : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-800 flex items-center justify-center shrink-0">
+                  <Wifi className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="text-xs block font-black">🌐 हॉटेल वाय-फाय प्रिंटर (POSIFLOW)</span>
+                  <span className="text-[10px] text-stone-500 font-normal">
+                    राउटर LAN IP वरून सर्व फोनसाठी
+                  </span>
+                </div>
+              </div>
+              {printMode === "NETWORK" && <Check className="w-4 h-4 text-amber-600 stroke-[3]" />}
+            </button>
+          </div>
+
+          {printMode === "NETWORK" && (
+            <div className="pt-2">
+              <label className="text-[10px] font-bold text-stone-500 block mb-1">
+                प्रिंटरचा वाय-फाय IP Address:
+              </label>
+              <input
+                type="text"
+                value={wifiIp}
+                onChange={(e) => setWifiIp(e.target.value)}
+                placeholder="192.168.1.50"
+                className="w-full px-3 py-2 bg-stone-50 border border-stone-300 rounded-xl text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-500"
+              />
+            </div>
+          )}
+
+          {printMode === "RAWBT" && (
+            <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-xl flex items-center justify-between text-xs text-orange-950">
+              <span className="text-[11px] font-medium">RawBT ॲप नसेल तर Play Store वरून घ्या:</span>
+              <a
+                href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1 bg-orange-600 text-white rounded-lg font-bold text-[10px] flex items-center gap-1 shadow-xs"
+              >
+                <span>Play Store</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+        </div>
+
         {/* Paper Width Picker */}
         <div className="space-y-1.5">
           <label className="text-[11px] font-black uppercase tracking-wider text-stone-500">
@@ -120,7 +299,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
             <button
               type="button"
               onClick={() => setPaperWidth("80mm")}
-              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between ${
+              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
                 paperWidth === "80mm"
                   ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black"
                   : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
@@ -136,7 +315,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
             <button
               type="button"
               onClick={() => setPaperWidth("58mm")}
-              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between ${
+              className={`p-3 rounded-2xl border text-left transition-all touch-manipulation flex items-center justify-between cursor-pointer ${
                 paperWidth === "58mm"
                   ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-400/40 font-black"
                   : "bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100 font-semibold"
@@ -164,7 +343,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           <button
             type="button"
             onClick={() => setAutoPrintKot(!autoPrintKot)}
-            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 ${
+            className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${
               autoPrintKot ? "bg-emerald-600" : "bg-stone-300"
             }`}
           >
@@ -176,29 +355,15 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           </button>
         </div>
 
-        {/* Supported Interfaces Strip */}
-        <div className="p-3 bg-amber-50/50 rounded-2xl border border-amber-200/60 text-xs space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
-            Connected Devices & Channels:
-          </span>
-          <div className="flex items-center gap-2 flex-wrap text-[11px] font-bold text-stone-700">
-            <span className="px-2 py-1 bg-white rounded-lg border border-amber-300 flex items-center gap-1 shadow-2xs">
-              <Smartphone className="w-3 h-3 text-red-600" />
-              <span>Browser Dialog</span>
-            </span>
-            <span className="px-2 py-1 bg-white rounded-lg border border-amber-300 flex items-center gap-1 shadow-2xs">
-              <Bluetooth className="w-3 h-3 text-blue-600" />
-              <span>Bluetooth Thermal</span>
-            </span>
-            <span className="px-2 py-1 bg-white rounded-lg border border-amber-300 flex items-center gap-1 shadow-2xs">
-              <Usb className="w-3 h-3 text-emerald-600" />
-              <span>WebUSB</span>
-            </span>
-            <span className="px-2 py-1 bg-white rounded-lg border border-amber-300 flex items-center gap-1 shadow-2xs">
-              <Wifi className="w-3 h-3 text-purple-600" />
-              <span>Network IP (9100)</span>
-            </span>
+        {/* Helpful Android Tip */}
+        <div className="p-3 bg-amber-50/70 rounded-2xl border border-amber-200 text-xs text-amber-950 space-y-1">
+          <div className="flex items-center gap-1.5 font-bold text-[11px] text-amber-900">
+            <HelpCircle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+            <span>Android फोन ब्लूटूथ टीप:</span>
           </div>
+          <p className="text-[10px] text-stone-600 leading-relaxed">
+            फोनच्या <strong>Settings ➔ Bluetooth</strong> मध्ये जाऊन प्रिंटर पेअर करा (पिन: <strong>0000</strong> किंवा <strong>1234</strong>). त्यानंतर &apos;Android सिस्टीम प्रिंट&apos; निवडून जतन करा.
+          </p>
         </div>
 
         {/* Test Print Button */}
@@ -206,10 +371,10 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           type="button"
           onClick={handleTestPrint}
           disabled={isPrintingTest}
-          className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation"
+          className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-xl text-xs font-black flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation cursor-pointer"
         >
           <FileText className="w-3.5 h-3.5 text-stone-600" />
-          <span>{isPrintingTest ? "Dispatching..." : "प्रिंट चाचणी पावती (Test Print Slip)"}</span>
+          <span>{isPrintingTest ? "पावती पाठवत आहे..." : "📄 प्रिंट चाचणी पावती (Test Print Slip)"}</span>
         </button>
 
         {/* Action Buttons */}
@@ -217,14 +382,14 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800"
+            className="px-4 py-2 text-xs font-bold text-stone-500 hover:text-stone-800 cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSaveSettings}
-            className="px-5 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation"
+            className="px-5 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white rounded-xl text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation cursor-pointer"
           >
             Save Preferences (जतन करा)
           </button>

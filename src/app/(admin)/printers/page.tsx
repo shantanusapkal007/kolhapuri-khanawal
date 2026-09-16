@@ -28,6 +28,10 @@ import {
   Receipt,
   ChefHat,
   Cpu,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Star,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -74,6 +78,11 @@ export default function PrintersManagementPage() {
   const [testingDeviceId, setTestingDeviceId] = useState<string | null>(null);
   const [pingResults, setPingResults] = useState<Record<string, { online: boolean; message?: string; latencyMs?: number }>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Quick Android Setup State
+  const [quickWifiIp, setQuickWifiIp] = useState<string>("192.168.1.50");
+  const [isTestingQuick, setIsTestingQuick] = useState(false);
+  const [showStepGuide, setShowStepGuide] = useState(false);
 
   // Form State for Add / Edit Printer
   const [formData, setFormData] = useState<{
@@ -375,6 +384,165 @@ export default function PrintersManagementPage() {
   const queuedCount = jobs.filter((j) => j.status === "QUEUED" || j.status === "PRINTING" || j.status === "RETRYING").length;
   const failedCount = jobs.filter((j) => j.status === "FAILED").length;
 
+  // Active Android Printing Mode Flags
+  const isAndroidSystemActive = devices.some(
+    (d) => d.isEnabled && d.isDefaultReceiptPrinter && d.connectionType === "BROWSER_SYSTEM"
+  );
+  const isRawBtActive = devices.some(
+    (d) => d.isEnabled && d.isDefaultReceiptPrinter && d.connectionType === "RAWBT"
+  );
+  const isWifiActive = devices.some(
+    (d) => d.isEnabled && d.isDefaultReceiptPrinter && d.connectionType === "NETWORK"
+  );
+
+  // 1-Click Quick Setup Handlers
+  const handleActivateAndroidSystemPrint = () => {
+    const dev = globalPrinterManager.activateAndroidSystemPrint(settings.paperWidth || "80mm");
+    const updatedDevs = [
+      dev,
+      ...devices
+        .filter((d) => d.id !== dev.id)
+        .map((d) => ({ ...d, isDefaultReceiptPrinter: false, isDefaultKotPrinter: false })),
+    ];
+    setDevices(updatedDevs);
+    const updatedSettings = { ...settings, devices: updatedDevs };
+    setSettings(updatedSettings);
+    store.updatePrinterSettings(updatedSettings);
+    showToast("✅ Android सिस्टीम प्रिंट चालू केले! (Android System Print Activated)");
+  };
+
+  const handleActivateAndroidRawBtPrint = () => {
+    const dev = globalPrinterManager.activateAndroidRawBtPrint(settings.paperWidth || "80mm");
+    const updatedDevs = [
+      dev,
+      ...devices
+        .filter((d) => d.id !== dev.id)
+        .map((d) => ({ ...d, isDefaultReceiptPrinter: false, isDefaultKotPrinter: false })),
+    ];
+    setDevices(updatedDevs);
+    const updatedSettings = { ...settings, devices: updatedDevs };
+    setSettings(updatedSettings);
+    store.updatePrinterSettings(updatedSettings);
+    showToast("⚡ RawBT ब्लूटूथ प्रिंटर चालू केला! (RawBT Activated)");
+  };
+
+  const handleActivateWifiNetworkPrint = () => {
+    if (!quickWifiIp.trim()) {
+      showToast("कृपया वाय-फाय IP टाका (Enter IP)");
+      return;
+    }
+    const dev = globalPrinterManager.activateWifiNetworkPrint(quickWifiIp.trim(), settings.paperWidth || "80mm");
+    const updatedDevs = [
+      dev,
+      ...devices
+        .filter((d) => d.id !== dev.id)
+        .map((d) => ({ ...d, isDefaultReceiptPrinter: false, isDefaultKotPrinter: false })),
+    ];
+    setDevices(updatedDevs);
+    const updatedSettings = { ...settings, devices: updatedDevs };
+    setSettings(updatedSettings);
+    store.updatePrinterSettings(updatedSettings);
+    showToast(`🌐 वाय-फाय प्रिंटर (${quickWifiIp.trim()}) सेव्ह केला!`);
+  };
+
+  const handleQuickTestPrint = async (type: "SYSTEM" | "RAWBT" | "WIFI") => {
+    try {
+      setIsTestingQuick(true);
+      showToast("चाचणी पावती पाठवत आहे...");
+      let targetDev: PrinterDevice;
+      if (type === "SYSTEM") {
+        targetDev = devices.find((d) => d.connectionType === "BROWSER_SYSTEM") || {
+          id: "temp-sys",
+          name: "Android System Print",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth: settings.paperWidth || "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        };
+      } else if (type === "RAWBT") {
+        targetDev = devices.find((d) => d.connectionType === "RAWBT") || {
+          id: "temp-rawbt",
+          name: "RawBT Android Print",
+          connectionType: "RAWBT",
+          rawbtMethod: "INTENT",
+          paperWidth: settings.paperWidth || "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: true,
+        };
+      } else {
+        targetDev = devices.find((d) => d.connectionType === "NETWORK") || {
+          id: "temp-wifi",
+          name: `Wi-Fi (${quickWifiIp})`,
+          connectionType: "NETWORK",
+          ipAddress: quickWifiIp.trim() || "192.168.1.50",
+          port: 9100,
+          paperWidth: settings.paperWidth || "80mm",
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: true,
+        };
+      }
+
+      const res = await globalPrinterManager.printDirectDeviceTestSlip(targetDev, generatePrinterTestHtml);
+      if (res.success) {
+        showToast(`✅ चाचणी पावती पाठवली! (${res.message || "Success"})`);
+      } else {
+        showToast(`❌ चाचणी अयशस्वी: ${res.message || "Failed"}`);
+      }
+    } catch (err: any) {
+      showToast(`❌ एरर: ${err?.message || "Failed"}`);
+    } finally {
+      setIsTestingQuick(false);
+    }
+  };
+
+  // 1-Click Set any printer as Universal Default for all Bills & KOTs
+  const handleSetAsDefaultAll = (targetDev: PrinterDevice) => {
+    const updatedDevs = devices.map((d) => {
+      if (d.id === targetDev.id) {
+        return {
+          ...d,
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          isEnabled: true,
+          assignedStations: [
+            "CASHIER",
+            "MAIN_KITCHEN",
+            "THALI_SECTION",
+            "TANDOOR_BHAKRI",
+            "FRY_SECTION",
+            "BEVERAGE_DESSERT",
+          ],
+        };
+      }
+      return {
+        ...d,
+        isDefaultReceiptPrinter: false,
+        isDefaultKotPrinter: false,
+      };
+    });
+
+    setDevices(updatedDevs);
+    const updatedSettings = { ...settings, devices: updatedDevs };
+    setSettings(updatedSettings);
+    store.updatePrinterSettings(updatedSettings);
+    showToast(`⭐ '${targetDev.name}' आता सर्व बिल व KOT साठी मुख्य प्रिंटर झाला!`);
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Toast Banner */}
@@ -430,6 +598,270 @@ export default function PrintersManagementPage() {
             <Plus className="w-4 h-4 text-amber-200" />
             <span>+ प्रिंटर जोडा (Add Printer)</span>
           </button>
+        </div>
+      </div>
+
+      {/* 📱 Android फोन व टॅबलेट सोपे प्रिंटर 1-क्लिक सेटअप (Quick 1-Tap Android Setup) */}
+      <div className="rounded-3xl p-5 sm:p-6 bg-gradient-to-br from-stone-900 via-stone-800 to-amber-950 text-white shadow-xl border border-stone-700/80 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20 shrink-0">
+              <Smartphone className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  📱 Android फोन प्रिंटर सोपे सेटअप (Easy Mobile Printing)
+                </h2>
+                <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2.5 py-0.5 rounded-full">
+                  1-क्लिक चालू करा
+                </span>
+              </div>
+              <p className="text-xs text-stone-300 mt-0.5">
+                Android फोनवर ब्लूटूथ किंवा वाय-फाय प्रिंटर जोडणे आता झाले सोपे! खालीलपैकी 1 पर्याय निवडा:
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowStepGuide(!showStepGuide)}
+            className="self-start sm:self-auto text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1 bg-stone-800/80 px-3 py-1.5 rounded-xl border border-stone-700 active:scale-95 transition-all cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            <span>{showStepGuide ? "मार्गदर्शन लपवा" : "सोपे मार्गदर्शन (Guide)"}</span>
+            {showStepGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {/* Collapsible Step-by-Step Guide */}
+        {showStepGuide && (
+          <div className="p-4 rounded-2xl bg-stone-950/60 border border-stone-700/80 text-xs text-stone-300 space-y-3 animate-in fade-in duration-200">
+            <div className="font-bold text-amber-300 flex items-center gap-1.5">
+              <span>💡 Android फोनवर थर्मल प्रिंटर कसे जोडावे? (How to Connect on Android):</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px] leading-relaxed">
+              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
+                <span className="font-black text-amber-400 block">पायरी १: फोन ब्लूटूथ पेअर करा</span>
+                <p className="text-stone-400">
+                  फोनच्या <strong>Settings ➔ Bluetooth</strong> मध्ये जा. &apos;Pair new device&apos; दाबा आणि प्रिंटरचे नाव निवडा (पिन: <strong>0000</strong> किंवा <strong>1234</strong>).
+                </p>
+              </div>
+              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
+                <span className="font-black text-amber-400 block">पायरी २: &apos;Android सिस्टीम&apos; चालू करा</span>
+                <p className="text-stone-400">
+                  खालील पहिल्या कार्डवरील <strong>&apos;हे चालू करा&apos;</strong> दाबा. हे Android च्या इन-बिल्ट प्रिंट सेवेद्वारे 100% काम करते.
+                </p>
+              </div>
+              <div className="p-3 bg-stone-900/80 rounded-xl border border-stone-800 space-y-1">
+                <span className="font-black text-amber-400 block">पायरी ३: थेट ऑटोमॅटिक प्रिंट</span>
+                <p className="text-stone-400">
+                  डायलॉगशिवाय 0.1 सेकंदात डायरेक्ट प्रिंट हवे असल्यास Play Store वरून <strong>RawBT ॲप</strong> घेऊन &apos;RawBT चालू करा&apos; दाबा.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Detected Working Printer Callout (e.g. Serial COM Port / KP307-UEWB) */}
+        {devices.some((d) => d.connectionType === "BLUETOOTH_SPP" || d.bluetoothDeviceName?.includes("KP307") || d.name.toLowerCase().includes("serial")) && (
+          <div className="p-3.5 bg-amber-500/20 border border-amber-400/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="space-y-0.5">
+              <span className="font-black text-amber-300 flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>तुमचा KP307-UEWB (Serial / Bluetooth) प्रिंटर कॉन्फिगर केलेला आहे!</span>
+              </span>
+              <p className="text-[11px] text-stone-300">
+                जर तुम्हाला चाचणी प्रिंट मिळाली असेल, तर सर्व बिल व KOT याच प्रिंटरवर आपोआप पाठवण्यासाठी येथे दाबा:
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const workingDev = devices.find(
+                  (d) =>
+                    d.connectionType === "BLUETOOTH_SPP" ||
+                    d.bluetoothDeviceName?.includes("KP307") ||
+                    d.name.toLowerCase().includes("serial")
+                );
+                if (workingDev) handleSetAsDefaultAll(workingDev);
+              }}
+              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black rounded-xl text-xs flex items-center gap-1.5 shrink-0 shadow-md active:scale-95 transition-all cursor-pointer"
+            >
+              <Star className="w-3.5 h-3.5 fill-current" />
+              <span>KP307-UEWB मुख्य प्रिंटर बनवा (One Click)</span>
+            </button>
+          </div>
+        )}
+
+        {/* 3 Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+          {/* Card 1: Android System Print */}
+          <div
+            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+              isAndroidSystemActive
+                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
+                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+            }`}
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-black text-sm text-white">१. Android सिस्टीम प्रिंट</h3>
+                </div>
+                {isAndroidSystemActive && (
+                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-300 leading-normal">
+                <strong>सर्वात सोपे!</strong> कोणतेही नवीन ॲप नको. फोनच्या Bluetooth Settings मध्ये प्रिंटर पेअर करा व थेट प्रिंट करा.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-stone-700/60">
+              <button
+                type="button"
+                onClick={handleActivateAndroidSystemPrint}
+                className="w-full py-2.5 px-3 bg-amber-500 hover:bg-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isAndroidSystemActive ? "सध्या सक्रिय आहे ✓" : "हे चालू करा (Set Default)"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickTestPrint("SYSTEM")}
+                disabled={isTestingQuick}
+                className="w-full py-1.5 px-3 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-stone-400" />
+                <span>📄 पावती चाचणी प्रिंट (Test Slip)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: RawBT Instant Print */}
+          <div
+            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+              isRawBtActive
+                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
+                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+            }`}
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-orange-500/20 text-orange-300 flex items-center justify-center">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-black text-sm text-white">२. RawBT ब्लूटूथ प्रिंट</h3>
+                </div>
+                {isRawBtActive && (
+                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-300 leading-normal">
+                <strong>सुपरफास्ट ०.१ सेकंद!</strong> डायलॉगशिवाय थेट ब्लूटूथवर आपोआप पावती प्रिंट होते.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-stone-700/60">
+              <button
+                type="button"
+                onClick={handleActivateAndroidRawBtPrint}
+                className="w-full py-2.5 px-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 active:scale-95 text-stone-950 rounded-xl text-xs font-black shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Zap className="w-4 h-4" />
+                <span>{isRawBtActive ? "RawBT सक्रिय आहे ✓" : "RawBT चालू करा (Activate)"}</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickTestPrint("RAWBT")}
+                  disabled={isTestingQuick}
+                  className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <FileText className="w-3 h-3 text-stone-400" />
+                  <span>⚡ टेस्ट</span>
+                </button>
+
+                <a
+                  href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-1.5 px-2 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-amber-300 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Play Store</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Hotel Wi-Fi Printer */}
+          <div
+            className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 ${
+              isWifiActive
+                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/30"
+                : "bg-stone-800/80 border-stone-700 hover:border-stone-600"
+            }`}
+          >
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-300 flex items-center justify-center">
+                    <Wifi className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-black text-sm text-white">३. हॉटेल वाय-फाय प्रिंटर</h3>
+                </div>
+                {isWifiActive && (
+                  <span className="bg-emerald-500 text-stone-950 font-black text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Check className="w-3 h-3 stroke-[3]" /> सक्रिय (Active)
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-stone-300 leading-normal">
+                <strong>POSIFLOW KP307-UEWB</strong> किंवा LAN प्रिंटर. सर्व फोन व कॅशियर कॉम्प्युटरवरून चालतो.
+              </p>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-stone-700/60">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={quickWifiIp}
+                  onChange={(e) => setQuickWifiIp(e.target.value)}
+                  placeholder="उदा. 192.168.1.50"
+                  className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-600 rounded-xl text-xs font-mono text-white placeholder-stone-500 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleActivateWifiNetworkPrint}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer"
+                >
+                  सेव्ह करा
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleQuickTestPrint("WIFI")}
+                disabled={isTestingQuick}
+                className="w-full py-1.5 px-3 bg-stone-700/70 hover:bg-stone-700 active:scale-95 text-stone-200 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                <span>🌐 वाय-फाय टेस्ट करा</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -618,6 +1050,30 @@ export default function PrintersManagementPage() {
                     )}
                   </div>
                 )}
+
+                {/* 1-Click Make Universal Default Button */}
+                <div className="pt-2">
+                  {dev.isDefaultReceiptPrinter && dev.isDefaultKotPrinter ? (
+                    <div className="w-full py-2 px-3 bg-emerald-50 border border-emerald-300 text-emerald-900 font-black text-xs rounded-xl flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>मुख्य प्रिंटर: सर्व बिल व KOT यावरच प्रिंट होतील</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded-full font-extrabold shrink-0">
+                        सक्रिय ✓
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSetAsDefaultAll(dev)}
+                      className="w-full py-2 px-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-95 text-stone-950 font-black text-xs rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Star className="w-3.5 h-3.5 fill-current" />
+                      <span>या प्रिंटरवर सर्व बिल व KOT चालू करा (Make Default)</span>
+                    </button>
+                  )}
+                </div>
 
                 {/* Card Action Buttons */}
                 <div className="pt-2 border-t border-stone-100 grid grid-cols-4 gap-2">

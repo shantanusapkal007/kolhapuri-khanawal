@@ -356,4 +356,99 @@ describe("Bluetooth Classic SPP & RFCOMM Thermal Printer System", () => {
       expect(remaining.some((d) => d.id === "printer-spp-rawbt-01")).toBe(false);
     });
   });
+
+  describe("5. Android 1-Tap Print Activation & KP307-UEWB Default Routing", () => {
+    it("activates Android System Print as universal default", () => {
+      const dev = globalPrinterManager.activateAndroidSystemPrint("80mm");
+      expect(dev.connectionType).toBe("BROWSER_SYSTEM");
+      expect(dev.isDefaultReceiptPrinter).toBe(true);
+      expect(dev.isDefaultKotPrinter).toBe(true);
+      expect(dev.assignedStations).toContain("CASHIER");
+      expect(dev.assignedStations).toContain("MAIN_KITCHEN");
+
+      const settings: PrinterSettings = {
+        paperWidth: "80mm",
+        autoPrintKotOnOrder: true,
+        autoPrintReceiptOnPayment: true,
+        autoPrintPreBillOnRequest: true,
+        autoKickCashDrawerOnCash: false,
+        numberOfReceiptCopies: 1,
+        printMarathiHeader: true,
+        stationPrinters: [],
+        devices: [dev],
+      };
+
+      const billJob = globalPrinterManager.dispatchBill({ ...mockBill, id: "bill-android-sys-01" }, false, settings);
+      expect(billJob.printerId).toBe(dev.id);
+      expect(billJob.printerName).toBe(dev.name);
+
+      const kotJobs = globalPrinterManager.dispatchKot({ ...mockKot, id: "kot-android-sys-01", kotNumber: "KOT-SYS-01" }, settings);
+      expect(kotJobs[0].printerId).toBe(dev.id);
+    });
+
+    it("activates Android RawBt Print with fallback to Android system", () => {
+      const dev = globalPrinterManager.activateAndroidRawBtPrint("80mm");
+      expect(dev.connectionType).toBe("RAWBT");
+      expect(dev.isDefaultReceiptPrinter).toBe(true);
+      expect(dev.isDefaultKotPrinter).toBe(true);
+      expect(dev.failoverPrinterId).toBe("printer-android-system");
+    });
+
+    it("routes bills and KOTs directly to KP307-UEWB (Serial COM Port) when marked default", () => {
+      const serialComPortDev: PrinterDevice = {
+        id: "printer-kp307-serial-com",
+        name: "Serial COM Port",
+        modelName: "POSIFLOW KP307-UEWB",
+        connectionType: "BLUETOOTH_SPP",
+        bluetoothDeviceName: "KP307-UEWB",
+        paperWidth: "80mm",
+        isEnabled: true,
+        status: "ONLINE",
+        assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+        isDefaultReceiptPrinter: true,
+        isDefaultKotPrinter: true,
+        autoCut: true,
+        openDrawerOnPrint: false,
+      };
+
+      const settings: PrinterSettings = {
+        paperWidth: "80mm",
+        autoPrintKotOnOrder: true,
+        autoPrintReceiptOnPayment: true,
+        autoPrintPreBillOnRequest: true,
+        autoKickCashDrawerOnCash: false,
+        numberOfReceiptCopies: 1,
+        printMarathiHeader: true,
+        stationPrinters: [],
+        devices: [
+          serialComPortDev,
+          {
+            id: "printer-posiflow-counter",
+            name: "POSIFLOW KP307-UEWB (Counter Bill)",
+            connectionType: "NETWORK",
+            ipAddress: "192.168.1.50",
+            port: 9100,
+            paperWidth: "80mm",
+            isEnabled: true,
+            status: "ONLINE",
+            assignedStations: [],
+            isDefaultReceiptPrinter: false,
+            isDefaultKotPrinter: false,
+            autoCut: true,
+            openDrawerOnPrint: true,
+          },
+        ],
+      };
+
+      // Verify that dispatchBill routes to "Serial COM Port"
+      const billJob = globalPrinterManager.dispatchBill({ ...mockBill, id: "bill-serial-com-01" }, false, settings);
+      expect(billJob.printerId).toBe("printer-kp307-serial-com");
+      expect(billJob.printerName).toBe("Serial COM Port");
+
+      // Verify that dispatchKot routes to "Serial COM Port"
+      const kotJobs = globalPrinterManager.dispatchKot({ ...mockKot, id: "kot-serial-com-01", kotNumber: "KOT-SC-01" }, settings);
+      expect(kotJobs[0].printerId).toBe("printer-kp307-serial-com");
+      expect(kotJobs[0].printerName).toBe("Serial COM Port");
+    });
+  });
 });

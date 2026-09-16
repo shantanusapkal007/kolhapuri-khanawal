@@ -87,14 +87,57 @@ export const DEFAULT_PRINTER_SETTINGS: PrinterSettings = {
 };
 
 /**
+ * Detects if the current client is running on an Android device
+ */
+export function isAndroidDevice(): boolean {
+  if (typeof window === "undefined" || !navigator) return false;
+  return /Android/i.test(navigator.userAgent || "");
+}
+
+/**
+ * Detects if the current client is a mobile device or phone/tablet screen
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === "undefined" || !navigator) return false;
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") ||
+    (typeof window.innerWidth === "number" && window.innerWidth < 768)
+  );
+}
+
+/**
  * Retrieves persisted printer settings or returns defaults
  */
 export function getStoredPrinterSettings(): PrinterSettings {
   if (typeof window === "undefined") return DEFAULT_PRINTER_SETTINGS;
   try {
     const raw = localStorage.getItem("kk_printer_settings");
-    if (!raw) return DEFAULT_PRINTER_SETTINGS;
-    return { ...DEFAULT_PRINTER_SETTINGS, ...JSON.parse(raw) };
+    if (raw) {
+      return { ...DEFAULT_PRINTER_SETTINGS, ...JSON.parse(raw) };
+    }
+    // Mobile / Android first run: provide ready-to-use Android System Print default
+    if (isMobileDevice()) {
+      return {
+        ...DEFAULT_PRINTER_SETTINGS,
+        devices: [
+          {
+            id: "printer-android-system",
+            name: "📱 Android फोन प्रिंटर (System Spooler)",
+            modelName: "Android System Print Spooler",
+            connectionType: "BROWSER_SYSTEM",
+            paperWidth: "80mm",
+            isEnabled: true,
+            status: "ONLINE",
+            assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: true,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          },
+        ],
+      };
+    }
+    return DEFAULT_PRINTER_SETTINGS;
   } catch {
     return DEFAULT_PRINTER_SETTINGS;
   }
@@ -341,6 +384,8 @@ export function openPrintWindow(html: string, title: string): void {
 
 function directMobilePrint(html: string, title: string): void {
   try {
+    if (typeof document === "undefined") return;
+
     let printRoot = document.getElementById("kk-direct-print-root");
     if (!printRoot) {
       printRoot = document.createElement("div");
@@ -378,11 +423,24 @@ function directMobilePrint(html: string, title: string): void {
       document.head.appendChild(styleEl);
     }
 
-    // Extract body content or inject full html
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    const bodyContent = doc.body ? doc.body.innerHTML : html;
-    printRoot.innerHTML = bodyContent;
+    // Extract head styles and body content to preserve thermal formatting on Android mobile Chrome
+    let headStyles = "";
+    let bodyContent = html;
+    if (typeof DOMParser !== "undefined") {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, "text/html");
+        if (doc.head) {
+          headStyles = Array.from(doc.head.querySelectorAll("style"))
+            .map((s) => s.outerHTML)
+            .join("\n");
+        }
+        if (doc.body) {
+          bodyContent = doc.body.innerHTML;
+        }
+      } catch {}
+    }
+    printRoot.innerHTML = headStyles + bodyContent;
 
     const prevTitle = document.title;
     document.title = title;
@@ -396,8 +454,10 @@ function directMobilePrint(html: string, title: string): void {
         fallbackWindowPrint(html, title);
       } finally {
         setTimeout(() => {
-          document.title = prevTitle;
-          if (printRoot) printRoot.innerHTML = "";
+          if (typeof document !== "undefined") {
+            document.title = prevTitle;
+            if (printRoot) printRoot.innerHTML = "";
+          }
         }, 1500);
       }
     }, 150);
@@ -409,9 +469,12 @@ function directMobilePrint(html: string, title: string): void {
 
 function fallbackWindowPrint(html: string, title: string): void {
   try {
+    if (typeof window === "undefined" || !window.open) return;
     const printWindow = window.open("", "_blank", "width=380,height=650,scrollbars=yes");
     if (!printWindow) {
-      alert("Please allow pop-ups for thermal receipt printing or use the in-app preview.");
+      if (typeof alert !== "undefined") {
+        alert("Please allow pop-ups for thermal receipt printing or use the in-app preview.");
+      }
       return;
     }
     printWindow.document.open();
@@ -429,6 +492,32 @@ function fallbackWindowPrint(html: string, title: string): void {
     }, 350);
   } catch (err) {
     console.error("Print window open failed:", err);
+  }
+}
+
+/**
+ * Dispatches an Android RawBT print intent via a hidden DOM anchor.
+ * If the user has RawBT installed, it triggers instant silent Bluetooth ESC/POS printing.
+ * If not installed, Android opens Google Play Store fallback.
+ */
+export function triggerRawBtPrint(base64Payload: string): void {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  const intentUrl = `intent:base64,${base64Payload}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dru.a402d.rawbtprinter;end;`;
+
+  try {
+    const a = document.createElement("a");
+    a.href = intentUrl;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (a.parentNode) a.parentNode.removeChild(a);
+      } catch {}
+    }, 600);
+  } catch {
+    window.location.href = `rawbt:data:application/octet-stream;base64,${base64Payload}`;
   }
 }
 

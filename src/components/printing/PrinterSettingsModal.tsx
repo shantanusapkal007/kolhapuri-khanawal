@@ -140,23 +140,41 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
     setTestResult(null);
 
     try {
-      // Build temporary active device configuration
-      const activeDev: PrinterDevice = {
-        id: "test-device",
-        name: printMode === "BLUETOOTH" ? (bluetoothName || "Bluetooth Thermal") : printMode === "NETWORK" ? `Network (${networkIp})` : "System Print Spooler",
-        connectionType: printMode === "BLUETOOTH" ? "BLUETOOTH" : printMode === "NETWORK" ? "NETWORK" : "BROWSER_SYSTEM",
-        paperWidth,
-        isEnabled: true,
-        status: "ONLINE",
-        ipAddress: networkIp,
-        port: 9100,
-        bluetoothDeviceName: bluetoothName,
-        assignedStations: ["CASHIER", "MAIN_KITCHEN"],
-        isDefaultReceiptPrinter: true,
-        isDefaultKotPrinter: true,
-        autoCut: true,
-        openDrawerOnPrint: false,
-      };
+      // Find matching device from existing fleet or construct one
+      const existingDev = devices.find((d) => {
+        if (printMode === "BLUETOOTH") {
+          return d.connectionType === "BLUETOOTH_SPP" || d.connectionType === "BLUETOOTH" || d.connectionType === "RAWBT";
+        }
+        if (printMode === "NETWORK") return d.connectionType === "NETWORK";
+        return d.connectionType === "BROWSER_SYSTEM";
+      });
+
+      const activeDev: PrinterDevice = existingDev
+        ? {
+            ...existingDev,
+            paperWidth,
+            ipAddress: printMode === "NETWORK" ? networkIp : existingDev.ipAddress,
+            bluetoothDeviceName: printMode === "BLUETOOTH" ? (bluetoothName || existingDev.bluetoothDeviceName) : existingDev.bluetoothDeviceName,
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: true,
+            assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+          }
+        : {
+            id: "test-device",
+            name: printMode === "BLUETOOTH" ? (bluetoothName || "Bluetooth Thermal") : printMode === "NETWORK" ? `Network (${networkIp})` : "System Print Spooler",
+            connectionType: printMode === "BLUETOOTH" ? "BLUETOOTH_SPP" : printMode === "NETWORK" ? "NETWORK" : "BROWSER_SYSTEM",
+            paperWidth,
+            isEnabled: true,
+            status: "ONLINE",
+            ipAddress: networkIp,
+            port: 9100,
+            bluetoothDeviceName: bluetoothName,
+            assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+            isDefaultReceiptPrinter: true,
+            isDefaultKotPrinter: true,
+            autoCut: true,
+            openDrawerOnPrint: false,
+          };
 
       const res = await globalPrinterManager.printDirectDeviceTestSlip(
         activeDev,
@@ -179,61 +197,58 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
 
   // Save changes
   const handleSave = () => {
-    // Construct simplified printer device list
-    let updatedDevices: PrinterDevice[];
+    // Look for existing device matching selected mode
+    const existingIdx = devices.findIndex((d) => {
+      if (printMode === "BLUETOOTH") {
+        return d.connectionType === "BLUETOOTH_SPP" || d.connectionType === "BLUETOOTH" || d.connectionType === "RAWBT";
+      }
+      if (printMode === "NETWORK") return d.connectionType === "NETWORK";
+      return d.connectionType === "BROWSER_SYSTEM";
+    });
 
-    if (printMode === "SYSTEM") {
-      updatedDevices = [
-        {
-          id: "printer-default-system",
-          name: "System Print / Mobile Spooler",
-          connectionType: "BROWSER_SYSTEM",
-          paperWidth,
-          isEnabled: true,
-          status: "ONLINE",
-          assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
-          isDefaultReceiptPrinter: true,
-          isDefaultKotPrinter: true,
-          autoCut: true,
-          openDrawerOnPrint: true,
-        },
-      ];
-    } else if (printMode === "BLUETOOTH") {
-      updatedDevices = [
-        {
-          id: "printer-default-bt",
-          name: bluetoothName || "Bluetooth Thermal Printer",
-          connectionType: "BLUETOOTH",
-          paperWidth,
-          bluetoothDeviceName: bluetoothName,
-          isEnabled: true,
-          status: "ONLINE",
-          assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
-          isDefaultReceiptPrinter: true,
-          isDefaultKotPrinter: true,
-          autoCut: false,
-          openDrawerOnPrint: false,
-        },
-      ];
+    let activeDev: PrinterDevice;
+    if (existingIdx !== -1) {
+      const existing = devices[existingIdx];
+      activeDev = {
+        ...existing,
+        paperWidth,
+        isEnabled: true,
+        isDefaultReceiptPrinter: true,
+        isDefaultKotPrinter: true,
+        assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+        ipAddress: printMode === "NETWORK" ? networkIp : existing.ipAddress,
+        bluetoothDeviceName: printMode === "BLUETOOTH" ? (bluetoothName || existing.bluetoothDeviceName) : existing.bluetoothDeviceName,
+      };
     } else {
-      updatedDevices = [
-        {
-          id: "printer-default-net",
-          name: `Network POS (${networkIp})`,
-          connectionType: "NETWORK",
-          ipAddress: networkIp,
-          port: 9100,
-          paperWidth,
-          isEnabled: true,
-          status: "ONLINE",
-          assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
-          isDefaultReceiptPrinter: true,
-          isDefaultKotPrinter: true,
-          autoCut: true,
-          openDrawerOnPrint: false,
-        },
-      ];
+      activeDev = {
+        id: `printer-${printMode.toLowerCase()}-${Date.now()}`,
+        name: printMode === "BLUETOOTH" ? (bluetoothName || "Bluetooth Thermal") : printMode === "NETWORK" ? `Network POS (${networkIp})` : "System Print Spooler",
+        connectionType: printMode === "BLUETOOTH" ? "BLUETOOTH_SPP" : printMode === "NETWORK" ? "NETWORK" : "BROWSER_SYSTEM",
+        paperWidth,
+        isEnabled: true,
+        status: "ONLINE",
+        ipAddress: networkIp,
+        port: 9100,
+        bluetoothDeviceName: bluetoothName,
+        assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+        isDefaultReceiptPrinter: true,
+        isDefaultKotPrinter: true,
+        autoCut: true,
+        openDrawerOnPrint: true,
+      };
     }
+
+    // Keep all other devices preserved, setting default flags to false
+    const updatedDevices: PrinterDevice[] = [
+      activeDev,
+      ...devices
+        .filter((d) => d.id !== activeDev.id)
+        .map((d) => ({
+          ...d,
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+        })),
+    ];
 
     const newSettings: PrinterSettings = {
       ...settings,
