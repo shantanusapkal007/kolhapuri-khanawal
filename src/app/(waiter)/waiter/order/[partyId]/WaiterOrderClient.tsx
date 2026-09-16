@@ -23,6 +23,7 @@ import {
   ArrowRightLeft,
   MoreVertical,
   Check,
+  Sliders,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -484,6 +485,17 @@ export default function WaiterOrderClient({
                   <Receipt className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Print Final Bill</span>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreActions(false);
+                    setShowPrinterModal(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Printer Settings</span>
+                </button>
                 <div className="border-t border-stone-100 my-1" />
                 <button
                   type="button"
@@ -679,39 +691,67 @@ export default function WaiterOrderClient({
                   </div>
                 )}
 
-                {/* Instant 1-Tap Bread Selector for Thalis */}
+                {/* Instant 1-Tap Bread Selector with +/- Stepper for Thalis */}
                 {isThaliOrMain && (
                   <div className="mt-2.5 pt-2 border-t border-stone-100">
-                    <span className="text-[10px] font-black uppercase text-amber-900 block mb-1">
+                    <span className="text-[10px] font-black uppercase text-amber-900 block mb-1.5">
                       Choose Bread (भाकरी / चपाती पर्याय):
                     </span>
                     <div className="grid grid-cols-2 gap-1.5">
                       {BREAD_OPTIONS.map((bread) => {
                         const count = getCartQuantityForItem(item.id, bread.id);
                         return (
-                          <button
+                          <div
                             key={bread.id}
-                            type="button"
-                            disabled={isOut}
-                            onClick={() => handleAddToCart(item, bread.id)}
-                            className={`min-h-[40px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-between border transition-all active:scale-95 touch-manipulation ${
+                            className={`min-h-[44px] rounded-xl border transition-all ${
                               count > 0
-                                ? "bg-amber-500 border-amber-600 text-stone-950 font-black shadow-2xs"
-                                : "bg-stone-50 hover:bg-amber-50/60 border-stone-200 text-stone-800"
+                                ? "bg-amber-50 border-amber-400 ring-1 ring-amber-300/50"
+                                : "bg-stone-50 border-stone-200"
                             }`}
                           >
-                            <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
-                              <span className="text-sm">{bread.emoji}</span>
-                              <span className="truncate">{bread.localName}</span>
-                            </span>
                             {count > 0 ? (
-                              <span className="bg-stone-900 text-amber-300 font-mono text-[10px] px-1.5 py-0.5 rounded-full shrink-0">
-                                ×{count}
-                              </span>
+                              /* Stepper mode: - count + */
+                              <div className="flex items-center justify-between px-1.5 py-1 gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleCardDecrement(item, bread.id)}
+                                  className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs"
+                                >
+                                  <Minus className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="flex flex-col items-center min-w-0 flex-1">
+                                  <span className="font-mono font-black text-sm text-amber-800 leading-none">
+                                    {count}
+                                  </span>
+                                  <span className="text-[9px] font-bold text-amber-700 truncate leading-tight">
+                                    {bread.shortCode}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  disabled={isOut}
+                                  onClick={() => handleAddToCart(item, bread.id)}
+                                  className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             ) : (
-                              <Plus className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              /* Add mode: single tap to add */
+                              <button
+                                type="button"
+                                disabled={isOut}
+                                onClick={() => handleAddToCart(item, bread.id)}
+                                className="w-full h-full min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/60 active:scale-95 touch-manipulation"
+                              >
+                                <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
+                                  <span className="text-sm">{bread.emoji}</span>
+                                  <span className="truncate">{bread.localName}</span>
+                                </span>
+                                <Plus className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              </button>
                             )}
-                          </button>
+                          </div>
                         );
                       })}
                     </div>
