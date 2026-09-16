@@ -14,7 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isWaiterFloor = pathname === "/waiter";
   const isOrderScreen = pathname.startsWith("/waiter/order");
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/admin/login") {
     return <main className="min-h-screen bg-[#0F172A]">{children}</main>;
   }
 

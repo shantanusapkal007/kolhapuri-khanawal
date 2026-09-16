@@ -55,6 +55,15 @@ const ROUTE_PERM_MAP: Record<string, PermissionCode> = {
   "/suppliers": "inventory.purchase",
   "/recipes": "recipe.view",
   "/wastage": "inventory.adjust",
+  "/inventory": "inventory.view",
+  "/menu": "menu.view",
+  "/cash-upi": "cash_upi.reconcile",
+  "/sell": "bill.create",
+  "/purchase-planner": "inventory.purchase",
+  "/daily-tasks": "tasks.manage",
+  "/tasks-maintenance": "tasks.manage",
+  "/reminders": "reminders.manage",
+  "/office-orders": "office_orders.manage",
 };
 
 interface SidebarProps {
@@ -386,10 +395,19 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={onCloseMobile}
+                    onClick={(e) => {
+                      if (!isAllowed) {
+                        e.preventDefault();
+                        setSwitchError(`प्रवेश मर्यादित: '${item.label}' उघडण्यासाठी विशेष परवानगी (${reqPerm}) आवश्यक आहे.`);
+                        setSwitchPin("");
+                        setShowSwitchModal(true);
+                        return;
+                      }
+                      if (onCloseMobile) onCloseMobile();
+                    }}
                     className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all group ${
                       !isAllowed
-                        ? "opacity-50 hover:opacity-80 text-stone-400 hover:bg-stone-50"
+                        ? "opacity-40 hover:opacity-70 text-stone-400 hover:bg-stone-50 cursor-not-allowed"
                         : isActive
                         ? "bg-gradient-to-r from-red-50/95 via-amber-50/40 to-transparent text-red-950 font-black border-l-4 border-red-600 shadow-[0_1px_3px_rgba(153,27,27,0.06)]"
                         : "text-stone-600 hover:bg-[#F6F3EC] hover:text-stone-900 font-semibold"
@@ -460,18 +478,34 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setSwitchPin("");
-                  setSwitchError(null);
-                  setShowSwitchModal(true);
-                }}
-                className="w-full inline-flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold py-1.5 rounded-lg transition-all active:scale-95 shadow-2xs"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-300" />
-                <span>Switch / Manager Unlock</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSwitchPin("");
+                    setSwitchError(null);
+                    setShowSwitchModal(true);
+                  }}
+                  className="flex-1 inline-flex items-center justify-center gap-1 bg-stone-900 hover:bg-stone-800 text-white text-[11px] font-bold py-1.5 rounded-lg transition-all active:scale-95 shadow-2xs cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Manager Unlock</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    store.logout();
+                    if (typeof window !== "undefined") {
+                      window.location.href = "/login";
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold py-1.5 px-2.5 rounded-lg transition-all active:scale-95 border border-red-200 cursor-pointer"
+                  title="Shift Logout"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>बाहेर पडा</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-white border border-[#E7E2DA] rounded-xl p-2.5 space-y-1.5 shadow-xs">
@@ -521,13 +555,30 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                 </optgroup>
               </select>
 
-              <Link
-                href="/login"
-                className="w-full inline-flex items-center justify-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold py-1.5 rounded-lg transition-all active:scale-95 border border-stone-200"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-red-600" />
-                <span>लॉगिन पोर्टल (Login Screen)</span>
-              </Link>
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <Link
+                  href="/login"
+                  onClick={onCloseMobile}
+                  className="flex-1 inline-flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold py-1.5 rounded-lg transition-all active:scale-95 border border-stone-200"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-amber-700" />
+                  <span>लॉगिन (Login)</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    store.logout();
+                    if (typeof window !== "undefined") {
+                      window.location.href = "/login";
+                    }
+                  }}
+                  className="inline-flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-bold py-1.5 px-2.5 rounded-lg transition-all active:scale-95 border border-red-200 cursor-pointer"
+                  title="लॉगआउट करा"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>बाहेर पडा</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -592,7 +643,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                 const pin = switchPin.trim();
 
                 // Check manager PIN
-                if (pin === store.settings.billing.managerPin || pin === "1234") {
+                if (pin === store.settings.billing.managerPin || pin === "1234" || pin === "admin123") {
                   store.setCurrentUserRole("OWNER");
                   setCurrentRole("OWNER");
                   setShowSwitchModal(false);
@@ -610,14 +661,14 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                   return;
                 }
 
-                setSwitchError("Invalid PIN! Enter Manager PIN (1234) or valid Waiter PIN.");
+                setSwitchError("Invalid PIN! Enter Manager PIN (admin123 / 1234) or valid Waiter PIN.");
               }}
               className="space-y-3"
             >
               <input
                 type="password"
-                maxLength={6}
-                placeholder="Enter 4-digit PIN"
+                maxLength={12}
+                placeholder="Enter PIN (admin123 / 1234)"
                 value={switchPin}
                 onChange={(e) => {
                   setSwitchPin(e.target.value);

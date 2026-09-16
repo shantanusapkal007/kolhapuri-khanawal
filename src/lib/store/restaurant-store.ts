@@ -227,11 +227,11 @@ export class RestaurantStore {
     this.settings = this.getStoredRestaurantSettings();
     this.waiterCredentials = this.getStoredWaiterCredentials();
     this.currentUser = this.getStoredActiveUser() || {
-      id: "u-owner-01",
-      email: "owner@kolhapurikhanawal.com",
-      name: "Suresh Rao",
-      role: "OWNER",
-      isActive: true,
+      id: typeof window === "undefined" ? "u-owner-01" : "guest",
+      email: typeof window === "undefined" ? "owner@kolhapurikhanawal.com" : "",
+      name: typeof window === "undefined" ? "Suresh Rao" : "Guest",
+      role: typeof window === "undefined" ? "OWNER" : "WAITER",
+      isActive: typeof window === "undefined",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -547,12 +547,12 @@ export class RestaurantStore {
 
     // 1. Built-in Admin / Manager / Cashier / Kitchen Roles
     if (cleanUser === "admin" || cleanUser === "owner" || cleanUser === "suresh") {
-      if (cleanPin === "1234" || cleanPin === "admin" || cleanPin === "admin123") {
+      if (cleanPin === "admin123" || cleanPin === "1234" || cleanPin === "admin") {
         this.setCurrentUserRole("OWNER");
         this.recordAuditLog("LOGIN_SUCCESS", "AUTH", this.currentUser.id, "Owner/Admin logged in");
         return { success: true, user: this.currentUser };
       } else {
-        return { success: false, error: "Incorrect Admin PIN / Password (Default PIN: 1234)" };
+        return { success: false, error: "Incorrect Admin Password (Default: admin / admin123)" };
       }
     }
 

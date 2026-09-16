@@ -75,6 +75,11 @@ describe("PWA & Authentication & Simplified Order Taking", () => {
       expect(res.success).toBe(true);
       expect(res.user?.role).toBe("OWNER");
       expect(store.currentUser.role).toBe("OWNER");
+
+      // Verify admin with password admin123
+      const resPass = store.loginUser("admin", "admin123");
+      expect(resPass.success).toBe(true);
+      expect(resPass.user?.role).toBe("OWNER");
     });
 
     it("should login with built-in manager, cashier, and kitchen credentials", () => {

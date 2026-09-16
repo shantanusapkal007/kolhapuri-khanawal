@@ -25,6 +25,9 @@ import {
   Wrench,
   Sliders,
   Bell,
+  LogOut,
+  KeyRound,
+  User,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { NotificationCenterDrawer } from "@/components/notifications/NotificationCenterDrawer";
@@ -207,6 +210,51 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
             </span>
           )}
         </button>
+
+        {/* Staff Profile & Logout / Login Button */}
+        {store.currentUser && store.currentUser.isActive && store.currentUser.id !== "guest" ? (
+          <div className="flex items-center bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl p-1 shadow-2xs">
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-stone-100 transition-colors"
+              title="Switch user account (खाते बदला)"
+            >
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-red-600 to-amber-600 text-white flex items-center justify-center text-[11px] font-black shrink-0 shadow-2xs">
+                {store.currentUser.role === "OWNER" ? "👑" : store.currentUser.role === "WAITER" ? "🍽️" : store.currentUser.role === "KITCHEN" ? "👨‍🍳" : store.currentUser.role === "CASHIER" ? "🧾" : "👤"}
+              </div>
+              <div className="hidden lg:block text-left">
+                <span className="text-[11px] font-extrabold text-stone-900 block leading-tight max-w-[90px] truncate">
+                  {store.currentUser.name}
+                </span>
+                <span className="text-[9px] text-amber-900/80 font-bold block leading-tight">
+                  {store.currentUser.role}
+                </span>
+              </div>
+            </Link>
+            <button
+              type="button"
+              onClick={() => {
+                store.logout();
+                if (typeof window !== "undefined") {
+                  window.location.href = "/login";
+                }
+              }}
+              className="p-1.5 text-stone-400 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+              title="बाहेर पडा (Logout)"
+              aria-label="Logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
+          >
+            <KeyRound className="w-3.5 h-3.5" />
+            <span>लॉगिन</span>
+          </Link>
+        )}
 
         {/* Quick Seating Action */}
         <Link

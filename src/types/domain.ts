@@ -39,7 +39,13 @@ export type PermissionCode =
   | "override.negative_stock"
   | "party.transfer"
   | "party.merge"
-  | "party.split";
+  | "party.split"
+  | "menu.view"
+  | "menu.edit"
+  | "cash_upi.reconcile"
+  | "tasks.manage"
+  | "reminders.manage"
+  | "office_orders.manage";
 
 export interface Restaurant {
   id: string;

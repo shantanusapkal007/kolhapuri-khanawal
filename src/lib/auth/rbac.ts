@@ -33,6 +33,12 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "party.transfer",
     "party.merge",
     "party.split",
+    "menu.view",
+    "menu.edit",
+    "cash_upi.reconcile",
+    "tasks.manage",
+    "reminders.manage",
+    "office_orders.manage",
   ],
   MANAGER: [
     "orders.create",
@@ -59,6 +65,12 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "party.transfer",
     "party.merge",
     "party.split",
+    "menu.view",
+    "menu.edit",
+    "cash_upi.reconcile",
+    "tasks.manage",
+    "reminders.manage",
+    "office_orders.manage",
   ],
   CASHIER: [
     "orders.create",
@@ -71,6 +83,9 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "party.transfer",
     "party.merge",
     "party.split",
+    "menu.view",
+    "cash_upi.reconcile",
+    "office_orders.manage",
   ],
   WAITER: [
     "orders.create",
@@ -79,12 +94,14 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "bill.create",
     "inventory.view",
     "party.transfer",
+    "menu.view",
   ],
   KITCHEN: [
     "kot.status_update",
     "recipe.view",
     "preparation.manage",
     "inventory.view",
+    "menu.view",
   ],
   INVENTORY_MANAGER: [
     "inventory.view",
@@ -94,14 +111,17 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "recipe.view",
     "preparation.manage",
     "reports.view",
+    "menu.view",
   ],
   PURCHASE_STAFF: [
     "inventory.view",
     "inventory.purchase",
     "inventory.cost_view",
+    "menu.view",
   ],
   OTHER_STAFF: [
     "inventory.view",
+    "menu.view",
   ],
 };
 

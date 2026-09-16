@@ -85,4 +85,49 @@ describe("Granular RBAC Security & Role Authorization Matrix", () => {
     store.setCurrentUserRole("OWNER");
     expect(store.currentUser.role).toBe("OWNER");
   });
+
+  it("New granular permissions are enforced correctly across all roles", () => {
+    // 1. menu.view & menu.edit
+    expect(hasPermission("OWNER", "menu.view")).toBe(true);
+    expect(hasPermission("OWNER", "menu.edit")).toBe(true);
+    expect(hasPermission("MANAGER", "menu.edit")).toBe(true);
+    expect(hasPermission("CASHIER", "menu.view")).toBe(true);
+    expect(hasPermission("CASHIER", "menu.edit")).toBe(false);
+    expect(hasPermission("WAITER", "menu.view")).toBe(true);
+    expect(hasPermission("WAITER", "menu.edit")).toBe(false);
+    expect(hasPermission("KITCHEN", "menu.view")).toBe(true);
+    expect(hasPermission("KITCHEN", "menu.edit")).toBe(false);
+
+    // 2. cash_upi.reconcile
+    expect(hasPermission("OWNER", "cash_upi.reconcile")).toBe(true);
+    expect(hasPermission("MANAGER", "cash_upi.reconcile")).toBe(true);
+    expect(hasPermission("CASHIER", "cash_upi.reconcile")).toBe(true);
+    expect(hasPermission("WAITER", "cash_upi.reconcile")).toBe(false);
+    expect(hasPermission("KITCHEN", "cash_upi.reconcile")).toBe(false);
+
+    // 3. tasks.manage & reminders.manage
+    expect(hasPermission("OWNER", "tasks.manage")).toBe(true);
+    expect(hasPermission("OWNER", "reminders.manage")).toBe(true);
+    expect(hasPermission("MANAGER", "tasks.manage")).toBe(true);
+    expect(hasPermission("CASHIER", "tasks.manage")).toBe(false);
+    expect(hasPermission("WAITER", "tasks.manage")).toBe(false);
+    expect(hasPermission("KITCHEN", "tasks.manage")).toBe(false);
+
+    // 4. office_orders.manage
+    expect(hasPermission("OWNER", "office_orders.manage")).toBe(true);
+    expect(hasPermission("MANAGER", "office_orders.manage")).toBe(true);
+    expect(hasPermission("CASHIER", "office_orders.manage")).toBe(true);
+    expect(hasPermission("WAITER", "office_orders.manage")).toBe(false);
+    expect(hasPermission("KITCHEN", "office_orders.manage")).toBe(false);
+  });
+
+  it("Logout sets user to unauthenticated guest state", () => {
+    const store = new RestaurantStore();
+    store.setCurrentUserRole("OWNER");
+    expect(store.currentUser.isActive).toBe(true);
+
+    store.logout();
+    expect(store.currentUser.id).toBe("guest");
+    expect(store.currentUser.isActive).toBe(false);
+  });
 });

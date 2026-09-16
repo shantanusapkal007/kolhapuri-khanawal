@@ -50,6 +50,14 @@ export default function LoginPage() {
   useEffect(() => {
     refreshWaiters();
 
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "admin" || params.get("role") === "admin") {
+        setActiveTab("ADMIN");
+        setUsername("admin");
+      }
+    }
+
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "kk_waiter_credentials") {
         refreshWaiters();
@@ -395,7 +403,7 @@ export default function LoginPage() {
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="admin / manager / cashier"
+                    placeholder="admin"
                     className="w-full bg-stone-950/80 border border-stone-800 rounded-2xl pl-10 pr-3 py-3 text-xs text-white font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
@@ -403,7 +411,7 @@ export default function LoginPage() {
 
               <div>
                 <label className="text-[11px] font-black uppercase tracking-wider text-stone-400 block mb-1">
-                  Security PIN / पासवर्ड
+                  Password / पासवर्ड
                 </label>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 absolute left-3.5 top-3.5 text-stone-500" />
@@ -412,22 +420,29 @@ export default function LoginPage() {
                     required
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    placeholder="Enter PIN (Default: 1234)"
+                    placeholder="Enter password (admin123)"
                     className="w-full bg-stone-950/80 border border-stone-800 rounded-2xl pl-10 pr-10 py-3 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPin(!showPin)}
-                    className="absolute right-3.5 top-3.5 text-stone-500 hover:text-stone-300"
+                    className="absolute right-3.5 top-3.5 text-stone-500 hover:text-stone-300 cursor-pointer"
                   >
                     {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <p className="text-[10px] text-stone-400 mt-1.5 flex items-center gap-1">
+                  <span>Default Admin:</span>
+                  <span className="text-amber-400 font-bold">admin</span>
+                  <span className="text-stone-600">•</span>
+                  <span>Pass:</span>
+                  <span className="text-amber-400 font-mono font-bold">admin123</span>
+                </p>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all touch-manipulation"
+                className="w-full py-3.5 rounded-2xl font-black text-sm bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all touch-manipulation cursor-pointer"
               >
                 <span>Authorize & Enter</span>
                 <ArrowRight className="w-4 h-4" />
@@ -441,35 +456,35 @@ export default function LoginPage() {
                 <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                   <button
                     type="button"
-                    onClick={() => handleQuickDemoLogin("Admin", "admin", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95"
+                    onClick={() => handleQuickDemoLogin("Admin", "admin", "admin123")}
+                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
                   >
                     <span>👑 Owner / Admin</span>
-                    <span className="text-stone-500 font-mono">1234</span>
+                    <span className="text-amber-400 font-mono text-[10px]">admin123</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDemoLogin("Manager", "manager", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95"
+                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
                   >
                     <span>👔 Manager</span>
-                    <span className="text-stone-500 font-mono">1234</span>
+                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDemoLogin("Cashier", "cashier", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95"
+                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
                   >
                     <span>🧾 Cashier Desk</span>
-                    <span className="text-stone-500 font-mono">1234</span>
+                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDemoLogin("Kitchen", "chef", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95"
+                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
                   >
                     <span>👨‍🍳 Kitchen KDS</span>
-                    <span className="text-stone-500 font-mono">1234</span>
+                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
                   </button>
                 </div>
               </div>
