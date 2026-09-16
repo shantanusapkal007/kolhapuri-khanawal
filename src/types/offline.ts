@@ -8,9 +8,11 @@ export type ConnectivityStatus = "ONLINE" | "OFFLINE" | "SYNCING" | "SYNC_FAILED
 export type OutboxMutationType =
   | "CREATE_PARTY"
   | "SEND_KOT"
+  | "UPDATE_KOT_STATUS"
   | "CANCEL_KOT_ITEM"
   | "REQUEST_BILL"
   | "RECORD_PAYMENT"
+  | "SETTLE_BILL"
   | "TRANSFER_PARTY"
   | "MERGE_PARTIES";
 

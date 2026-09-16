@@ -219,6 +219,12 @@ export class RestaurantStore {
   printerSettings: PrinterSettings;
   settings: RestaurantSettings;
 
+  // Operational State Synchronization & Cross-Device Bus
+  instanceId: string = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function" ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+  syncChannel: any = null;
+  saveDebounceTimer: any = null;
+  lastSyncVersion: number = 0;
+
   // Current logged in user context (default Waiter or Admin)
   currentUser: User;
 
@@ -236,6 +242,239 @@ export class RestaurantStore {
       updatedAt: new Date().toISOString(),
     };
     this.seedInitialState();
+    this.initSyncChannel();
+  }
+
+  // ── Multi-Tab & Multi-Device Operational Sync ────────────────────
+  initSyncChannel(): void {
+    if (typeof window === "undefined") return;
+
+    // 1. BroadcastChannel for instant same-browser cross-tab sync
+    if ("BroadcastChannel" in window) {
+      try {
+        this.syncChannel = new BroadcastChannel("kk_operational_sync_bus");
+        this.syncChannel.onmessage = (event: MessageEvent) => {
+          if (event.data?.type === "OP_SYNC" && event.data.senderId !== this.instanceId) {
+            if (event.data.version && event.data.version > this.lastSyncVersion) {
+              this.applySyncSnapshot(event.data.snapshot, event.data.version);
+            }
+          }
+        };
+      } catch (e) {
+        console.warn("BroadcastChannel not supported or restricted", e);
+      }
+    }
+
+    // 2. Storage event listener fallback (for Android WebViews and cross-window sync)
+    window.addEventListener("storage", (e) => {
+      if (e.key === "kk_live_operations_v1" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.version && parsed.version > this.lastSyncVersion && parsed.senderId !== this.instanceId) {
+            this.loadLiveOperationalState(true);
+          }
+        } catch {}
+      }
+    });
+
+    // 3. Local Wi-Fi sync polling every 4 seconds for multi-device waiter tablets / kitchen KDS
+    if (typeof setInterval !== "undefined") {
+      setInterval(() => {
+        this.pullServerRelaySync();
+      }, 4000);
+    }
+  }
+
+  notifyStateChange(source: string = "action"): void {
+    if (typeof window === "undefined") return;
+
+    // Dispatch DOM event immediately for live React components
+    window.dispatchEvent(new CustomEvent("kk-state-changed", { detail: { source, instanceId: this.instanceId } }));
+
+    // Debounce persisting and broadcasting snapshot
+    if (this.saveDebounceTimer) {
+      clearTimeout(this.saveDebounceTimer);
+    }
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveLiveOperationalState();
+    }, 80);
+  }
+
+  saveLiveOperationalState(): void {
+    if (typeof window === "undefined") return;
+    const version = Date.now();
+    this.lastSyncVersion = version;
+
+    const snapshot = {
+      tables: this.tables,
+      parties: this.parties,
+      seats: this.seats,
+      orders: this.orders,
+      kots: this.kots,
+      kotEvents: this.kotEvents,
+      bills: this.bills,
+      payments: this.payments,
+      cashLedger: this.cashLedger,
+      upiLedger: this.upiLedger,
+      ingredients: this.ingredients,
+      stockTransactions: this.stockTransactions,
+      stockReservations: this.stockReservations,
+      wastageRecords: this.wastageRecords,
+      dailyClosings: this.dailyClosings,
+      purchases: this.purchases,
+      expenses: this.expenses,
+      supplierAdvances: this.supplierAdvances,
+      supplierPayments: this.supplierPayments,
+      staffAdvances: this.staffAdvances,
+      attendance: this.attendance,
+      checklistItems: this.checklistItems,
+      notifications: this.notifications,
+    };
+
+    try {
+      localStorage.setItem(
+        "kk_live_operations_v1",
+        JSON.stringify({
+          senderId: this.instanceId,
+          version,
+          ...snapshot,
+        })
+      );
+    } catch (e) {
+      console.warn("Failed to persist live operations to localStorage", e);
+    }
+
+    // Broadcast to other tabs
+    if (this.syncChannel) {
+      try {
+        this.syncChannel.postMessage({
+          type: "OP_SYNC",
+          senderId: this.instanceId,
+          version,
+          snapshot,
+        });
+      } catch {}
+    }
+
+    // Push to server relay (local Wi-Fi)
+    this.pushServerRelaySync(snapshot, version);
+  }
+
+  loadLiveOperationalState(force = false): boolean {
+    if (typeof window === "undefined") return false;
+    try {
+      const raw = localStorage.getItem("kk_live_operations_v1");
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return false;
+
+      if (Array.isArray(data.tables) && data.tables.length > 0) this.tables = data.tables;
+      if (Array.isArray(data.parties)) this.parties = data.parties;
+      if (Array.isArray(data.seats)) this.seats = data.seats;
+      if (Array.isArray(data.orders)) this.orders = data.orders;
+      if (Array.isArray(data.kots)) this.kots = data.kots;
+      if (Array.isArray(data.kotEvents)) this.kotEvents = data.kotEvents;
+      if (Array.isArray(data.bills)) this.bills = data.bills;
+      if (Array.isArray(data.payments)) this.payments = data.payments;
+      if (Array.isArray(data.cashLedger)) this.cashLedger = data.cashLedger;
+      if (Array.isArray(data.upiLedger)) this.upiLedger = data.upiLedger;
+      if (Array.isArray(data.ingredients) && data.ingredients.length > 0) this.ingredients = data.ingredients;
+      if (Array.isArray(data.stockTransactions)) this.stockTransactions = data.stockTransactions;
+      if (Array.isArray(data.stockReservations)) this.stockReservations = data.stockReservations;
+      if (Array.isArray(data.wastageRecords)) this.wastageRecords = data.wastageRecords;
+      if (Array.isArray(data.dailyClosings)) this.dailyClosings = data.dailyClosings;
+      if (Array.isArray(data.purchases)) this.purchases = data.purchases;
+      if (Array.isArray(data.expenses)) this.expenses = data.expenses;
+      if (Array.isArray(data.supplierAdvances)) this.supplierAdvances = data.supplierAdvances;
+      if (Array.isArray(data.supplierPayments)) this.supplierPayments = data.supplierPayments;
+      if (Array.isArray(data.staffAdvances)) this.staffAdvances = data.staffAdvances;
+      if (Array.isArray(data.attendance)) this.attendance = data.attendance;
+      if (Array.isArray(data.checklistItems)) this.checklistItems = data.checklistItems;
+      if (Array.isArray(data.notifications)) this.notifications = data.notifications;
+      if (data.version) this.lastSyncVersion = data.version;
+
+      this.recalculateMenuAvailability();
+
+      if (force) {
+        window.dispatchEvent(new CustomEvent("kk-state-changed", { detail: { source: "local_storage_load" } }));
+      }
+      return true;
+    } catch (e) {
+      console.warn("Could not load live operational state from localStorage", e);
+      return false;
+    }
+  }
+
+  applySyncSnapshot(snapshot: any, version: number): void {
+    if (!snapshot || typeof snapshot !== "object") return;
+    this.lastSyncVersion = version;
+
+    if (Array.isArray(snapshot.tables)) this.tables = snapshot.tables;
+    if (Array.isArray(snapshot.parties)) this.parties = snapshot.parties;
+    if (Array.isArray(snapshot.seats)) this.seats = snapshot.seats;
+    if (Array.isArray(snapshot.orders)) this.orders = snapshot.orders;
+    if (Array.isArray(snapshot.kots)) this.kots = snapshot.kots;
+    if (Array.isArray(snapshot.kotEvents)) this.kotEvents = snapshot.kotEvents;
+    if (Array.isArray(snapshot.bills)) this.bills = snapshot.bills;
+    if (Array.isArray(snapshot.payments)) this.payments = snapshot.payments;
+    if (Array.isArray(snapshot.cashLedger)) this.cashLedger = snapshot.cashLedger;
+    if (Array.isArray(snapshot.upiLedger)) this.upiLedger = snapshot.upiLedger;
+    if (Array.isArray(snapshot.ingredients) && snapshot.ingredients.length > 0) this.ingredients = snapshot.ingredients;
+    if (Array.isArray(snapshot.stockTransactions)) this.stockTransactions = snapshot.stockTransactions;
+    if (Array.isArray(snapshot.stockReservations)) this.stockReservations = snapshot.stockReservations;
+    if (Array.isArray(snapshot.wastageRecords)) this.wastageRecords = snapshot.wastageRecords;
+    if (Array.isArray(snapshot.dailyClosings)) this.dailyClosings = snapshot.dailyClosings;
+    if (Array.isArray(snapshot.purchases)) this.purchases = snapshot.purchases;
+    if (Array.isArray(snapshot.expenses)) this.expenses = snapshot.expenses;
+    if (Array.isArray(snapshot.supplierAdvances)) this.supplierAdvances = snapshot.supplierAdvances;
+    if (Array.isArray(snapshot.supplierPayments)) this.supplierPayments = snapshot.supplierPayments;
+    if (Array.isArray(snapshot.staffAdvances)) this.staffAdvances = snapshot.staffAdvances;
+    if (Array.isArray(snapshot.attendance)) this.attendance = snapshot.attendance;
+    if (Array.isArray(snapshot.checklistItems)) this.checklistItems = snapshot.checklistItems;
+    if (Array.isArray(snapshot.notifications)) this.notifications = snapshot.notifications;
+
+    this.recalculateMenuAvailability();
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("kk-state-changed", { detail: { source: "remote_sync", version } }));
+    }
+  }
+
+  async pullServerRelaySync(): Promise<void> {
+    if (typeof window === "undefined" || (typeof navigator !== "undefined" && !navigator.onLine)) return;
+    try {
+      const res = await fetch("/api/sync", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.version && data.version > this.lastSyncVersion && data.snapshot && data.senderId !== this.instanceId) {
+          this.applySyncSnapshot(data.snapshot, data.version);
+          localStorage.setItem(
+            "kk_live_operations_v1",
+            JSON.stringify({ ...data.snapshot, version: data.version, senderId: data.senderId })
+          );
+        }
+      }
+    } catch {
+      // Local relay offline or network disconnect - silent fallback
+    }
+  }
+
+  async pushServerRelaySync(snapshot: any, version: number): Promise<void> {
+    if (typeof window === "undefined" || (typeof navigator !== "undefined" && !navigator.onLine)) return;
+    try {
+      await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          senderId: this.instanceId,
+          version,
+          snapshot,
+        }),
+        cache: "no-store",
+      });
+    } catch {
+      // Local relay offline or network disconnect - silent fallback
+    }
   }
 
   getStoredActiveUser(): User | null {
@@ -669,17 +908,20 @@ export class RestaurantStore {
   resetToSeedData(): void {
     if (typeof window !== "undefined") {
       try {
+        localStorage.removeItem("kk_live_operations_v1");
         localStorage.removeItem("kk_restaurant_settings");
         localStorage.removeItem("kk_printer_settings");
         localStorage.removeItem("kk_waiter_credentials");
         localStorage.removeItem("kk_menu_items");
         localStorage.removeItem("kk_menu_categories");
+        localStorage.removeItem("kk_khanawal_expenses");
       } catch {}
     }
     this.printerSettings = getStoredPrinterSettings();
     this.settings = DEFAULT_RESTAURANT_SETTINGS;
     this.waiterCredentials = [...initialWaiterCredentials];
     this.seedInitialState();
+    this.notifyStateChange("resetToSeedData");
     this.recordAuditLog(
       "RESET_SYSTEM",
       "SYSTEM",
@@ -1169,6 +1411,7 @@ export class RestaurantStore {
     ];
 
     this.recalculateMenuAvailability();
+    this.loadLiveOperationalState();
   }
 
   /**
@@ -1379,6 +1622,7 @@ export class RestaurantStore {
     this.ingredients.push(newIngredient);
     this.recalculateMenuAvailability();
     this.recordAuditLog("ADD_INGREDIENT", "INGREDIENT", newIngredient.id, `Added raw material ${newIngredient.name}`);
+    this.notifyStateChange("addIngredient");
     return newIngredient;
   }
 
@@ -1401,6 +1645,7 @@ export class RestaurantStore {
     this.ingredients = this.ingredients.map((i) => (i.id === id ? updated : i));
     this.recalculateMenuAvailability();
     this.recordAuditLog("UPDATE_INGREDIENT", "INGREDIENT", id, `Updated ingredient ${ing.name}`);
+    this.notifyStateChange("updateIngredient");
     return updated;
   }
 
@@ -1414,6 +1659,7 @@ export class RestaurantStore {
     this.ingredients = this.ingredients.filter((i) => i.id !== id);
     this.recalculateMenuAvailability();
     this.recordAuditLog("DELETE_INGREDIENT", "INGREDIENT", id, `Deleted ingredient ${ing.name}`);
+    this.notifyStateChange("deleteIngredient");
   }
 
   /**
@@ -1423,6 +1669,7 @@ export class RestaurantStore {
     this.checklistItems = this.checklistItems.map((item) =>
       item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
     );
+    this.notifyStateChange("toggleChecklistItem");
   }
 
   addChecklistItem(
@@ -1438,11 +1685,13 @@ export class RestaurantStore {
       shift,
     };
     this.checklistItems.push(newItem);
+    this.notifyStateChange("addChecklistItem");
     return newItem;
   }
 
   deleteChecklistItem(id: string) {
     this.checklistItems = this.checklistItems.filter((i) => i.id !== id);
+    this.notifyStateChange("deleteChecklistItem");
   }
 
   // --- PARTY & TABLE ACTIONS ---
@@ -1483,6 +1732,7 @@ export class RestaurantStore {
     this.seats.push(...seats);
 
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+    this.notifyStateChange("createPartyAtTable");
     return party;
   }
 
@@ -1502,6 +1752,7 @@ export class RestaurantStore {
     );
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
     this.recordAuditLog("CANCEL_PARTY", "PARTY", partyId, `Cancelled party ${party.partyCode}: ${reason || "No orders placed"}`);
+    this.notifyStateChange("voidOrCancelParty");
   }
 
   transferPartyToTable(partyId: string, toTableNumber: number): DiningParty {
@@ -1523,6 +1774,7 @@ export class RestaurantStore {
 
     this.parties = this.parties.map((p) => (p.id === partyId ? updatedParty : p));
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+    this.notifyStateChange("transferPartyToTable");
     return updatedParty;
   }
 
@@ -1576,6 +1828,7 @@ export class RestaurantStore {
     });
 
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+    this.notifyStateChange("mergePartiesTogether");
     return targetPartyUpdated;
   }
 
@@ -1668,6 +1921,7 @@ export class RestaurantStore {
       sourcePartyId,
       `Split ${itemsToMove.length} items to new party ${newParty.partyCode} at Table ${targetTableNumber}`
     );
+    this.notifyStateChange("splitPartyItemsAction");
 
     return { newParty, updatedSourceParty };
   }
@@ -1764,6 +2018,7 @@ export class RestaurantStore {
         : p
     );
 
+    this.notifyStateChange("placeOrder");
     return { order: result.order, kot: result.kot };
   }
 
@@ -1797,6 +2052,7 @@ export class RestaurantStore {
           : p
       );
     }
+    this.notifyStateChange("advanceKotStatus");
   }
 
   cancelKot(kotId: string, reason: string): Kot {
@@ -1863,6 +2119,7 @@ export class RestaurantStore {
 
     this.recordAuditLog("CANCEL_KOT", "KOT", kot.id, reason || "KOT cancelled by kitchen/manager");
     this.recalculateMenuAvailability();
+    this.notifyStateChange("cancelKot");
     return updatedKot;
   }
 
@@ -1908,6 +2165,7 @@ export class RestaurantStore {
     });
 
     this.bills.push(bill);
+    this.notifyStateChange("generateBillForParty");
     return bill;
   }
 
@@ -1932,6 +2190,7 @@ export class RestaurantStore {
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
 
     this.recordAuditLog("CANCEL_BILL", "BILL", bill.id, reason || "Bill voided by cashier/manager");
+    this.notifyStateChange("cancelBill");
     return updatedBill;
   }
 
@@ -1996,6 +2255,7 @@ export class RestaurantStore {
       this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
     }
 
+    this.notifyStateChange("payBill");
     return { bill: result.updatedBill, isFullyPaid: result.isFullyPaid };
   }
 
@@ -2179,6 +2439,7 @@ export class RestaurantStore {
 
     this.recalculateMenuAvailability();
     this.recordAuditLog("RECORD_PURCHASE", "PURCHASE", newEntry.id, `Purchased ${entry.quantity} ${entry.unit} ${entry.ingredientName} from ${entry.supplierName}`);
+    this.notifyStateChange("recordQuickPurchase");
     return newEntry;
   }
 
@@ -2255,6 +2516,7 @@ export class RestaurantStore {
     }
 
     this.recordAuditLog("RECORD_EXPENSE", "EXPENSE", newExp.id, `Recorded ${newExp.category} expense ₹${newExp.amount} to ${newExp.party}`);
+    this.notifyStateChange("recordStructuredExpense");
     return newExp;
   }
 
@@ -2262,6 +2524,7 @@ export class RestaurantStore {
     this.expenses = this.expenses.filter((e) => e.id !== expenseId);
     this.saveStoredExpenses();
     this.recordAuditLog("DELETE_EXPENSE", "EXPENSE", expenseId, `Deleted expense record ${expenseId}`);
+    this.notifyStateChange("deleteExpense");
   }
 
   /**
@@ -2324,6 +2587,7 @@ export class RestaurantStore {
     }
 
     this.recordAuditLog("SUPPLIER_ADVANCE", "SUPPLIER", advance.supplierId, `Paid advance ₹${advance.amount} to ${advance.supplierName}`);
+    this.notifyStateChange("recordSupplierAdvance");
     return newAdv;
   }
 
@@ -2389,6 +2653,7 @@ export class RestaurantStore {
     }
 
     this.recordAuditLog("SETTLE_SUPPLIER_INVOICE", "SUPPLIER", supplierId, `Settled invoice ₹${invoiceAmount}: ₹${adjustedFromAdvance} from advance, ₹${netPaid} paid via ${paymentMethod}`);
+    this.notifyStateChange("settleSupplierInvoice");
     return { netPaid, adjustedFromAdvance, record: payRecord };
   }
 
@@ -2414,6 +2679,7 @@ export class RestaurantStore {
 
     this.recalculateMenuAvailability();
     this.recordAuditLog("RECORD_WASTAGE", "INVENTORY", record.id, `Recorded wastage: ${wastage.quantity} ${wastage.unit} of ${wastage.ingredientName} (${wastage.reason})`);
+    this.notifyStateChange("recordWastageRecord");
     return record;
   }
 
@@ -2698,6 +2964,7 @@ export class RestaurantStore {
 
     this.dailyClosings.unshift(snapshot);
     this.recordAuditLog("DAILY_CLOSING", "SYSTEM", snapshot.id, `Closed day for ${today}. Total Sales: ₹${report.netRevenue}, Cash Variance: ₹${cashVariance}`);
+    this.notifyStateChange("performDailyClosing");
     return snapshot;
   }
 

@@ -4,6 +4,7 @@ import { AppShell } from "@/components/navigation/AppShell";
 import { FirebaseAnalytics } from "@/components/analytics/FirebaseAnalytics";
 import { PwaRegister } from "@/components/pwa/PwaRegister";
 import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
+import { GlobalErrorBoundary } from "@/components/common/GlobalErrorBoundary";
 
 export const metadata: Metadata = {
   title: "कोल्हापुरी खानावळ — Kolhapuri Khanawal Restaurant OS",
@@ -45,7 +46,9 @@ export default function RootLayout({
         <PwaRegister />
         <PwaInstallPrompt />
         <FirebaseAnalytics />
-        <AppShell>{children}</AppShell>
+        <GlobalErrorBoundary>
+          <AppShell>{children}</AppShell>
+        </GlobalErrorBoundary>
       </body>
     </html>
   );

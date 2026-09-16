@@ -17,10 +17,16 @@ import {
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { Kot, KotStatus, KitchenStationCode, BreadOption, BREAD_OPTION_LABELS } from "@/types/orders";
 import { printKotTicket, printCancelledKot } from "@/lib/printing/thermal-printer";
+import { useScreenWakeLock } from "@/lib/mobile/useScreenWakeLock";
+import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
+import { triggerHaptic } from "@/lib/mobile/haptics";
 
 export default function KitchenDisplayPage() {
   const store = globalRestaurantStore;
   const [, setTick] = useState(0);
+
+  // Screen Wake Lock: keeps tablet display awake in hot kitchen environment
+  useScreenWakeLock(true);
 
   const [selectedStation, setSelectedStation] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ACTIVE");
@@ -31,6 +37,9 @@ export default function KitchenDisplayPage() {
   const [cancellingKotId, setCancellingKotId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState<string>("Customer requested cancellation");
   const prevKotCountRef = useRef<number>(store.kots.length);
+
+  // Back button trap to close cancellation modal
+  useAndroidBackButton(Boolean(cancellingKotId), () => setCancellingKotId(null));
 
   const playKitchenChime = () => {
     try {
@@ -55,6 +64,7 @@ export default function KitchenDisplayPage() {
   };
 
   useEffect(() => {
+    // 1. Periodic poll check
     const interval = setInterval(() => {
       setTick((t) => t + 1);
       if (store.kots.length > prevKotCountRef.current) {
@@ -62,7 +72,21 @@ export default function KitchenDisplayPage() {
         prevKotCountRef.current = store.kots.length;
       }
     }, 1000);
-    return () => clearInterval(interval);
+
+    // 2. Instant multi-device sync event listener
+    const handleSync = () => {
+      setTick((t) => t + 1);
+      if (store.kots.length > prevKotCountRef.current) {
+        playKitchenChime();
+        prevKotCountRef.current = store.kots.length;
+      }
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("kk-state-changed", handleSync);
+    };
   }, [audioEnabled]);
 
   const showToast = (msg: string) => {
@@ -73,6 +97,7 @@ export default function KitchenDisplayPage() {
   const handleAdvanceStatus = (kotId: string, nextStatus: KotStatus) => {
     try {
       store.advanceKotStatus(kotId, nextStatus);
+      triggerHaptic(nextStatus === "SERVED" ? "success" : "tap");
       const kot = store.kots.find((k) => k.id === kotId);
       if (kot && nextStatus === "READY") {
         store.addNotification({
@@ -90,6 +115,7 @@ export default function KitchenDisplayPage() {
       setTick((t) => t + 1);
       showToast(`KOT status advanced to ${nextStatus}!`);
     } catch (err: any) {
+      triggerHaptic("error");
       alert(err.message);
     }
   };
@@ -100,6 +126,7 @@ export default function KitchenDisplayPage() {
     try {
       const kotToCancel = store.kots.find((k) => k.id === cancellingKotId);
       store.cancelKot(cancellingKotId, cancelReason);
+      triggerHaptic("warning");
       if (kotToCancel) {
         printCancelledKot(kotToCancel, cancelReason, store.currentUser.name);
       }
@@ -107,6 +134,7 @@ export default function KitchenDisplayPage() {
       setCancellingKotId(null);
       showToast("KOT ticket cancelled and DO NOT PREPARE slip printed!");
     } catch (err: any) {
+      triggerHaptic("error");
       alert(err.message);
     }
   };

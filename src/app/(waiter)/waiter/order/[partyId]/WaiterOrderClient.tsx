@@ -36,6 +36,8 @@ import {
 import { outboxManager } from "@/lib/offline/outbox";
 import { printKotTicket, printBillReceipt, printTableCheck } from "@/lib/printing/thermal-printer";
 import { WaiterPrinterSettingsModal } from "@/components/waiter/WaiterPrinterSettingsModal";
+import { triggerHaptic } from "@/lib/mobile/haptics";
+import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
 
 interface CartItem {
   menuItem: MenuItem;
@@ -77,11 +79,28 @@ export default function WaiterOrderClient({
   const [overrideReason, setOverrideReason] = useState<string>("Chef confirmed emergency stock available");
   const [overrideError, setOverrideError] = useState<string | null>(null);
 
+  // Android Back Button Trap: Dismiss open modals or sheets before exiting app
+  const isAnyModalOpen = isCartSheetOpen || showMoreActions || showPrinterModal || showTransferModal || showOverrideModal;
+  useAndroidBackButton(isAnyModalOpen, () => {
+    setIsCartSheetOpen(false);
+    setShowMoreActions(false);
+    setShowPrinterModal(false);
+    setShowTransferModal(false);
+    setShowOverrideModal(false);
+  });
+
   const party = store.parties.find((p) => p.id === resolvedParams.partyId);
 
   useEffect(() => {
     store.recalculateMenuAvailability();
     setTick((t) => t + 1);
+
+    // Live multi-device & multi-tab update sync
+    const handleSync = () => {
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+    return () => window.removeEventListener("kk-state-changed", handleSync);
   }, [resolvedParams.partyId]);
 
   if (!party) {
@@ -133,12 +152,14 @@ export default function WaiterOrderClient({
   ) => {
     const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
     if (isOut) {
+      triggerHaptic("warning");
       const confirmAdd = confirm(
         `"${item.name}" has 0 portions left. Add under Manager PIN override?`
       );
       if (!confirmAdd) return;
     }
 
+    triggerHaptic("tap");
     setErrorMessage(null);
 
     const variantName = variant ? variant.name : undefined;
@@ -178,6 +199,7 @@ export default function WaiterOrderClient({
     explicitBread?: BreadOption,
     variantName?: string
   ) => {
+    triggerHaptic("tap");
     const existingIndex = cart.findIndex(
       (c) =>
         c.menuItem.id === item.id &&
@@ -197,6 +219,7 @@ export default function WaiterOrderClient({
   };
 
   const handleUpdateCartQuantity = (index: number, delta: number) => {
+    triggerHaptic("tap");
     const updated = [...cart];
     updated[index].quantity += delta;
     if (updated[index].quantity <= 0) {
@@ -292,8 +315,10 @@ export default function WaiterOrderClient({
       setTick((t) => t + 1);
       setCart([]);
       setIsCartSheetOpen(false);
+      triggerHaptic("success");
       router.push("/waiter");
     } catch (err: any) {
+      triggerHaptic("error");
       if (err.message?.toLowerCase().includes("insufficient") || err.message?.toLowerCase().includes("deficit")) {
         setErrorMessage(err.message);
         setOverrideError(null);
@@ -314,6 +339,7 @@ export default function WaiterOrderClient({
       store.currentUser.role === "MANAGER";
 
     if (!isAuthorized) {
+      triggerHaptic("error");
       setOverrideError("Invalid Manager PIN! Enter 1234 or switch to Manager/Owner role.");
       return;
     }
@@ -332,6 +358,7 @@ export default function WaiterOrderClient({
         })),
         true
       );
+
       store.recordAuditLog(
         "OVERRIDE_NEGATIVE_STOCK",
         "PARTY_ORDER",
@@ -345,11 +372,13 @@ export default function WaiterOrderClient({
         });
       }
 
+      triggerHaptic("success");
       setShowOverrideModal(false);
       setCart([]);
       setIsCartSheetOpen(false);
       router.push("/waiter");
     } catch (err: any) {
+      triggerHaptic("error");
       setOverrideError(err.message);
     } finally {
       setIsSending(false);

@@ -77,6 +77,8 @@ export class OutboxSyncManager {
         let success = true;
         if (executor) {
           success = await executor(mutation);
+        } else {
+          success = await this.defaultMutationExecutor(mutation);
         }
 
         if (success) {
@@ -97,6 +99,66 @@ export class OutboxSyncManager {
     this.syncInProgress = false;
 
     return { syncedCount, failedCount };
+  }
+
+  private async defaultMutationExecutor(mutation: OutboxMutation): Promise<boolean> {
+    try {
+      const { globalRestaurantStore } = await import("@/lib/store/restaurant-store");
+      const payload = mutation.payload as any;
+
+      switch (mutation.mutationType) {
+        case "CREATE_PARTY":
+          if (payload?.tableNumber && payload?.guestCount) {
+            globalRestaurantStore.createPartyAtTable(
+              payload.tableNumber,
+              payload.guestCount,
+              payload.descriptor,
+              payload.isTakeaway,
+              payload.customerName,
+              payload.customerPhone
+            );
+          }
+          return true;
+
+        case "SEND_KOT":
+          if (payload?.partyId && Array.isArray(payload?.items) && payload.items.length > 0) {
+            const alreadyPlaced = globalRestaurantStore.orders.some(
+              (o) => o.idempotencyKey === mutation.id
+            );
+            if (!alreadyPlaced) {
+              globalRestaurantStore.placeOrder(
+                payload.partyId,
+                payload.items,
+                Boolean(payload.allowNegativeStock)
+              );
+            }
+          }
+          return true;
+
+        case "UPDATE_KOT_STATUS":
+          if (payload?.kotId && payload?.newStatus) {
+            globalRestaurantStore.advanceKotStatus(payload.kotId, payload.newStatus);
+          }
+          return true;
+
+        case "SETTLE_BILL":
+          if (payload?.billId && payload?.method && payload?.amount) {
+            globalRestaurantStore.payBill(
+              payload.billId,
+              payload.method,
+              payload.amount,
+              payload.reference
+            );
+          }
+          return true;
+
+        default:
+          return true;
+      }
+    } catch (e) {
+      console.warn(`[OutboxSyncManager] Default executor error for ${mutation.mutationType}:`, e);
+      return false;
+    }
   }
 }
 
