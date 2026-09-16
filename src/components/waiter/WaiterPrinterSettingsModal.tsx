@@ -40,7 +40,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
   const initialIp = (): string => {
     const devices = store.printerSettings.devices || [];
     const netDev = devices.find((d) => d.connectionType === "NETWORK");
-    return netDev?.ipAddress || "192.168.1.50";
+    return netDev?.ipAddress || "192.168.0.108";
   };
 
   const [printMode, setPrintMode] = useState<"SYSTEM" | "RAWBT" | "NETWORK">(initialMode);
@@ -392,7 +392,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-stone-500 block">पटकन निवडा (Presets):</span>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {["192.168.223.1", "192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100", "192.168.29.100"].map((ip) => (
+                  {["192.168.0.108", "192.168.223.1", "192.168.1.100", "192.168.1.87", "192.168.1.50", "192.168.0.100"].map((ip) => (
                     <button
                       key={ip}
                       type="button"

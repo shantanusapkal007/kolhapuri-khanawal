@@ -926,13 +926,13 @@ export default function PrintersManagementPage() {
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
+                    "192.168.0.108",
                     "192.168.223.1",
                     "192.168.1.100",
                     "192.168.1.87",
                     "192.168.1.50",
                     "192.168.0.100",
                     "192.168.29.100",
-                    "192.168.31.100",
                   ].map((presetIp) => (
                     <button
                       key={presetIp}

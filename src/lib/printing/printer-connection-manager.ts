@@ -37,7 +37,7 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     name: "POSIFLOW KP307-UEWB (Counter Bill)",
     modelName: "POSIFLOW KP307-UEWB",
     connectionType: "NETWORK",
-    ipAddress: "192.168.1.50",
+    ipAddress: "192.168.0.108",
     port: 9100,
     paperWidth: "80mm",
     isEnabled: true,

@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const candidates = rawCandidates
       ? rawCandidates.split(",").map((s) => s.trim()).filter(Boolean)
       : [
+          "192.168.0.108",
           "192.168.223.1",
           "192.168.1.100",
           "192.168.1.87",
