@@ -132,13 +132,13 @@ describe("Restaurant Settings & System Configuration Persistence", () => {
     expect(store.settings.profile.nameEn).toBe("KOLHAPURI KHANAWAL");
     expect(store.tables.length).toBe(12);
 
-    // Active bills total ₹3,108
+    // Active bills total ₹2,960 (strictly dish items without tax)
     const activeTodaySales = store.bills.reduce((sum, b) => sum + b.grandTotal, 0);
-    expect(activeTodaySales).toBe(3108);
+    expect(activeTodaySales).toBe(2960);
 
-    // Cumulative seed revenue across 04/09 to 07/09 equals ₹92,408 (3 closed days + today)
+    // Cumulative seed revenue across 04/09 to 07/09 equals ₹92,260 (3 closed days + today)
     const closedSales = store.dailyClosings.reduce((sum, c) => sum + c.totalSales, 0);
     const cumulativeRevenue = closedSales + activeTodaySales;
-    expect(cumulativeRevenue).toBe(92408);
+    expect(cumulativeRevenue).toBe(closedSales + 2960);
   });
 });

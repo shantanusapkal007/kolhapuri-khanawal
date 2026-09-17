@@ -216,10 +216,20 @@ export class EscPosBuilder {
   }
 
   /**
-   * Append ASCII sanitized text string
+   * Append ASCII sanitized text string (preserves formatting spaces for columns)
    */
   text(str: string): this {
-    const cleaned = cleanThermalText(str);
+    const cleaned = str
+      .replace(/₹/g, "Rs.")
+      .replace(/[\u2014\u2013\u2012\u2015—–]/g, "-")
+      .replace(/[\u2022\u00B7\u25AA\u25CF•·]/g, "*")
+      .replace(/[\u2018\u2019\u201A\u201B']/g, "'")
+      .replace(/[\u201C\u201D\u201E\u201F"]/g, '"')
+      .replace(/[\u2026]/g, "...")
+      .replace(/[⚡🥡✅⚠️❌📦🔔🍽️🖨️🔥👍👎]/g, "")
+      .replace(/[\u0900-\u097F]/g, "")
+      .replace(/[^\x20-\x7E\n\r\t]/g, "");
+
     const encoder = new TextEncoder();
     const bytes = encoder.encode(cleaned);
     for (let i = 0; i < bytes.length; i++) {
@@ -454,9 +464,43 @@ export function formatItemNameForBill(
 }
 
 /**
+ * Splits text into wrapped lines cleanly respecting word boundaries.
+ */
+function wrapItemName(text: string, maxWidth: number, indent: number = 2): string[] {
+  const words = text.trim().split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    let remaining = word;
+    while (remaining.length > maxWidth) {
+      if (current) {
+        lines.push(current);
+        current = "";
+      }
+      lines.push(remaining.substring(0, maxWidth));
+      remaining = remaining.substring(maxWidth);
+    }
+
+    const available = lines.length === 0 ? maxWidth : maxWidth - indent;
+    const testLine = current ? current + " " + remaining : remaining;
+    if (testLine.length <= available) {
+      current = testLine;
+    } else {
+      if (current) lines.push(lines.length === 0 ? current : " ".repeat(indent) + current);
+      current = remaining;
+    }
+  }
+  if (current) {
+    lines.push(lines.length === 0 ? current : " ".repeat(indent) + current);
+  }
+  return lines.length > 0 ? lines : [text.substring(0, maxWidth)];
+}
+
+/**
  * Formats a tabular item row for 80mm (48 columns) or 58mm (32 columns).
- * Handles long item names by wrapping the name on the second line (indented),
- * keeping the quantity, rate, and amount perfectly aligned in their columns.
+ * Handles long item names by wrapping the name on subsequent lines (indented),
+ * keeping the quantity, rate, and amount perfectly aligned on the right side of the bill.
  */
 function printFormattedItemRow(
   p: EscPosBuilder,
@@ -467,59 +511,46 @@ function printFormattedItemRow(
   amtStr: string
 ) {
   if (is58mm) {
+    // 58mm: 32 columns (Description 15, Qty 3, Rate 6, Amt 8 = 32)
     const itemWidth = 15;
     const qtyWidth = 3;
     const rateWidth = 6;
     const amtWidth = 8;
 
-    if (cleanName.length <= itemWidth) {
+    const lines = wrapItemName(cleanName, itemWidth, 1);
+    p.tableRow([
+      { text: lines[0], width: itemWidth, align: "LEFT" },
+      { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+      { text: rateStr, width: rateWidth, align: "RIGHT" },
+      { text: amtStr, width: amtWidth, align: "RIGHT" },
+    ]);
+
+    for (let i = 1; i < lines.length; i++) {
       p.tableRow([
-        { text: cleanName, width: itemWidth, align: "LEFT" },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
-        { text: rateStr, width: rateWidth, align: "RIGHT" },
-        { text: amtStr, width: amtWidth, align: "RIGHT" },
-      ]);
-    } else {
-      const line1 = cleanName.substring(0, itemWidth);
-      const line2 = " " + cleanName.substring(itemWidth).trim().substring(0, itemWidth - 1);
-      p.tableRow([
-        { text: line1, width: itemWidth, align: "LEFT" },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
-        { text: rateStr, width: rateWidth, align: "RIGHT" },
-        { text: amtStr, width: amtWidth, align: "RIGHT" },
-      ]);
-      p.tableRow([
-        { text: line2, width: itemWidth, align: "LEFT" },
+        { text: lines[i], width: itemWidth, align: "LEFT" },
         { text: "", width: qtyWidth, align: "RIGHT" },
         { text: "", width: rateWidth, align: "RIGHT" },
         { text: "", width: amtWidth, align: "RIGHT" },
       ]);
     }
   } else {
-    // 80mm: 48 columns (Item 28, Qty 3, Rate 8, Amt 9 = 48)
-    const itemWidth = 28;
-    const qtyWidth = 3;
+    // 80mm: 48 columns (Description 25, Qty 5, Rate 8, Amt 10 = 48)
+    const itemWidth = 25;
+    const qtyWidth = 5;
     const rateWidth = 8;
-    const amtWidth = 9;
+    const amtWidth = 10;
 
-    if (cleanName.length <= itemWidth) {
+    const lines = wrapItemName(cleanName, itemWidth, 2);
+    p.tableRow([
+      { text: lines[0], width: itemWidth, align: "LEFT" },
+      { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+      { text: rateStr, width: rateWidth, align: "RIGHT" },
+      { text: amtStr, width: amtWidth, align: "RIGHT" },
+    ]);
+
+    for (let i = 1; i < lines.length; i++) {
       p.tableRow([
-        { text: cleanName, width: itemWidth, align: "LEFT" },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
-        { text: rateStr, width: rateWidth, align: "RIGHT" },
-        { text: amtStr, width: amtWidth, align: "RIGHT" },
-      ]);
-    } else {
-      const line1 = cleanName.substring(0, itemWidth);
-      const line2 = "  " + cleanName.substring(itemWidth).trim().substring(0, itemWidth - 2);
-      p.tableRow([
-        { text: line1, width: itemWidth, align: "LEFT" },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
-        { text: rateStr, width: rateWidth, align: "RIGHT" },
-        { text: amtStr, width: amtWidth, align: "RIGHT" },
-      ]);
-      p.tableRow([
-        { text: line2, width: itemWidth, align: "LEFT" },
+        { text: lines[i], width: itemWidth, align: "LEFT" },
         { text: "", width: qtyWidth, align: "RIGHT" },
         { text: "", width: rateWidth, align: "RIGHT" },
         { text: "", width: amtWidth, align: "RIGHT" },
@@ -581,22 +612,22 @@ export function buildBillReceiptEscPos(
   p.twoColumns(`Table: ${bill.tableNumber} | ${bill.partyCode}`, bill.isTakeaway ? "Type: PARCEL" : "Dine-in");
 
   // Table Column Headers:
-  // 80mm (48 cols): Item(28) + Qty(3) + Rate(8) + Amt(9) = 48
-  // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
+  // 80mm (48 cols): Description(25) + Qty(5) + Rate(8) + Amt(10) = 48
+  // 58mm (32 cols): Description(15) + Qty(3) + Rate(6) + Amt(8) = 32
   p.doubleSeparator();
   if (is58mm) {
     p.tableRow([
-      { text: "Item", width: 15, align: "LEFT" },
+      { text: "Description", width: 15, align: "LEFT" },
       { text: "Qty", width: 3, align: "RIGHT" },
       { text: "Rate", width: 6, align: "RIGHT" },
       { text: "Amt", width: 8, align: "RIGHT" },
     ], true);
   } else {
     p.tableRow([
-      { text: "Item", width: 28, align: "LEFT" },
-      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Description", width: 25, align: "LEFT" },
+      { text: "Qty", width: 5, align: "RIGHT" },
       { text: "Rate", width: 8, align: "RIGHT" },
-      { text: "Amt", width: 9, align: "RIGHT" },
+      { text: "Amt", width: 10, align: "RIGHT" },
     ], true);
   }
   p.doubleSeparator();
@@ -833,22 +864,22 @@ export function buildTableCheckEscPos(
   p.twoColumns(`Date : ${formatDateTime(new Date().toISOString())}`, `Guests: ${params.party?.guestCount || 2}`);
 
   // Table Column Headers:
-  // 80mm (48 cols): Item(28) + Qty(3) + Rate(8) + Amt(9) = 48
-  // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
+  // 80mm (48 cols): Description(25) + Qty(5) + Rate(8) + Amt(10) = 48
+  // 58mm (32 cols): Description(15) + Qty(3) + Rate(6) + Amt(8) = 32
   p.doubleSeparator();
   if (is58mm) {
     p.tableRow([
-      { text: "Item", width: 15, align: "LEFT" },
+      { text: "Description", width: 15, align: "LEFT" },
       { text: "Qty", width: 3, align: "RIGHT" },
       { text: "Rate", width: 6, align: "RIGHT" },
       { text: "Amt", width: 8, align: "RIGHT" },
     ], true);
   } else {
     p.tableRow([
-      { text: "Item", width: 28, align: "LEFT" },
-      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Description", width: 25, align: "LEFT" },
+      { text: "Qty", width: 5, align: "RIGHT" },
       { text: "Rate", width: 8, align: "RIGHT" },
-      { text: "Amt", width: 9, align: "RIGHT" },
+      { text: "Amt", width: 10, align: "RIGHT" },
     ], true);
   }
   p.doubleSeparator();

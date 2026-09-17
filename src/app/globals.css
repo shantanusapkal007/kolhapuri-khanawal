@@ -219,6 +219,28 @@ input:focus, select:focus, textarea:focus {
   animation: urgent-pulse 1.6s infinite ease-in-out;
 }
 
+/* Radiant glow for Bill Requested tables */
+@keyframes bill-radar {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5), 0 4px 14px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0), 0 8px 24px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.animate-bill-radar {
+  animation: bill-radar 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Tactile touch press response */
+.touch-press {
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.12s ease;
+}
+.touch-press:active {
+  transform: scale(0.96);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

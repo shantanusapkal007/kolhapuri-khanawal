@@ -164,12 +164,19 @@ class PrinterConnectionManager {
     }
   }
 
+  private _saveTimer: ReturnType<typeof setTimeout> | null = null;
+
   private saveJobsToStorage() {
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("kk_print_jobs", JSON.stringify(this.jobs.slice(0, 40)));
-      } catch {}
-    }
+    // Debounce: coalesce rapid successive saves (enqueue + markSuccess) into a single write
+    if (this._saveTimer) return;
+    this._saveTimer = setTimeout(() => {
+      this._saveTimer = null;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("kk_print_jobs", JSON.stringify(this.jobs.slice(0, 40)));
+        } catch {}
+      }
+    }, 500);
   }
 
   public subscribe(listener: QueueListener): () => void {
@@ -1639,7 +1646,8 @@ class PrinterConnectionManager {
     const devices = this.getActiveDevices(currentSettings);
     const targetPrinter = this.findPrinterForStation(devices, "CASHIER", "RECEIPT");
 
-    const html = htmlFallbackFn
+    // Only generate HTML for BROWSER_SYSTEM printers (all other paths use ESC/POS binary)
+    const html = targetPrinter.connectionType === "BROWSER_SYSTEM" && htmlFallbackFn
       ? htmlFallbackFn(bill, isDuplicate, targetPrinter.paperWidth)
       : undefined;
     const title = `${isDuplicate ? "DUPLICATE " : ""}Bill ${bill.billNumber}`;
@@ -1855,7 +1863,7 @@ class PrinterConnectionManager {
     const devices = this.getActiveDevices(currentSettings);
     const targetPrinter = this.findPrinterForStation(devices, "CASHIER", "RECEIPT");
 
-    const html = htmlFallbackFn ? htmlFallbackFn(params) : undefined;
+    const html = targetPrinter.connectionType === "BROWSER_SYSTEM" && htmlFallbackFn ? htmlFallbackFn(params) : undefined;
     const title = `Table Check ${params.party?.partyCode || params.partyCode || "Estimate"}`;
 
     const escposBytes = buildTableCheckEscPos(params, targetPrinter.paperWidth);
@@ -2015,7 +2023,8 @@ class PrinterConnectionManager {
     const devices = this.getActiveDevices(currentSettings);
     const targetPrinter = this.findPrinterForStation(devices, stationFilter || kot.stationCode, "KOT");
 
-    const html = htmlFallbackFn
+    // Only generate HTML for BROWSER_SYSTEM printers (all other paths use ESC/POS binary)
+    const html = targetPrinter.connectionType === "BROWSER_SYSTEM" && htmlFallbackFn
       ? htmlFallbackFn(kot, stationFilter || kot.stationCode, isReprint, targetPrinter.paperWidth)
       : undefined;
     const title = `KOT ${kot.kotNumber}${stationFilter ? ` [${stationFilter}]` : ""}`;

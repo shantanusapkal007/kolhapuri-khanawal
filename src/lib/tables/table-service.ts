@@ -27,9 +27,9 @@ export function calculateTableStatus(
     };
   }
 
-  // Filter parties that are not closed or cancelled
+  // Filter parties that are not closed or cancelled, and exclude takeaway/parcel orders
   const validParties = activeParties.filter(
-    (p) => p.status !== "CLOSED" && p.status !== "CANCELLED"
+    (p) => p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
   );
 
   const activePartiesCount = validParties.length;

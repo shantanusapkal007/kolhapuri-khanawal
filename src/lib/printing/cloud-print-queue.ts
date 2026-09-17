@@ -159,34 +159,10 @@ async function executeEnqueuePrintJob(
   const firestore = getDb();
   const jobsRef = collection(firestore, PRINT_JOBS_COLLECTION);
 
-  // Idempotency check: suppress duplicate prints within 60s
-  if (params.idempotencyKey) {
-    const cutoff = new Date(Date.now() - IDEMPOTENCY_WINDOW_MS).toISOString();
-    const dupQuery = query(
-      jobsRef,
-      where("restaurantId", "==", RESTAURANT_ID),
-      where("idempotencyKey", "==", params.idempotencyKey),
-      where("createdAt", ">=", cutoff),
-      where("status", "in", ["PENDING", "CLAIMED", "PRINTING", "SUCCESS"]),
-      limit(1)
-    );
-
-    try {
-      const dupSnap = await getDocs(dupQuery);
-      if (!dupSnap.empty) {
-        const existing = dupSnap.docs[0];
-        console.warn(
-          `[CloudPrintQueue] Duplicate print suppressed for key: ${params.idempotencyKey}`
-        );
-        const dupJob = { id: existing.id, ...existing.data() } as CloudPrintJob;
-        clientDeduplicationCache.set(dedupKey, { job: dupJob, timestamp: nowMs });
-        return dupJob;
-      }
-    } catch (err) {
-      // If idempotency check fails, proceed with job creation anyway
-      console.warn("[CloudPrintQueue] Idempotency check failed, proceeding:", err);
-    }
-  }
+  // Idempotency: client-side dedup cache (line 120-131) handles fast duplicate suppression.
+  // Server-side dedup by the bridge uses the idempotencyKey field in the document.
+  // Removed the Firestore getDocs idempotency query here — it added 200-400ms network
+  // latency to every print and the client cache already covers the common case.
 
   const now = new Date().toISOString();
   const rawJobData: Record<string, any> = {

@@ -1348,22 +1348,22 @@ export class RestaurantStore {
         subtotal: 960,
         discountAmount: 0,
         taxableAmount: 960,
-        cgstAmount: 24,
-        sgstAmount: 24,
+        cgstAmount: 0,
+        sgstAmount: 0,
         igstAmount: 0,
         vatAmount: 0,
-        totalTaxAmount: 48,
+        totalTaxAmount: 0,
         roundOff: 0,
-        grandTotal: 1008,
-        paidAmount: 1008,
+        grandTotal: 960,
+        paidAmount: 960,
         balanceDue: 0,
         createdAt: `${today}T12:15:00Z`,
         settledAt: `${today}T12:45:00Z`,
         items: [
-          { id: "bi-1", billId: "bill-20260907-01", orderItemId: "oi-1", menuItemId: "menu-chicken-thali", menuItemName: "Special Chicken Thali", quantity: 3, unitPrice: 320, totalPrice: 960, taxRateId: "tax-gst5", taxRatePercentage: 5, taxAmount: 48, isComplimentary: false },
+          { id: "bi-1", billId: "bill-20260907-01", orderItemId: "oi-1", menuItemId: "menu-chicken-thali", menuItemName: "Special Chicken Thali", quantity: 3, unitPrice: 320, totalPrice: 960, taxRateId: "tax-exempt", taxRatePercentage: 0, taxAmount: 0, isComplimentary: false },
         ],
         payments: [
-          { id: "pay-1", billId: "bill-20260907-01", paymentMethod: "CASH", amount: 1008, receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T12:45:00Z` },
+          { id: "pay-1", billId: "bill-20260907-01", paymentMethod: "CASH", amount: 960, receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T12:45:00Z` },
         ],
       },
       {
@@ -1381,22 +1381,22 @@ export class RestaurantStore {
         subtotal: 1320,
         discountAmount: 0,
         taxableAmount: 1320,
-        cgstAmount: 33,
-        sgstAmount: 33,
+        cgstAmount: 0,
+        sgstAmount: 0,
         igstAmount: 0,
         vatAmount: 0,
-        totalTaxAmount: 66,
+        totalTaxAmount: 0,
         roundOff: 0,
-        grandTotal: 1386,
-        paidAmount: 1386,
+        grandTotal: 1320,
+        paidAmount: 1320,
         balanceDue: 0,
         createdAt: `${today}T12:30:00Z`,
         settledAt: `${today}T13:10:00Z`,
         items: [
-          { id: "bi-2", billId: "bill-20260907-02", orderItemId: "oi-2", menuItemId: "menu-mutton-thali", menuItemName: "Special Mutton Thali", quantity: 3, unitPrice: 440, totalPrice: 1320, taxRateId: "tax-gst5", taxRatePercentage: 5, taxAmount: 66, isComplimentary: false },
+          { id: "bi-2", billId: "bill-20260907-02", orderItemId: "oi-2", menuItemId: "menu-mutton-thali", menuItemName: "Special Mutton Thali", quantity: 3, unitPrice: 440, totalPrice: 1320, taxRateId: "tax-exempt", taxRatePercentage: 0, taxAmount: 0, isComplimentary: false },
         ],
         payments: [
-          { id: "pay-2", billId: "bill-20260907-02", paymentMethod: "UPI", amount: 1386, transactionReference: "SBI4928172918", receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T13:10:00Z` },
+          { id: "pay-2", billId: "bill-20260907-02", paymentMethod: "UPI", amount: 1320, transactionReference: "SBI4928172918", receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T13:10:00Z` },
         ],
       },
       {
@@ -1414,23 +1414,23 @@ export class RestaurantStore {
         subtotal: 680,
         discountAmount: 0,
         taxableAmount: 680,
-        cgstAmount: 17,
-        sgstAmount: 17,
+        cgstAmount: 0,
+        sgstAmount: 0,
         igstAmount: 0,
         vatAmount: 0,
-        totalTaxAmount: 34,
+        totalTaxAmount: 0,
         roundOff: 0,
-        grandTotal: 714,
-        paidAmount: 714,
+        grandTotal: 680,
+        paidAmount: 680,
         balanceDue: 0,
         createdAt: `${today}T13:00:00Z`,
         settledAt: `${today}T13:35:00Z`,
         items: [
-          { id: "bi-3", billId: "bill-20260907-03", orderItemId: "oi-3", menuItemId: "menu-chicken-thali", menuItemName: "Special Chicken Thali", quantity: 2, unitPrice: 320, totalPrice: 640, taxRateId: "tax-gst5", taxRatePercentage: 5, taxAmount: 32, isComplimentary: false },
-          { id: "bi-4", billId: "bill-20260907-03", orderItemId: "oi-4", menuItemId: "menu-solkadhi", menuItemName: "Kolhapuri Solkadhi Glass", quantity: 1, unitPrice: 40, totalPrice: 40, taxRateId: "tax-gst5", taxRatePercentage: 5, taxAmount: 2, isComplimentary: false },
+          { id: "bi-3", billId: "bill-20260907-03", orderItemId: "oi-3", menuItemId: "menu-chicken-thali", menuItemName: "Special Chicken Thali", quantity: 2, unitPrice: 320, totalPrice: 640, taxRateId: "tax-exempt", taxRatePercentage: 0, taxAmount: 0, isComplimentary: false },
+          { id: "bi-4", billId: "bill-20260907-03", orderItemId: "oi-4", menuItemId: "menu-solkadhi", menuItemName: "Kolhapuri Solkadhi Glass", quantity: 1, unitPrice: 40, totalPrice: 40, taxRateId: "tax-exempt", taxRatePercentage: 0, taxAmount: 0, isComplimentary: false },
         ],
         payments: [
-          { id: "pay-3", billId: "bill-20260907-03", paymentMethod: "UPI", amount: 714, transactionReference: "GPAY8291038", receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T13:35:00Z` },
+          { id: "pay-3", billId: "bill-20260907-03", paymentMethod: "UPI", amount: 680, transactionReference: "GPAY8291038", receivedBy: "emp-priya", receivedByName: "Priya Kulkarni", status: "SUCCESS", paymentTime: `${today}T13:35:00Z` },
         ],
       },
     ];
@@ -1758,6 +1758,84 @@ export class RestaurantStore {
 
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
     this.notifyStateChange("createPartyAtTable");
+    return party;
+  }
+
+  createTakeawayParty(
+    customerName?: string,
+    customerPhone?: string,
+    packagingCharges: number = 20,
+    notes?: string
+  ): DiningParty {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayParcels = this.parties.filter(
+      (p) => p.isTakeaway && p.openedAt.startsWith(todayStr)
+    );
+    const parcelNum = todayParcels.length + 1;
+    const partyCode = `PARCEL-${String(parcelNum).padStart(2, "0")}`;
+    const now = new Date().toISOString();
+    const partyId = `party-parcel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+    const party: DiningParty = {
+      id: partyId,
+      partyCode,
+      tableId: "table-takeaway",
+      tableNumber: 0,
+      guestCount: 1,
+      assignedWaiterId: this.currentUser.id,
+      assignedWaiterName: this.currentUser.name,
+      status: "OPEN",
+      descriptor: "Takeaway / Parcel (पार्सल)",
+      runningSubtotal: 0,
+      runningGrandTotal: 0,
+      openedAt: now,
+      lastActivityAt: now,
+      notes,
+      isTakeaway: true,
+      customerName: customerName || `Parcel #${parcelNum}`,
+      customerPhone: customerPhone || "",
+      packagingCharges,
+    };
+
+    this.parties.push(party);
+    this.recordAuditLog(
+      "CREATE_TAKEAWAY_PARTY",
+      "DINING_PARTY",
+      party.id,
+      `Created Takeaway Parcel ${party.partyCode} (${party.customerName})`
+    );
+    this.notifyStateChange("createTakeawayParty");
+    return party;
+  }
+
+  convertToTakeawayParty(partyId: string, customerName?: string, customerPhone?: string): DiningParty {
+    const party = this.parties.find((p) => p.id === partyId);
+    if (!party) throw new Error(`Party ${partyId} not found`);
+
+    party.isTakeaway = true;
+    party.tableNumber = 0;
+    party.tableId = "table-takeaway";
+    if (customerName) party.customerName = customerName;
+    if (customerPhone) party.customerPhone = customerPhone;
+    if (!party.partyCode.startsWith("PARCEL-")) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const todayParcels = this.parties.filter(
+        (p) => p.isTakeaway && p.openedAt.startsWith(todayStr)
+      );
+      party.partyCode = `PARCEL-${String(todayParcels.length + 1).padStart(2, "0")}`;
+    }
+    party.lastActivityAt = new Date().toISOString();
+
+    // Release physical table occupancy immediately
+    this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+
+    this.recordAuditLog(
+      "CONVERT_TO_TAKEAWAY",
+      "DINING_PARTY",
+      party.id,
+      `Converted party to Takeaway Parcel ${party.partyCode}`
+    );
+    this.notifyStateChange("convertToTakeawayParty");
     return party;
   }
 
@@ -2284,6 +2362,69 @@ export class RestaurantStore {
 
     this.notifyStateChange("payBill");
     return { bill: result.updatedBill, isFullyPaid: result.isFullyPaid };
+  }
+
+  /**
+   * Quick Settle: One-tap bill + pay + close table for the waiter floor.
+   * Generates bill if needed, pays full amount as CASH (default), closes party, frees table.
+   */
+  quickSettleBill(partyId: string, paymentMethod: "CASH" | "UPI" = "CASH"): { bill: Bill; message: string } {
+    const party = this.parties.find((p) => p.id === partyId);
+    if (!party) throw new Error(`Party ${partyId} not found`);
+
+    // Check for existing unpaid bill or generate new one
+    let bill = this.bills.find((b) => b.partyId === partyId && b.status !== "PAID" && b.status !== "CANCELLED");
+
+    // If an unpaid bill exists but orders changed since creation, cancel old draft and regenerate
+    const partyOrders = this.orders.filter((o) => o.partyId === partyId && o.status !== "CANCELLED");
+    const currentItemsCount = partyOrders.flatMap((o) => o.items).length;
+    const currentSubtotal = partyOrders.flatMap((o) => o.items).reduce((s, i) => s + (i.totalPrice || 0), 0);
+
+    if (bill && (bill.items.length !== currentItemsCount || bill.subtotal !== currentSubtotal)) {
+      bill.status = "CANCELLED";
+      bill.cancelledReason = "Regenerated for final settlement";
+      bill = undefined;
+    }
+
+    if (!bill) {
+      bill = this.generateBillForParty(partyId);
+    }
+
+    const isTakeaway = Boolean(party.isTakeaway || party.tableNumber === 0);
+    const label = isTakeaway
+      ? `Parcel ${party.customerName || party.partyCode}`
+      : `Table ${party.tableNumber}`;
+
+    if (bill.grandTotal <= 0) {
+      // Zero bill — just close the party
+      this.parties = this.parties.map((p) =>
+        p.id === partyId ? { ...p, status: "CLOSED", closedAt: new Date().toISOString() } : p
+      );
+      this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+      this.notifyStateChange("quickSettleBill");
+      return { bill, message: `${label} closed (zero bill).` };
+    }
+
+    // Pay the full amount
+    const result = this.payBill(bill.id, paymentMethod, bill.grandTotal);
+
+    // Notify floor and cashier
+    this.addNotification({
+      type: "BILL_PAID",
+      title: `${label} Bill Paid (₹${result.bill.grandTotal})`,
+      message: `${label} (${party.partyCode}) marked paid via ${paymentMethod}.`,
+      category: "BILLING",
+      urgency: "LOW",
+      targetRoles: ["CASHIER", "ADMIN", "WAITER"],
+      actionUrl: isTakeaway ? "/waiter?tab=parcels" : "/waiter",
+      actionLabel: isTakeaway ? "View Parcels" : "View Floor",
+      metadata: { tableNumber: party.tableNumber, amount: result.bill.grandTotal },
+    });
+
+    return {
+      bill: result.bill,
+      message: `${label} — ₹${result.bill.grandTotal} paid (${paymentMethod}). ${isTakeaway ? "Parcel ready/settled!" : "Table closed!"}`,
+    };
   }
 
   // --- DAY-END Z-REPORT (दिवसाचा हिशोब) ---

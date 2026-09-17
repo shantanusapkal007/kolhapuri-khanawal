@@ -103,4 +103,34 @@ describe("Shared Tables, Dining Parties & Seat Management Lifecycle", () => {
     expect(table5.status).toBe("OCCUPIED");
     expect(table5.activePartiesCount).toBe(1);
   });
+
+  it("Scenario 4: One-Tap Bill Paid & Close Table (quickSettleBill) marks party closed, settles bill, and frees table immediately", () => {
+    const table2 = store.tables.find((t) => t.tableNumber === 2)!;
+    expect(table2.status).toBe("AVAILABLE");
+
+    const party = store.createPartyAtTable(2, 4, "Patil Family");
+    expect(store.tables.find((t) => t.tableNumber === 2)!.status).toBe("OCCUPIED");
+
+    // Order dishes
+    store.placeOrder(party.id, [
+      { menuItemId: "menu-mutton-thali", quantity: 2 },
+      { menuItemId: "menu-solkadhi", quantity: 2 },
+    ]);
+
+    // Fast 1-tap Bill Paid
+    const result = store.quickSettleBill(party.id, "CASH");
+    expect(result.bill.status).toBe("PAID");
+    expect(result.bill.paidAmount).toBe(result.bill.grandTotal);
+    expect(result.message).toContain("Table 2");
+    expect(result.message).toContain("Table closed");
+
+    // Table 2 must be AVAILABLE immediately
+    const freedTable2 = store.tables.find((t) => t.tableNumber === 2)!;
+    expect(freedTable2.status).toBe("AVAILABLE");
+    expect(freedTable2.activePartiesCount).toBe(0);
+
+    // Party must be CLOSED
+    const closedParty = store.parties.find((p) => p.id === party.id)!;
+    expect(closedParty.status).toBe("CLOSED");
+  });
 });

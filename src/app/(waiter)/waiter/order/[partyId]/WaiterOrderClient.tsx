@@ -24,6 +24,9 @@ import {
   MoreVertical,
   Check,
   Sliders,
+  Banknote,
+  CreditCard,
+  ShoppingBag,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -79,14 +82,21 @@ export default function WaiterOrderClient({
   const [overrideReason, setOverrideReason] = useState<string>("Chef confirmed emergency stock available");
   const [overrideError, setOverrideError] = useState<string | null>(null);
 
+  // Quick Settle / Bill Paid Modal state
+  const [showSettleModal, setShowSettleModal] = useState<boolean>(false);
+  const [settleMethod, setSettleMethod] = useState<"CASH" | "UPI">("CASH");
+  const [autoPrintOnSettle, setAutoPrintOnSettle] = useState<boolean>(true);
+  const [isSettling, setIsSettling] = useState<boolean>(false);
+
   // Android Back Button Trap: Dismiss open modals or sheets before exiting app
-  const isAnyModalOpen = isCartSheetOpen || showMoreActions || showPrinterModal || showTransferModal || showOverrideModal;
+  const isAnyModalOpen = isCartSheetOpen || showMoreActions || showPrinterModal || showTransferModal || showOverrideModal || showSettleModal;
   useAndroidBackButton(isAnyModalOpen, () => {
     setIsCartSheetOpen(false);
     setShowMoreActions(false);
     setShowPrinterModal(false);
     setShowTransferModal(false);
     setShowOverrideModal(false);
+    setShowSettleModal(false);
   });
 
   const party = store.parties.find((p) => p.id === resolvedParams.partyId);
@@ -259,7 +269,7 @@ export default function WaiterOrderClient({
 
     try {
       if (outboxManager.getStatus() === "OFFLINE") {
-        await outboxManager.enqueueMutation(
+        outboxManager.enqueueMutation(
           "SEND_KOT",
           {
             partyId: party.id,
@@ -273,7 +283,7 @@ export default function WaiterOrderClient({
             })),
           },
           { partyCode: party.partyCode, tableNumber: party.tableNumber }
-        );
+        ).catch(() => {}); // Fire-and-forget: offline sync is background work
       }
 
       const result = store.placeOrder(
@@ -438,28 +448,66 @@ export default function WaiterOrderClient({
     }
   };
 
+  const handleQuickSettle = (method: "CASH" | "UPI" = "CASH") => {
+    if (!party) return;
+    try {
+      setIsSettling(true);
+      triggerHaptic("success");
+      const result = store.quickSettleBill(party.id, method);
+      if (autoPrintOnSettle) {
+        printBillReceipt(result.bill, false, store.printerSettings?.paperWidth || "80mm");
+      }
+      setShowSettleModal(false);
+      alert(`✅ ${result.message}`);
+      if (party.isTakeaway || party.tableNumber === 0) {
+        router.push("/waiter?tab=parcels");
+      } else {
+        router.push("/waiter");
+      }
+    } catch (err: any) {
+      triggerHaptic("error");
+      alert(err.message);
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
   return (
     <div className="space-y-3 pb-32 max-w-5xl mx-auto">
       {/* 1. Ultra-Clean Header */}
       <div className="bg-white rounded-2xl p-3 sm:p-4 border border-stone-200 shadow-xs flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
-            href="/waiter"
+            href={party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter"}
             className="p-2 sm:p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-95 transition-all shrink-0"
-            title="Back to Floor"
+            title={party.isTakeaway || party.tableNumber === 0 ? "Back to Parcels" : "Back to Floor"}
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-md">
-                Table {party.tableNumber}
-              </span>
-              <span className="text-xs font-bold text-stone-600 truncate">
-                {party.guestCount} Guests
-              </span>
-            </div>
+            {party.isTakeaway || party.tableNumber === 0 ? (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="bg-amber-600 text-white font-black text-xs px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                  <ShoppingBag className="w-3.5 h-3.5 text-amber-200" />
+                  <span>{party.partyCode} (पार्सल)</span>
+                </span>
+                {party.customerName && (
+                  <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-[160px]">
+                    {party.customerName}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-md">
+                  Table {party.tableNumber}
+                </span>
+                <span className="text-xs font-bold text-stone-600 truncate">
+                  {party.guestCount} Guests
+                </span>
+              </div>
+            )}
             <span className="text-[11px] text-stone-400 font-semibold block truncate">
               Waiter: <strong className="text-stone-700">{party.assignedWaiterName.split(" ")[0]}</strong>
             </span>
@@ -468,6 +516,24 @@ export default function WaiterOrderClient({
 
         {/* Right Header Status & Action Buttons */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* 1-Tap Take Parcel Button while placing orders */}
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const newParcel = store.createTakeawayParty();
+                router.push(`/waiter/order/${newParcel.id}?isTakeaway=true`);
+              } catch (err: any) {
+                alert(err.message);
+              }
+            }}
+            className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-400/50"
+            title="Take a New Parcel Order (Will not occupy physical tables 1–12)"
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-stone-950" />
+            <span className="hidden xs:inline">Take Parcel</span>
+          </button>
+
           {/* Running Bill Amount */}
           <div className="text-right px-2.5 py-1 bg-stone-50 border border-stone-200 rounded-xl">
             <span className="text-[9px] uppercase font-black tracking-wider text-stone-400 block leading-none">
@@ -477,6 +543,38 @@ export default function WaiterOrderClient({
               ₹{party.runningSubtotal}
             </span>
           </div>
+
+          {/* Direct Bill Paid Button - ALWAYS clearly visible with text on mobile and desktop */}
+          {party.runningSubtotal > 0 ? (
+            <button
+              type="button"
+              onClick={() => setShowSettleModal(true)}
+              className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer ring-2 ring-emerald-400/20"
+              title={party.isTakeaway || party.tableNumber === 0 ? "Bill is Paid — Complete Parcel" : "Bill is Paid — Close Table"}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Bill Paid</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("No orders placed yet. Cancel and vacate this table/order?")) {
+                  try {
+                    store.voidOrCancelParty(party.id, "Empty party cancelled");
+                    router.push(party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter");
+                  } catch (e: any) {
+                    alert(e.message);
+                  }
+                }
+              }}
+              className="px-2 sm:px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition-all flex items-center gap-1 shrink-0 touch-manipulation cursor-pointer"
+              title="Cancel & Free Table"
+            >
+              <X className="w-3.5 h-3.5 text-stone-500" />
+              <span className="hidden xs:inline">Cancel Table</span>
+            </button>
+          )}
 
           {/* Quick Printer Settings Button */}
           <button
@@ -493,13 +591,47 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowMoreActions(!showMoreActions)}
-              className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95"
+              className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
 
             {showMoreActions && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-stone-200 rounded-2xl shadow-xl p-1.5 z-30 text-xs space-y-1 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl p-1.5 z-30 text-xs space-y-1 animate-in fade-in zoom-in-95">
+                {party.runningSubtotal > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreActions(false);
+                      setShowSettleModal(true);
+                    }}
+                    className="w-full text-left px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 font-black text-emerald-800 flex items-center gap-2 border border-emerald-200"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>{party.isTakeaway || party.tableNumber === 0 ? "Bill Paid — Complete Parcel" : "Bill Paid — Close Table"}</span>
+                  </button>
+                )}
+
+                {/* Switch from Table to Parcel takeaway if guest changes mind */}
+                {!party.isTakeaway && party.tableNumber !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        store.convertToTakeawayParty(party.id);
+                        setShowMoreActions(false);
+                        alert(`Switched Table ${party.tableNumber} to Takeaway Parcel! Physical table is now FREE.`);
+                        router.refresh();
+                      } catch (e: any) {
+                        alert(e.message);
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-amber-50 font-bold text-amber-900 flex items-center gap-2 border border-amber-200 bg-amber-50/60"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Make Parcel (पार्सल करा)</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handlePrintLatestKot}
@@ -551,6 +683,49 @@ export default function WaiterOrderClient({
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Fast Table Settle Action Strip - Always unmissable when table is open */}
+      <div className="bg-gradient-to-r from-emerald-500/15 via-white to-emerald-500/10 border-2 border-emerald-400/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+            <CheckCircle2 className="w-4 h-4 text-emerald-100" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-black text-xs sm:text-sm text-stone-900 truncate">
+                {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${party.tableNumber}`}
+              </span>
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">
+                ACTIVE
+              </span>
+            </div>
+            <span className="text-[11px] text-stone-500 font-bold block truncate">
+              Total: <strong className="text-emerald-700 font-mono font-black text-xs sm:text-sm">₹{party.runningSubtotal}</strong> • {party.guestCount} Guests
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleRequestBill}
+            className="hidden xs:flex px-2.5 sm:px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl items-center gap-1 border border-stone-300 active:scale-95 transition-all cursor-pointer"
+            title="Request / Print Pre-Bill Check"
+          >
+            <Receipt className="w-3.5 h-3.5 text-stone-600" />
+            <span>Check</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSettleModal(true)}
+            className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer border border-emerald-500"
+            title="Bill is Paid — Settle & Close Table"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
+            <span>Bill Paid (बिल भरले)</span>
+          </button>
         </div>
       </div>
 
@@ -895,6 +1070,41 @@ export default function WaiterOrderClient({
         </div>
       )}
 
+      {/* 5b. Floating Bottom Bar when Cart is Empty & Party Has Running Total */}
+      {totalCartCount === 0 && party.runningSubtotal > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200 shadow-2xl p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-stone-500">Bill Total:</span>
+              <span className="font-mono font-black text-base sm:text-lg text-emerald-700">₹{party.runningSubtotal}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRequestBill}
+                className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl flex items-center gap-1.5 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                title="Print Pre-Bill / Table Check"
+              >
+                <Receipt className="w-3.5 h-3.5 text-stone-500" />
+                <span className="hidden xs:inline">Check</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettleModal(true)}
+                className="py-3 px-4 sm:px-5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>
+                  {party.isTakeaway || party.tableNumber === 0
+                    ? "✅ Bill is Paid — Complete Parcel →"
+                    : "✅ Bill is Paid — Close Table →"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 6. Expandable Cart Sheet Modal */}
       {isCartSheetOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
@@ -1118,6 +1328,121 @@ export default function WaiterOrderClient({
                 className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-black"
               >
                 Confirm Move
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. Quick Settle & Close Table Modal (बिल भरले — टेबल बंद करा) */}
+      {showSettleModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-lg ${
+                  party.isTakeaway || party.tableNumber === 0 ? "bg-amber-600" : "bg-red-600"
+                }`}>
+                  {party.isTakeaway || party.tableNumber === 0 ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}
+                </span>
+                <h3 className="font-black text-stone-900 text-base">
+                  Bill is Paid (बिल भरले)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSettleModal(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bill Summary */}
+            <div className="bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl p-3.5 text-center space-y-1">
+              <div className="text-xs text-stone-500 font-semibold">
+                Party {party.partyCode}
+                {party.customerName ? ` • ${party.customerName}` : ""}
+              </div>
+              <div className="text-3xl font-mono font-black text-emerald-700">
+                ₹{party.runningSubtotal}
+              </div>
+              <div className="text-[11px] text-stone-400 font-medium">
+                {party.isTakeaway || party.tableNumber === 0
+                  ? "Mark parcel as paid and ready for takeaway"
+                  : `Mark settled and close Table ${party.tableNumber}`}
+              </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
+                Payment Mode (पैसे कसे मिळाले?):
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSettleMethod("CASH")}
+                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                    settleMethod === "CASH"
+                      ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
+                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                  }`}
+                >
+                  <Banknote className="w-5 h-5 text-emerald-600" />
+                  <span>💵 Cash (रोख)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettleMethod("UPI")}
+                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                    settleMethod === "UPI"
+                      ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
+                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  <span>📱 UPI / QR</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Print Receipt Toggle */}
+            <label className="flex items-center gap-2 text-xs font-bold text-stone-600 cursor-pointer select-none bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+              <input
+                type="checkbox"
+                checked={autoPrintOnSettle}
+                onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+              <Printer className="w-4 h-4 text-stone-500" />
+              <span>Print Customer Bill Receipt (पावती छापा)</span>
+            </label>
+
+            {/* Confirm Settle Button */}
+            <div className="pt-1 space-y-2">
+              <button
+                type="button"
+                disabled={isSettling}
+                onClick={() => handleQuickSettle(settleMethod)}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>
+                  {isSettling
+                    ? (party.isTakeaway || party.tableNumber === 0 ? "Completing Parcel..." : "Closing Table...")
+                    : (party.isTakeaway || party.tableNumber === 0
+                        ? `Confirm Paid & Complete Parcel (₹${party.runningSubtotal}) →`
+                        : `Confirm Paid & Close Table (₹${party.runningSubtotal}) →`)}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSettleModal(false)}
+                className="w-full py-2 text-stone-500 hover:text-stone-800 font-bold text-xs text-center cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>

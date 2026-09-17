@@ -322,8 +322,8 @@ export default function CashierBillingPage() {
             ? `Bill ${result.bill.billNumber} PAID IN FULL! Return change: ₹${changeReturn}`
             : `Bill ${result.bill.billNumber} PAID IN FULL! Table status updated.`
         );
-        // Direct auto-print receipt on full payment
-        await handlePrintReceipt(result.bill, false);
+        // Fire-and-forget: print receipt in background, don't block cashier UI
+        handlePrintReceipt(result.bill, false).catch(() => {});
         if (paymentMethod === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
           triggerCashDrawerKick();
         }
@@ -401,7 +401,7 @@ export default function CashierBillingPage() {
               setIsZReportModalOpen(true);
             }}
             className="flex items-center gap-1.5 bg-stone-900 hover:bg-black text-amber-300 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all shadow-sm"
-            title="Generate and print daily sales & tax closure slip (Z-Report)"
+            title="Generate and print daily sales closure slip (Z-Report)"
           >
             <Calendar className="w-4 h-4 text-amber-400" />
             <span>Day-End Z-Report</span>
@@ -474,7 +474,7 @@ export default function CashierBillingPage() {
                             {party.partyCode}
                           </span>
                           <span className="font-black text-sm text-stone-900">
-                            Table {party.tableNumber}
+                            {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${party.tableNumber}`}
                           </span>
                         </div>
                         <span className="font-black text-sm text-emerald-800">
@@ -674,7 +674,6 @@ export default function CashierBillingPage() {
                         <th className="font-bold py-1.5">Item</th>
                         <th className="font-bold py-1.5 text-center">Qty</th>
                         <th className="font-bold py-1.5 text-right">Price</th>
-                        <th className="font-bold py-1.5 text-right">Tax (5% GST)</th>
                         <th className="font-bold py-1.5 text-right">Total</th>
                       </tr>
                     </thead>
@@ -691,7 +690,6 @@ export default function CashierBillingPage() {
                           </td>
                           <td className="py-2 text-center font-bold text-stone-700">{it.quantity}</td>
                           <td className="py-2 text-right text-stone-700">₹{it.unitPrice}</td>
-                          <td className="py-2 text-right text-stone-500">₹{it.taxAmount}</td>
                           <td className="py-2 text-right font-black text-stone-900">₹{it.totalPrice}</td>
                         </tr>
                       ))}
@@ -708,8 +706,7 @@ export default function CashierBillingPage() {
                       }, {} as Record<string, typeof activeBill.items>)
                     ).map(([seatName, seatItems]) => {
                       const seatSubtotal = seatItems.reduce((sum, i) => sum + i.totalPrice, 0);
-                      const seatTax = seatItems.reduce((sum, i) => sum + i.taxAmount, 0);
-                      const seatTotal = Math.round(seatSubtotal + seatTax);
+                      const seatTotal = Math.round(seatSubtotal);
                       return (
                         <div key={seatName} className="border border-stone-200 rounded-xl p-3 bg-[#FAF8F5]">
                           <div className="flex items-center justify-between pb-2 border-b border-stone-200 mb-2">
@@ -855,12 +852,25 @@ export default function CashierBillingPage() {
                       className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 py-3 rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation"
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>COLLECT PAYMENT (₹{activeBill.balanceDue})</span>
+                      <span>COLLECT PAYMENT / BILL IS PAID (₹{activeBill.balanceDue})</span>
                     </button>
                   ) : (
-                    <span className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
-                      <CheckCircle2 className="w-4 h-4" /> BILL SETTLED IN FULL
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
+                        <CheckCircle2 className="w-4 h-4" /> BILL SETTLED & TABLE CLOSED
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveBill(null);
+                          setSelectedPartyId("");
+                          setMobileView("LIST");
+                        }}
+                        className="flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
+                      >
+                        <span>Next Table →</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1025,7 +1035,7 @@ export default function CashierBillingPage() {
         <ThermalReceiptModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
-          title={`Tax Invoice — ${activeBill.billNumber}`}
+          title={`Bill Receipt — ${activeBill.billNumber}`}
           generateHtml={(width) => generateBillReceiptHtml(activeBill, false, width)}
           defaultPaperWidth={printerPaperWidth}
           onDirectPrint={async () => {
@@ -1216,18 +1226,24 @@ export default function CashierBillingPage() {
                       <span className="font-bold text-stone-900">₹{dayEndReportData.totalPackagingCharges.toFixed(2)}</span>
                     </div>
                   )}
+                  {dayEndReportData.netTaxableSales > 0 && dayEndReportData.netTaxableSales !== dayEndReportData.grossSalesSubtotal && (
                   <div className="flex justify-between py-0.5">
-                    <span className="text-stone-600">Net Taxable Turnover:</span>
+                    <span className="text-stone-600">Net Sales:</span>
                     <span className="font-bold text-stone-900">₹{dayEndReportData.netTaxableSales.toFixed(2)}</span>
                   </div>
+                  )}
+                  {dayEndReportData.cgstAmount > 0 && (
                   <div className="flex justify-between py-0.5 text-stone-500">
                     <span>CGST (2.5%):</span>
                     <span>₹{dayEndReportData.cgstAmount.toFixed(2)}</span>
                   </div>
+                  )}
+                  {dayEndReportData.sgstAmount > 0 && (
                   <div className="flex justify-between py-0.5 text-stone-500">
                     <span>SGST (2.5%):</span>
                     <span>₹{dayEndReportData.sgstAmount.toFixed(2)}</span>
                   </div>
+                  )}
                   <div className="flex justify-between py-1 border-t-2 border-stone-800 text-sm font-black text-stone-900">
                     <span>NET REVENUE</span>
                     <span className="text-emerald-700">₹{dayEndReportData.netRevenue.toFixed(2)}</span>

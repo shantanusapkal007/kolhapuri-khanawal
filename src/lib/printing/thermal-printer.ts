@@ -214,13 +214,69 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     color: #000000 !important;
   }
   th { font-weight: 900 !important; }
+  table.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 3px 0;
+  }
+  table.items-table th {
+    padding: 3px 0;
+    font-size: ${is58mm ? "10px" : "11.5px"};
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  table.items-table td {
+    padding: 2.5px 0;
+    vertical-align: top;
+    font-weight: 700 !important;
+    color: #000000 !important;
+  }
+  table.items-table th.col-desc,
+  table.items-table td.col-desc {
+    text-align: left !important;
+  }
+  table.items-table th.col-qty,
+  table.items-table td.col-qty,
+  table.items-table th.col-rate,
+  table.items-table td.col-rate,
+  table.items-table th.col-amt,
+  table.items-table td.col-amt {
+    text-align: right !important;
+  }
+  .col-desc {
+    text-align: left;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    padding-right: ${is58mm ? "1.5mm" : "2.5mm"};
+  }
+  .col-qty {
+    text-align: right;
+    width: ${is58mm ? "7mm" : "9mm"};
+    white-space: nowrap;
+    padding-right: ${is58mm ? "1.5mm" : "2mm"};
+    font-weight: 900 !important;
+  }
+  .col-rate {
+    text-align: right;
+    width: ${is58mm ? "11mm" : "14mm"};
+    white-space: nowrap;
+    padding-right: ${is58mm ? "1.5mm" : "2mm"};
+    font-weight: 700 !important;
+  }
+  .col-amt {
+    text-align: right;
+    width: ${is58mm ? "14mm" : "17mm"};
+    white-space: nowrap;
+    font-weight: 900 !important;
+  }
   .item-name {
     max-width: ${itemColWidth};
     word-wrap: break-word;
     overflow-wrap: break-word;
     font-weight: 700 !important;
   }
-  .qty { text-align: center; width: 8mm; font-weight: 900 !important; }
+  .qty { text-align: right; width: 8mm; font-weight: 900 !important; }
   .amt { text-align: right; width: ${is58mm ? "13mm" : "16mm"}; font-weight: 800 !important; }
   .rate { text-align: right; width: ${is58mm ? "11mm" : "14mm"}; font-weight: 700 !important; }
   .sr { text-align: center; width: 5mm; font-weight: 700 !important; }
@@ -604,16 +660,21 @@ export function generateBillReceiptHtml(
   }
 
   let itemsHtml = "";
-  let srNo = 0;
   for (const item of bill.items) {
-    srNo++;
+    const breadTag = item.breadOption
+      ? `<div class="tiny" style="font-weight:bold; color:#000;">[${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}]</div>`
+      : "";
+    const seatTag = item.seatNumber ? ` <span class="tiny">(S${item.seatNumber})</span>` : "";
+
     itemsHtml += `
       <tr>
-        <td class="sr">${srNo}</td>
-        <td class="item-name">${item.menuItemName}${item.breadOption ? ` <span class="tiny" style="font-weight:bold;">[${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}]</span>` : ""}${item.seatNumber ? ` <span class="tiny">(S${item.seatNumber})</span>` : ""}</td>
-        <td class="qty">${item.quantity}</td>
-        <td class="rate">₹${item.unitPrice.toFixed(0)}</td>
-        <td class="amt">₹${item.totalPrice.toFixed(2)}</td>
+        <td class="col-desc">
+          <div style="font-weight:bold; line-height:1.25;">${item.menuItemName}${seatTag}</div>
+          ${breadTag}
+        </td>
+        <td class="col-qty">${item.quantity}</td>
+        <td class="col-rate">₹${item.unitPrice.toFixed(0)}</td>
+        <td class="col-amt">₹${item.totalPrice.toFixed(2)}</td>
       </tr>`;
   }
 
@@ -698,14 +759,13 @@ export function generateBillReceiptHtml(
   <div class="double-line"></div>
 
   <!-- Items Table -->
-  <table>
+  <table class="items-table">
     <thead>
-      <tr style="border-bottom: 1px solid #000;">
-        <th class="sr">#</th>
-        <th style="text-align:left;">Item</th>
-        <th class="qty">Qty</th>
-        <th class="rate">Rate</th>
-        <th class="amt">Amt</th>
+      <tr style="border-bottom: 1.5px solid #000;">
+        <th class="col-desc">Description</th>
+        <th class="col-qty">Qty</th>
+        <th class="col-rate">Rate</th>
+        <th class="col-amt">Amt</th>
       </tr>
     </thead>
     <tbody>
@@ -884,16 +944,21 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   const printTime = formatDateTime(now);
 
   let itemsHtml = "";
-  let srNo = 0;
   for (const item of rawItems.filter((i: any) => !i.isCancelled)) {
-    srNo++;
+    const breadTag = item.breadOption
+      ? `<div class="tiny" style="font-weight:bold; color:#000;">[${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}]</div>`
+      : "";
+    const seatTag = item.seatNumber ? ` <span class="tiny">(S${item.seatNumber})</span>` : "";
+
     itemsHtml += `
       <tr>
-        <td class="sr">${srNo}</td>
-        <td class="item-name">${item.menuItemName}${item.breadOption ? ` <span class="tiny" style="font-weight:bold;">[${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}]</span>` : ""}${item.seatNumber ? ` <span class="tiny">(S${item.seatNumber})</span>` : ""}</td>
-        <td class="qty">${item.quantity}</td>
-        <td class="rate">₹${item.unitPrice.toFixed(0)}</td>
-        <td class="amt">₹${item.totalPrice.toFixed(2)}</td>
+        <td class="col-desc">
+          <div style="font-weight:bold; line-height:1.25;">${item.menuItemName}${seatTag}</div>
+          ${breadTag}
+        </td>
+        <td class="col-qty">${item.quantity}</td>
+        <td class="col-rate">₹${item.unitPrice.toFixed(0)}</td>
+        <td class="col-amt">₹${item.totalPrice.toFixed(2)}</td>
       </tr>`;
   }
 
@@ -948,14 +1013,13 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   <div class="double-line"></div>
 
   <!-- Order Items Breakdown -->
-  <table>
+  <table class="items-table">
     <thead>
-      <tr style="border-bottom: 1px solid #000;">
-        <th class="sr">#</th>
-        <th style="text-align:left;">Item</th>
-        <th class="qty">Qty</th>
-        <th class="rate">Rate</th>
-        <th class="amt">Amt</th>
+      <tr style="border-bottom: 1.5px solid #000;">
+        <th class="col-desc">Description</th>
+        <th class="col-qty">Qty</th>
+        <th class="col-rate">Rate</th>
+        <th class="col-amt">Amt</th>
       </tr>
     </thead>
     <tbody>

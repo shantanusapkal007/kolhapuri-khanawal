@@ -92,6 +92,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, PermissionCode[]> = {
     "orders.modify",
     "kot.create",
     "bill.create",
+    "payment.record",
     "inventory.view",
     "party.transfer",
     "menu.view",

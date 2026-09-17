@@ -17,6 +17,10 @@ import {
   ChefHat,
   Printer,
   MoreVertical,
+  CheckCircle2,
+  Banknote,
+  CreditCard,
+  Check,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { DiningTable, DiningParty } from "@/types/tables";
@@ -40,7 +44,17 @@ export default function WaiterFloorPage() {
   const [customerName, setCustomerName] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
-  const [floorFilter, setFloorFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED">("ALL");
+  const [floorFilter, setFloorFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED" | "PARCELS">("ALL");
+
+  // Sync with URL search params (e.g. redirected from parcel order)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tab") === "parcels") {
+        setFloorFilter("PARCELS");
+      }
+    }
+  }, []);
 
   // Transfer state
   const [transferPartyId, setTransferPartyId] = useState<string>("");
@@ -57,10 +71,17 @@ export default function WaiterFloorPage() {
   // Feedback Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Quick Settle / Bill Paid State
+  const [settlePartyTarget, setSettlePartyTarget] = useState<DiningParty | null>(null);
+  const [settleMethod, setSettleMethod] = useState<"CASH" | "UPI">("CASH");
+  const [autoPrintOnSettle, setAutoPrintOnSettle] = useState<boolean>(true);
+
   // Android Back Button Trap: Close active modals or sheets before leaving floor
-  const isAnyModalOpen = Boolean(activeModal) || showPrinterModal || Boolean(activeTableForDetail);
+  const isAnyModalOpen = Boolean(activeModal) || showPrinterModal || Boolean(activeTableForDetail) || Boolean(settlePartyTarget);
   useAndroidBackButton(isAnyModalOpen, () => {
-    if (activeModal) {
+    if (settlePartyTarget) {
+      setSettlePartyTarget(null);
+    } else if (activeModal) {
       setActiveModal(null);
     } else if (showPrinterModal) {
       setShowPrinterModal(false);
@@ -252,6 +273,23 @@ export default function WaiterFloorPage() {
     showToast(`Reprinted Kitchen KOT #${latestKot.kotNumber} for Table ${latestKot.tableNumber}!`);
   };
 
+  const handleQuickSettleParty = (partyId: string, paymentMethod: "CASH" | "UPI" = "CASH") => {
+    try {
+      triggerHaptic("success");
+      const result = store.quickSettleBill(partyId, paymentMethod);
+      if (autoPrintOnSettle) {
+        printBillReceipt(result.bill, false, store.printerSettings?.paperWidth || "80mm");
+      }
+      setSettlePartyTarget(null);
+      setActiveTableForDetail(null);
+      setTick((t) => t + 1);
+      showToast(`✅ ${result.message}`);
+    } catch (err: any) {
+      triggerHaptic("error");
+      alert(err.message);
+    }
+  };
+
   const availableCount = store.tables.filter((t) => t.status === "AVAILABLE").length;
   const occupiedCount = store.tables.filter((t) => t.status === "OCCUPIED").length;
   const sharedCount = store.tables.filter((t) => t.status === "SHARED").length;
@@ -259,7 +297,31 @@ export default function WaiterFloorPage() {
     store.parties.some((p) => p.tableId === t.id && p.status === "WAITING_FOR_BILL")
   ).length;
 
+  const activeParcels = store.parties.filter(
+    (p) => (p.isTakeaway || p.tableNumber === 0) && p.status !== "CLOSED" && p.status !== "CANCELLED"
+  );
+
+  const handleTakeParcel = (name?: string) => {
+    try {
+      triggerHaptic("tap");
+      const party = store.createTakeawayParty(name);
+      setTick((t) => t + 1);
+      showToast(`🛍️ Created Parcel ${party.partyCode}! Redirecting to order...`);
+      router.push(`/waiter/order/${party.id}?isTakeaway=true`);
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  const totalFloorSales = store.parties
+    .filter((p) => p.status !== "CLOSED" && p.status !== "CANCELLED")
+    .reduce((sum, p) => sum + (p.runningSubtotal || 0), 0);
+  const totalActiveGuests = store.parties
+    .filter((p) => p.status !== "CLOSED" && p.status !== "CANCELLED")
+    .reduce((sum, p) => sum + (p.guestCount || 0), 0);
+
   const displayedTables = store.tables.filter((table) => {
+    if (floorFilter === "PARCELS") return false;
     if (floorFilter === "AVAILABLE") return table.status === "AVAILABLE";
     if (floorFilter === "OCCUPIED") return table.status === "OCCUPIED";
     if (floorFilter === "SHARED") return table.status === "SHARED";
@@ -270,69 +332,102 @@ export default function WaiterFloorPage() {
   });
 
   return (
-    <div className="space-y-2 sm:space-y-4 pb-4">
+    <div className="space-y-2.5 sm:space-y-4 pb-6">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 z-50 bg-stone-900 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-semibold animate-bounce">
+        <div className="fixed bottom-4 right-4 z-50 bg-stone-900 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-sm font-semibold animate-bounce backdrop-blur-md">
           <Sparkles className="w-4 h-4 text-amber-400" />
           {toastMessage}
         </div>
       )}
 
-      {/* Luxury Hero Header - Shown on tablet/desktop, compact on mobile to maximize table visibility */}
-      <div className="hidden sm:flex luxury-card rounded-2xl p-4 border border-[#E7E2DA] items-center justify-between gap-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-600 to-red-700 text-white flex items-center justify-center shadow-sm shadow-red-600/20 border border-red-500/30 shrink-0">
-            <Utensils className="w-5 h-5 text-amber-100" />
+      {/* Luxury Hero Header - Shown on tablet/desktop */}
+      <div className="hidden sm:flex luxury-card rounded-2xl p-4 border border-[#E7E2DA] items-center justify-between gap-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-800 text-white flex items-center justify-center shadow-md shadow-red-600/20 border border-red-500/30 shrink-0">
+            <Utensils className="w-6 h-6 text-amber-100" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-stone-900 tracking-tight">
+              <h1 className="text-xl font-black text-stone-900 tracking-tight">
                 Dining Floor & 12 Tables
               </h1>
-              <span className="bg-emerald-50 text-emerald-800 text-xs font-black px-2 py-0.5 rounded-full border border-emerald-200">
-                {availableCount} Available
+              <span className="bg-stone-900 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full border border-stone-700">
+                12 Tables
               </span>
             </div>
-            <p className="text-xs text-stone-500 font-medium mt-0.5">
-              Khanawal dining hall. Independent customer parties, shared seating & KOTs.
-            </p>
+            <div className="flex items-center gap-2.5 text-xs text-stone-500 font-medium mt-1 flex-wrap">
+              <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                {availableCount} Available
+              </span>
+              <span className="flex items-center gap-1 text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                {occupiedCount + sharedCount} Occupied
+              </span>
+              <span className="flex items-center gap-1 text-stone-700 font-bold bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                👥 {totalActiveGuests} Diners
+              </span>
+              <span className="flex items-center gap-1 text-amber-900 font-black bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-300 font-mono">
+                💰 Floor: ₹{totalFloorSales}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => handleTakeParcel()}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-stone-950 text-xs font-black px-4 py-2.5 rounded-xl shadow-md shadow-amber-600/25 active:scale-95 transition-all shrink-0 cursor-pointer border border-amber-400/50"
+            title="1-Tap New Parcel Order (Will not occupy physical tables 1–12)"
+          >
+            <ShoppingBag className="w-4 h-4 text-stone-950" />
+            <span>🛍️ Take Parcel (पार्सल)</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold px-3 py-2 rounded-xl border border-stone-300 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-stone-300 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
             title="Configure waiter thermal printer"
           >
-            <Printer className="w-3.5 h-3.5 text-amber-600" />
-            <span>🖨️ प्रिंटर सेटिंग्ज</span>
+            <Printer className="w-4 h-4 text-amber-600" />
+            <span>प्रिंटर सेटिंग्ज</span>
           </button>
           <button
             onClick={() => handleOpenAddParty(1)}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white text-xs font-black px-3.5 py-2 rounded-xl shadow-2xs active:scale-95 transition-all shrink-0"
+            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md shadow-red-700/20 active:scale-95 transition-all shrink-0 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-amber-200" />
-            <span>+ Seat Table</span>
+            <Plus className="w-4 h-4 text-amber-200" />
+            <span>+ Seat Table (बसवा)</span>
           </button>
         </div>
       </div>
 
       {/* Mobile Fast Action Strip (sm:hidden) */}
-      <div className="flex sm:hidden items-center justify-between gap-1.5 bg-gradient-to-r from-stone-900 to-stone-800 text-white p-2 rounded-xl shadow-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[11px] font-black text-amber-300 truncate">12 Tables</span>
-          <span className="bg-emerald-600/90 text-[9px] font-bold px-1.5 py-0.2 rounded-full text-white">
+      <div className="flex sm:hidden items-center justify-between gap-2 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-2.5 rounded-2xl shadow-sm border border-stone-800">
+        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+          <span className="text-xs font-black text-amber-300">12 Tables</span>
+          <span className="bg-emerald-600/90 text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white">
             {availableCount} Free
+          </span>
+          <span className="bg-stone-800 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded text-amber-200 border border-stone-700">
+            ₹{totalFloorSales}
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
+            onClick={() => handleTakeParcel()}
+            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 border border-amber-400/50 cursor-pointer"
+            title="1-Tap Take Parcel"
+          >
+            <ShoppingBag className="w-3 h-3 text-stone-950" />
+            <span>🛍️ Parcel</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="px-2 py-1.5 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
             <Printer className="w-3 h-3 text-amber-300" />
             <span>प्रिंटर</span>
@@ -340,7 +435,7 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleOpenAddParty(1)}
-            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1"
           >
             <Plus className="w-3 h-3 text-amber-200" />
             <span>+ Seat</span>
@@ -352,58 +447,184 @@ export default function WaiterFloorPage() {
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
         <button
           onClick={() => setFloorFilter("ALL")}
-          className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs ${
+          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
             floorFilter === "ALL"
-              ? "bg-stone-900 text-amber-200 border-stone-900 shadow-2xs"
+              ? "bg-stone-900 text-amber-200 border-stone-900 shadow-xs"
               : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
           }`}
         >
-          All (12)
+          <span>All Tables</span>
+          <span className="bg-stone-800 text-stone-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono">12</span>
         </button>
         <button
           onClick={() => setFloorFilter("AVAILABLE")}
-          className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs ${
+          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
             floorFilter === "AVAILABLE"
-              ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
               : "bg-white text-emerald-800 border-[#E7E2DA] hover:bg-emerald-50/50"
           }`}
         >
-          Free ({availableCount})
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Free</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${floorFilter === "AVAILABLE" ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-800"}`}>
+            {availableCount}
+          </span>
         </button>
         <button
           onClick={() => setFloorFilter("OCCUPIED")}
-          className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs ${
+          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
             floorFilter === "OCCUPIED"
-              ? "bg-red-600 text-white border-red-600 shadow-2xs"
+              ? "bg-red-600 text-white border-red-600 shadow-xs"
               : "bg-white text-red-800 border-[#E7E2DA] hover:bg-red-50/50"
           }`}
         >
-          Occupied ({occupiedCount + sharedCount})
+          <span>Occupied</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${floorFilter === "OCCUPIED" ? "bg-red-700 text-white" : "bg-red-100 text-red-800"}`}>
+            {occupiedCount + sharedCount}
+          </span>
         </button>
         {billRequestedCount > 0 && (
           <button
             onClick={() => setFloorFilter("BILL_REQUESTED")}
-            className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl font-black whitespace-nowrap transition-all border animate-pulse touch-manipulation active:scale-95 text-[11px] sm:text-xs ${
+            className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border animate-bill-radar touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
               floorFilter === "BILL_REQUESTED"
-                ? "bg-amber-600 text-white border-amber-600 shadow-2xs"
-                : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                ? "bg-amber-500 text-stone-950 border-amber-500 shadow-md"
+                : "bg-amber-50 text-amber-900 border-amber-400 hover:bg-amber-100"
             }`}
           >
-            Bill ({billRequestedCount}) 🔥
+            <span>Bill Ready 🔥</span>
+            <span className="bg-amber-200 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black">
+              {billRequestedCount}
+            </span>
           </button>
         )}
+        <button
+          onClick={() => setFloorFilter("PARCELS")}
+          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+            floorFilter === "PARCELS"
+              ? "bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-400/30"
+              : "bg-white text-amber-900 border-[#E7E2DA] hover:bg-amber-50/50"
+          }`}
+        >
+          <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
+          <span>Parcels (पार्सल)</span>
+          {activeParcels.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${floorFilter === "PARCELS" ? "bg-amber-700 text-white" : "bg-amber-100 text-amber-800"}`}>
+              {activeParcels.length}
+            </span>
+          )}
+        </button>
       </div>
 
+      {/* Active Parcels Strip (Always visible if parcels exist OR when PARCELS filter selected) */}
+      {(activeParcels.length > 0 || floorFilter === "PARCELS") && (
+        <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/60 to-amber-50/90 border border-amber-300/80 rounded-2xl p-3 sm:p-3.5 space-y-2.5 shadow-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-amber-950 leading-tight">
+                  Running Parcels (चालू पार्सल: {activeParcels.length})
+                </h3>
+                <span className="text-[10px] text-amber-800 font-semibold">
+                  {activeParcels.length === 0 ? "No active parcel orders right now" : "Ready / in-preparation takeaway orders"}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleTakeParcel()}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Take Parcel</span>
+            </button>
+          </div>
+
+          {activeParcels.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+              {activeParcels.map((parcel) => (
+                <div
+                  key={parcel.id}
+                  className="bg-white rounded-xl p-3 border border-amber-200 shadow-xs flex flex-col justify-between gap-2.5 hover:border-amber-400 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="bg-amber-100 text-amber-950 font-black text-[11px] px-2 py-0.5 rounded-md border border-amber-300 inline-block">
+                        🛍️ {parcel.partyCode}
+                      </span>
+                      <p className="text-xs font-bold text-stone-800 mt-1 truncate max-w-[180px]">
+                        {parcel.customerName || "Takeaway Guest"}
+                        {parcel.customerPhone ? ` • ${parcel.customerPhone}` : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono font-black text-base sm:text-lg text-stone-900 block leading-tight">
+                        ₹{parcel.runningSubtotal}
+                      </span>
+                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                        {parcel.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-100">
+                    <Link
+                      href={`/waiter/order/${parcel.id}?isTakeaway=true`}
+                      className="flex-1 py-2 px-2 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs rounded-xl text-center flex items-center justify-center gap-1 active:scale-95 transition-all"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Order</span>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettlePartyTarget(parcel);
+                        setSettleMethod("CASH");
+                      }}
+                      className="py-2 px-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer"
+                      title="Bill is Paid — Complete Parcel"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                      <span>Bill Paid</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-4 text-center text-xs text-amber-800 font-semibold bg-white/60 rounded-xl border border-dashed border-amber-200">
+              Tap &quot;+ Take Parcel&quot; above to start a takeaway order without assigning a dining table.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 12 Physical Tables Grid: Exactly 3 Tables per Line on Mobile, Responsive & Touch-Friendly */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full pb-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full pb-4">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
-            (p) => p.tableId === table.id && p.status !== "CLOSED" && p.status !== "CANCELLED"
+            (p) => (p.tableId === table.id || p.tableNumber === table.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
           );
-          const isOccupied = tableParties.length > 0;
+          const isOccupied = tableParties.length > 0 || table.status === "OCCUPIED" || table.status === "SHARED";
           const isShared = tableParties.length > 1;
           const hasBillRequested = tableParties.some((p) => p.status === "WAITING_FOR_BILL");
-          const primaryParty = tableParties[0];
+          const primaryParty = tableParties[0] || {
+            id: `party-tbl-${table.tableNumber}`,
+            partyCode: `T${table.tableNumber}-P01`,
+            tableId: table.id,
+            tableNumber: table.tableNumber,
+            guestCount: table.totalActiveGuests || 2,
+            assignedWaiterId: store.currentUser.id,
+            assignedWaiterName: store.currentUser.name,
+            status: "OPEN" as const,
+            runningSubtotal: 0,
+            runningGrandTotal: 0,
+            openedAt: new Date().toISOString(),
+            lastActivityAt: new Date().toISOString(),
+          };
           const totalSubtotal = tableParties.reduce((sum, p) => sum + p.runningSubtotal, 0);
           const totalGuests = tableParties.reduce((sum, p) => sum + p.guestCount, 0);
 
@@ -418,19 +639,19 @@ export default function WaiterFloorPage() {
           return (
             <div
               key={table.id}
-              className={`min-h-[126px] sm:min-h-[165px] w-full luxury-card rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between p-1.5 sm:p-2.5 md:p-3 relative overflow-hidden shadow-2xs hover:shadow-md touch-manipulation select-none ${
+              className={`min-h-[136px] sm:min-h-[175px] w-full rounded-2xl border transition-all flex flex-col justify-between p-2 sm:p-3 relative overflow-hidden touch-manipulation select-none touch-press ${
                 hasBillRequested
-                  ? "border-amber-400 bg-amber-50/40 ring-2 ring-amber-300"
+                  ? "border-amber-400 bg-gradient-to-b from-amber-50/90 via-white to-amber-50/50 shadow-md ring-2 ring-amber-400/80 animate-bill-radar"
                   : isShared
-                  ? "border-amber-400/80 bg-amber-50/20 ring-2 ring-amber-300/30"
+                  ? "border-purple-300 bg-gradient-to-b from-purple-50/40 via-white to-stone-50/40 shadow-xs hover:shadow-md ring-1 ring-purple-300/40"
                   : isOccupied
-                  ? "border-red-300/90 bg-red-50/20 ring-2 ring-red-200/40"
-                  : "border-[#E7E2DA] bg-white hover:border-emerald-300 hover:shadow-xs"
+                  ? "border-stone-300 bg-gradient-to-b from-red-50/20 via-white to-stone-50/40 shadow-xs hover:shadow-md hover:border-red-300"
+                  : "border-emerald-200/90 bg-gradient-to-b from-emerald-50/25 via-white to-white hover:border-emerald-400 shadow-xs hover:shadow-sm"
               }`}
             >
               {/* Top Row: Table Badge & Status */}
               <div className="flex items-center justify-between gap-1 shrink-0">
-                <div className="flex items-center gap-1 min-w-0">
+                <div className="flex items-center gap-1.5 min-w-0">
                   <button
                     type="button"
                     onClick={(e) => {
@@ -439,26 +660,34 @@ export default function WaiterFloorPage() {
                       else handleOpenAddParty(table.tableNumber);
                     }}
                     title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table"}
-                    className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-black text-[11px] sm:text-xs md:text-sm flex items-center justify-center shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation"
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center shadow-xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation ${
+                      hasBillRequested
+                        ? "bg-amber-500 text-stone-950 ring-1 ring-amber-400"
+                        : isOccupied
+                        ? "bg-stone-900 text-amber-300 border border-stone-800"
+                        : "bg-emerald-600 text-white shadow-emerald-600/20"
+                    }`}
                   >
                     T{table.tableNumber}
                   </button>
-                  <span className="font-bold text-[9px] sm:text-[11px] text-stone-600 hidden md:inline truncate">
+                  <span className="font-black text-[10px] sm:text-xs text-stone-700 hidden md:inline truncate">
                     {table.name}
                   </span>
                 </div>
 
-                {/* Status Pill */}
+                {/* Status Pill / Paid Quick Action in top right */}
                 {hasBillRequested ? (
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveTableForDetail(table);
+                      setSettlePartyTarget(primaryParty);
+                      setSettleMethod("CASH");
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-2xs animate-pulse cursor-pointer touch-manipulation"
+                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation"
+                    title="Bill Requested — Quick Settle"
                   >
-                    Bill 🔥
+                    Bill Paid 🔥
                   </button>
                 ) : isShared ? (
                   <button
@@ -467,16 +696,26 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       setActiveTableForDetail(table);
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300 cursor-pointer touch-manipulation"
+                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation"
                   >
                     {tableParties.length}P•{totalGuests}G
                   </button>
                 ) : isOccupied ? (
-                  <span className="text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-red-100 text-red-800 border border-red-200">
-                    {totalGuests} G
-                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSettlePartyTarget(primaryParty);
+                      setSettleMethod("CASH");
+                    }}
+                    title="Bill is Paid — Close Table"
+                    className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer touch-manipulation border border-emerald-400 shrink-0"
+                  >
+                    <CheckCircle2 className="w-3 h-3 text-emerald-200 shrink-0" />
+                    <span>Paid</span>
+                  </button>
                 ) : (
-                  <span className="text-[8px] sm:text-[9px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <span className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Free
                   </span>
@@ -489,21 +728,21 @@ export default function WaiterFloorPage() {
                   onClick={() => isShared ? setActiveTableForDetail(table) : router.push(`/waiter/order/${primaryParty.id}`)}
                   className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-1 px-0.5 touch-manipulation"
                 >
-                  <span className="text-[9px] sm:text-[11px] font-bold text-stone-600 truncate max-w-full leading-tight">
+                  <span className="text-[10px] sm:text-xs font-bold text-stone-600 truncate max-w-full leading-tight">
                     {isShared
                       ? `${tableParties.length} Shared Parties`
                       : primaryParty.customerName || primaryParty.partyCode}
                   </span>
-                  <span className="text-xs sm:text-base md:text-lg font-black text-stone-900 font-mono leading-tight mt-0.5">
+                  <span className="text-sm sm:text-lg md:text-xl font-black text-stone-950 font-mono leading-tight mt-0.5 tracking-tight">
                     ₹{totalSubtotal}
                   </span>
                   <div className="flex items-center gap-1 mt-0.5">
                     {totalItemsCount > 0 && (
-                      <span className="text-[7px] sm:text-[8px] font-black px-1 py-0.2 rounded bg-red-100 text-red-700 border border-red-200">
+                      <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
                         {totalItemsCount} items
                       </span>
                     )}
-                    <span className="text-[8px] sm:text-[9px] text-stone-400 font-medium truncate leading-tight">
+                    <span className="text-[8px] sm:text-[9px] text-stone-400 font-semibold truncate leading-tight">
                       {primaryParty.assignedWaiterName.split(" ")[0]}
                     </span>
                   </div>
@@ -511,56 +750,66 @@ export default function WaiterFloorPage() {
               ) : (
                 <div
                   onClick={() => handleOpenAddParty(table.tableNumber)}
-                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-1 touch-manipulation"
+                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-1.5 touch-manipulation"
                 >
-                  <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 group-hover:text-emerald-600 transition-colors" />
-                  <span className="text-[9px] sm:text-[10px] text-emerald-600 font-bold leading-tight mt-0.5">Tap to seat</span>
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 group-hover:bg-emerald-100 transition-colors">
+                    <Plus className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-emerald-700 font-black leading-tight mt-1">Tap to seat</span>
                 </div>
               )}
 
               {/* Bottom Row: 1-Tap Touch-Friendly Actions */}
               {isOccupied ? (
                 isShared ? (
-                  <div className="pt-1.5 border-t border-stone-100 shrink-0 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTableForDetail(table)}
-                      className="flex-1 min-w-0 py-1.5 sm:py-2 px-1 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all text-center truncate touch-manipulation"
-                    >
-                      {tableParties.length}P View →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveTableForDetail(table);
-                      }}
-                      title="Manage Table / Shared Parties"
-                      className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl active:scale-90 transition-all shrink-0 flex items-center justify-center font-black text-xs shadow-2xs border border-stone-200 touch-manipulation"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5 text-stone-700" />
-                    </button>
+                  <div className="pt-1.5 border-t border-stone-100 shrink-0">
+                    <div className="grid grid-cols-2 gap-1 w-full">
+                      <button
+                        type="button"
+                        onClick={() => setActiveTableForDetail(table)}
+                        className="w-full py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation"
+                      >
+                        {tableParties.length} Parties →
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSettlePartyTarget(primaryParty);
+                          setSettleMethod("CASH");
+                        }}
+                        title="Bill is Paid — Close Table"
+                        className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                        <span className="truncate">Bill Paid</span>
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1 pt-1.5 border-t border-stone-100 shrink-0">
-                    <Link
-                      href={`/waiter/order/${primaryParty.id}`}
-                      className="flex-1 min-w-0 py-1.5 sm:py-2 px-1 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-0.5 text-center truncate touch-manipulation"
-                    >
-                      <Plus className="w-3 h-3 text-amber-200 shrink-0" />
-                      <span className="truncate">Order</span>
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveTableForDetail(table);
-                      }}
-                      title="Table Actions: KOT, Bill, Move, Merge, Split"
-                      className="w-7 h-7 sm:w-8 sm:h-8 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg sm:rounded-xl active:scale-90 transition-all shrink-0 flex items-center justify-center font-black text-xs shadow-2xs border border-stone-200 touch-manipulation"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5 text-stone-700" />
-                    </button>
+                  <div className="pt-1.5 border-t border-stone-100 shrink-0">
+                    <div className="grid grid-cols-2 gap-1 w-full">
+                      <Link
+                        href={`/waiter/order/${primaryParty.id}`}
+                        className="w-full py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                        <span className="truncate">Order</span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSettlePartyTarget(primaryParty);
+                          setSettleMethod("CASH");
+                        }}
+                        title="Bill is Paid — Close Table"
+                        className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                        <span className="truncate">Bill Paid</span>
+                      </button>
+                    </div>
                   </div>
                 )
               ) : (
@@ -568,11 +817,11 @@ export default function WaiterFloorPage() {
                   <button
                     type="button"
                     onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
-                    className="w-full py-1.5 sm:py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-[10px] sm:text-xs rounded-lg sm:rounded-xl shadow-2xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
+                    className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
-                    <Plus className="w-3 h-3 shrink-0" />
-                    <span>Seat</span>
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span>+ Seat (2)</span>
                   </button>
                 </div>
               )}
@@ -609,7 +858,7 @@ export default function WaiterFloorPage() {
             <div className="p-4 overflow-y-auto space-y-3 flex-1">
               {(() => {
                 const parties = store.parties.filter(
-                  (p) => p.tableId === activeTableForDetail.id && p.status !== "CLOSED" && p.status !== "CANCELLED"
+                  (p) => (p.tableId === activeTableForDetail.id || p.tableNumber === activeTableForDetail.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
                 );
 
                 if (parties.length === 0) {
@@ -681,8 +930,27 @@ export default function WaiterFloorPage() {
                       );
                     })()}
 
-                    {/* Actions — Simple 2-row layout */}
-                    <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {/* Primary Action: Bill Paid & Close Table - ALWAYS VISIBLE */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSettlePartyTarget(party);
+                          setSettleMethod("CASH");
+                        }}
+                        className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/30"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
+                        <span>
+                          {party.runningSubtotal > 0
+                            ? `✅ Bill is Paid — Close Table (₹${party.runningSubtotal})`
+                            : "✅ Vacate / Close Table (टेबल बंद करा)"}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Actions — 3-column action grid */}
+                    <div className="grid grid-cols-3 gap-1.5 pt-1">
                       <Link
                         href={`/waiter/order/${party.id}`}
                         onClick={() => setActiveTableForDetail(null)}
@@ -693,11 +961,22 @@ export default function WaiterFloorPage() {
                       </Link>
                       <button
                         type="button"
-                        onClick={() => handleRequestBill(party.id)}
-                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs"
+                        onClick={() => {
+                          setSettlePartyTarget(party);
+                          setSettleMethod("CASH");
+                        }}
+                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs border border-emerald-500"
                       >
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>Bill</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>Bill Paid</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRequestBill(party.id)}
+                        className="py-2.5 bg-stone-800 hover:bg-stone-900 text-amber-200 font-black rounded-xl flex items-center justify-center gap-1 shadow-xs"
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Req Bill</span>
                       </button>
                     </div>
                     <div className="grid grid-cols-3 gap-1.5 text-xs">
@@ -777,6 +1056,122 @@ export default function WaiterFloorPage() {
                   <span>+ Add Shared Party</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: QUICK SETTLE & CLOSE TABLE (बिल भरले — टेबल बंद करा) */}
+      {settlePartyTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-lg ${
+                  settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
+                    ? "bg-amber-600"
+                    : "bg-red-600"
+                }`}>
+                  {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
+                    ? `Parcel ${settlePartyTarget.partyCode}`
+                    : `Table ${settlePartyTarget.tableNumber}`}
+                </span>
+                <h3 className="font-black text-stone-900 text-base">
+                  Bill is Paid (बिल भरले)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettlePartyTarget(null)}
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Bill Summary */}
+            <div className="bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl p-3.5 text-center space-y-1">
+              <div className="text-xs text-stone-500 font-semibold">
+                Party {settlePartyTarget.partyCode}
+                {settlePartyTarget.customerName ? ` • ${settlePartyTarget.customerName}` : ""}
+              </div>
+              <div className="text-3xl font-mono font-black text-emerald-700">
+                ₹{settlePartyTarget.runningSubtotal}
+              </div>
+              <div className="text-[11px] text-stone-400 font-medium">
+                {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
+                  ? "Mark parcel as paid and ready for takeaway"
+                  : `Full payment to close & free Table ${settlePartyTarget.tableNumber}`}
+              </div>
+            </div>
+
+            {/* Payment Method Selector */}
+            <div className="space-y-2">
+              <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
+                Payment Mode (पैसे कसे मिळाले?):
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSettleMethod("CASH")}
+                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                    settleMethod === "CASH"
+                      ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
+                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                  }`}
+                >
+                  <Banknote className="w-5 h-5 text-emerald-600" />
+                  <span>💵 Cash (रोख)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettleMethod("UPI")}
+                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                    settleMethod === "UPI"
+                      ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
+                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                  }`}
+                >
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  <span>📱 UPI / QR</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Print Receipt Toggle */}
+            <label className="flex items-center gap-2 text-xs font-bold text-stone-600 cursor-pointer select-none bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+              <input
+                type="checkbox"
+                checked={autoPrintOnSettle}
+                onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
+                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+              />
+              <Printer className="w-4 h-4 text-stone-500" />
+              <span>Print Customer Bill Receipt (पावती छापा)</span>
+            </label>
+
+            {/* Confirm Settle & Close Table Button */}
+            <div className="pt-1 space-y-2">
+              <button
+                type="button"
+                onClick={() => handleQuickSettleParty(settlePartyTarget.id, settleMethod)}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                <span>
+                  {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
+                    ? `Confirm Paid & Complete Parcel (₹${settlePartyTarget.runningSubtotal}) →`
+                    : `Confirm Paid & Free Table (₹${settlePartyTarget.runningSubtotal}) →`}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSettlePartyTarget(null)}
+                className="w-full py-2 text-stone-500 hover:text-stone-800 font-bold text-xs text-center cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
