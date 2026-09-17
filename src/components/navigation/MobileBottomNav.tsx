@@ -126,7 +126,18 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
     },
   ];
 
-  const itemsToRender = isWaiter ? waiterNavItems : adminNavItems;
+  const itemsToRender = isWaiter
+    ? waiterNavItems
+    : [
+        ...adminNavItems.slice(1, 4),
+        {
+          href: "/menu",
+          label: "Menu",
+          localLabel: "Menu",
+          icon: UtensilsCrossed,
+          isActive: pathname.startsWith("/menu"),
+        },
+      ];
 
   return (
     <nav
@@ -135,7 +146,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
     >
       <div
         className={`grid ${
-          isWaiter ? "grid-cols-3 max-w-sm" : "grid-cols-7 max-w-xl"
+          isWaiter ? "grid-cols-3 max-w-sm" : "grid-cols-5 max-w-md"
         } items-center mx-auto`}
       >
         {itemsToRender.map((item) => {

@@ -203,7 +203,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
       {/* Right: Quick Operational Indicators & Seat Party Action */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Occupancy Indicator */}
-        <div className="hidden sm:flex items-center gap-2 bg-[#FAF8F5] border border-[#E7E2DA] px-3 py-1.5 rounded-xl text-xs shadow-2xs">
+        <div className="hidden xl:flex items-center gap-2 bg-[#FAF8F5] border border-[#E7E2DA] px-3 py-1.5 rounded-xl text-xs shadow-2xs">
           <div className="w-2 h-2 rounded-full bg-emerald-500 ring-3 ring-emerald-100 animate-pulse" />
           <span className="font-bold text-stone-800">
             {occupiedTables}/12 Tables
@@ -212,7 +212,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
 
         {/* Waiter Mode Active Badge */}
         {store.currentUser.role === "WAITER" ? (
-          <div className="hidden sm:flex items-center gap-1.5 bg-red-50 border border-red-200/80 px-3 py-1.5 rounded-xl text-xs font-bold text-red-900 shadow-2xs">
+          <div className="hidden xl:flex items-center gap-1.5 bg-red-50 border border-red-200/80 px-3 py-1.5 rounded-xl text-xs font-bold text-red-900 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
             <span>{store.currentUser.name}</span>
           </div>
@@ -221,7 +221,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           pendingKots > 0 && (
             <Link
               href="/kitchen"
-              className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100/80 border border-red-200/80 text-red-800 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs animate-urgent touch-manipulation"
+              className="hidden xl:flex items-center gap-1.5 bg-red-50 hover:bg-red-100/80 border border-red-200/80 text-red-800 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs animate-urgent touch-manipulation"
             >
               <ChefHat className="w-3.5 h-3.5 text-red-700" />
               <span>{pendingKots} KOTs</span>
@@ -243,7 +243,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
               isOnline ? "bg-emerald-500 ring-2 ring-emerald-200" : "bg-amber-500 ring-2 ring-amber-200"
             }`}
           />
-          <span className="hidden sm:inline">{isOnline ? "Wi-Fi Sync" : "Offline"}</span>
+          <span className="hidden lg:inline">{isOnline ? "Wi-Fi Sync" : "Offline"}</span>
         </div>
 
         {/* Quick Printer Status & Settings Toggle */}
@@ -294,7 +294,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
 
         {/* Staff Profile & Logout / Login Button */}
         {store.currentUser && store.currentUser.isActive && store.currentUser.id !== "guest" ? (
-          <div className="flex items-center bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl p-1 shadow-2xs">
+          <div className="hidden xl:flex items-center bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl p-1 shadow-2xs">
             <Link
               href="/login"
               className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg hover:bg-stone-100 transition-colors"

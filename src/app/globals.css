@@ -34,6 +34,14 @@ body {
     radial-gradient(ellipse at -10% 100%, rgba(141, 29, 36, 0.07) 0%, transparent 46%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(247, 244, 239, 0.15));
   background-attachment: fixed;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--bg-main);
 }
 
 /* Eliminate 300ms mobile touch delay and prevent double-tap zoom accidents during fast order taking */
@@ -119,6 +127,7 @@ input:focus, select:focus, textarea:focus {
 
 .premium-page {
   position: relative;
+  min-width: 0;
 }
 
 .premium-page::before {
@@ -206,6 +215,18 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+@media (max-width: 640px) {
+  .premium-page::before {
+    width: 100%;
+    height: 9rem;
+  }
+
+  .luxury-card:hover,
+  .premium-card:hover {
+    transform: none;
+  }
+}
+
 /* Print Styles for 80mm Thermal Receipts */
 @media print {
   body * {
@@ -237,4 +258,3 @@ input:focus, select:focus, textarea:focus {
     display: none !important;
   }
 }
-

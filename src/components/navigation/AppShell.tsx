@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F7F4EF] text-stone-900 selection:bg-red-700 selection:text-amber-100">
+    <div className="min-h-[100dvh] w-full overflow-x-hidden flex bg-[#F7F4EF] text-stone-900 selection:bg-red-700 selection:text-amber-100">
       {/* Sideways Navigation Bar (Desktop fixed / Mobile drawer) */}
       <Sidebar
         isMobileOpen={isMobileSidebarOpen}
@@ -27,7 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main App Container offset by sidebar width on large screens */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
+      <div className="flex-1 w-full flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
         <TopHeader onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)} />
 
         {/* Responsive main padding: tailored for waiter floor, order screen, and other views */}
@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               : isWaiterFloor
               ? "p-2 sm:p-6 lg:p-8 pb-24 lg:pb-8"
               : "p-3.5 sm:p-6 lg:p-8 pb-28 lg:pb-8"
-          } premium-page max-w-7xl w-full mx-auto`}
+          } premium-page max-w-7xl min-w-0 w-full mx-auto`}
         >
           <AuthGuard>{children}</AuthGuard>
         </main>

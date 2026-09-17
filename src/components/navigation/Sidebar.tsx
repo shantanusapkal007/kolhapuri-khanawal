@@ -320,6 +320,20 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
     },
   ];
 
+  // Keep the main navigation calm. Every route still exists, but infrequent
+  // administration tools no longer compete with the service workflow.
+  const primaryRoutes = new Set([
+    "/daily-tasks", "/waiter", "/kitchen", "/billing",
+    "/", "/menu", "/inventory", "/purchases", "/reports",
+    "/printers", "/print-bridge", "/settings",
+  ]);
+  const visibleSections = (currentRole === "WAITER" ? waiterSections : navSections)
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => primaryRoutes.has(item.href)),
+    }))
+    .filter((section) => section.items.length > 0);
+
   return (
     <>
       {/* Mobile Backdrop Overlay */}
@@ -387,7 +401,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
         {/* Navigation Links Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-3.5 space-y-6 scrollbar-none">
-          {(currentRole === "WAITER" ? waiterSections : navSections).map((section, idx) => (
+          {visibleSections.map((section, idx) => (
             <div key={idx} className="space-y-1">
               <div className="px-3 text-[10px] font-black uppercase tracking-widest text-stone-400 mb-2">
                 {section.label}
