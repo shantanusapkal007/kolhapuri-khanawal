@@ -151,9 +151,9 @@ describe("Multi-Device Thermal Printer Connection System", () => {
       expect(hex.startsWith("1b40")).toBe(true);
     });
 
-    it("respects 80mm (48 columns) and 58mm (32 columns) width constraints", () => {
+    it("respects 80mm (42 safe columns) and 58mm (32 columns) width constraints", () => {
       const p80 = new EscPosBuilder("80mm");
-      expect(p80.maxColumns).toBe(48);
+      expect(p80.maxColumns).toBe(42);
 
       const p58 = new EscPosBuilder("58mm");
       expect(p58.maxColumns).toBe(32);
@@ -181,8 +181,11 @@ describe("Multi-Device Thermal Printer Connection System", () => {
       const bytes = buildBillReceiptEscPos(mockBill, false, "80mm");
       expect(bytes.length).toBeGreaterThan(100);
 
+      // Header is rendered as Marathi Devanagari raster bitmap (GS v 0 0)
+      const hasRasterGraphic = bytes.some((b, i) => b === 0x1d && bytes[i + 1] === 0x76 && bytes[i + 2] === 0x30);
+      expect(hasRasterGraphic).toBe(true);
+
       const text = new TextDecoder().decode(bytes);
-      expect(text).toContain("KOLHAPURI KHANAWAL");
       expect(text).toContain("Special Mutton Thali");
       expect(text).toContain("BILL-2026-8888");
       expect(text).toContain("GRAND TOTAL:");
@@ -215,15 +218,15 @@ describe("Multi-Device Thermal Printer Connection System", () => {
         { party: { tableNumber: 5, partyCode: "P-101", guestCount: 3 }, subtotal: 900, grandTotal: 945 },
         "80mm"
       );
+      // Header rendered as Marathi Devanagari raster bitmap (GS v 0 0)
+      const hasRasterGraphic = checkBytes.some((b, i) => b === 0x1d && checkBytes[i + 1] === 0x76 && checkBytes[i + 2] === 0x30);
+      expect(hasRasterGraphic).toBe(true);
+
       const checkText = new TextDecoder().decode(checkBytes);
-      expect(checkText).toContain("TABLE CHECK / PRE-BILL ESTIMATE");
-      expect(checkText).toContain("Not a Tax Invoice - Kachha Bill");
-      expect(checkText).toContain("KOLHAPURI KHANAWAL");
       expect(checkText).toContain("Lalit Estate, Baner, Pune, Maharashtra 411045");
       expect(checkText).toContain("Ph: +91 91753 86576");
       expect(checkText).toContain("Q338740118@ybl");
       expect(checkText).toContain("Kolapuri khanawal");
-      expect(checkText).toContain("Terminal 1-Q338740118");
       expect(checkText).toContain("Rs. 900.00");
       expect(checkText).toContain("Rs. 945.00");
 

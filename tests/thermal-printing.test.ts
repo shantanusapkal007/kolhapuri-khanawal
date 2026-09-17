@@ -244,7 +244,7 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(text).not.toContain("CGST (2.5%):");
       expect(text).not.toContain("SGST (2.5%):");
       expect(text).not.toContain("HSN/SAC: 996331");
-      expect(text).toContain("This is a computer-generated bill receipt.");
+      expect(text).not.toContain("This is a computer-generated bill receipt.");
 
       // Verify emphasized bold mode (ESC E 1) is present so printout is dark and not blurry
       const hasEscE1 = bytes.some((b, i) => b === 0x1b && bytes[i + 1] === 0x45 && bytes[i + 2] === 0x01);

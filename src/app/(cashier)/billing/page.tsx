@@ -36,6 +36,7 @@ import {
 } from "@/lib/printing/thermal-printer";
 import { ThermalReceiptModal } from "@/components/printing/ThermalReceiptModal";
 import { PrinterSettingsModal } from "@/components/printing/PrinterSettingsModal";
+import { RESTAURANT_UPI_ID } from "@/lib/printing/restaurant-profile";
 import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
 import { triggerHaptic } from "@/lib/mobile/haptics";
 
@@ -928,7 +929,7 @@ export default function CashierBillingPage() {
                     Scan with PhonePe / GPay / Paytm
                   </p>
                   <p className="text-[10px] text-stone-500">
-                    UPI ID: <strong>kolhapurikhanawal@okhdfcbank</strong> • Amount: <strong>₹{tenderAmount}</strong>
+                    UPI ID: <strong>{RESTAURANT_UPI_ID}</strong> • Amount: <strong>₹{tenderAmount}</strong>
                   </p>
                 </div>
               )}

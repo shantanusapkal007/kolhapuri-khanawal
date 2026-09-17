@@ -399,9 +399,7 @@ async function deliverToPrinter(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_M
   }
 }
 
-// ══════════════════════════════════════════════════════════════════
-//  Job Processing & Atomic Transaction Claim
-// ══════════════════════════════════════════════════════════════════
+const recentDeliveredFingerprints = new Map();
 
 async function processJob(jobId) {
   if (activeJobs.has(jobId)) return;
@@ -459,6 +457,21 @@ async function processJob(jobId) {
 
   log("📋", `Claimed job ${jobId} "${jobData.title}" (${jobData.type}) for station: ${jobData.stationCode}`);
 
+  // Deduplication check: prevent physical double-print if identical job arrived within 15 seconds
+  const dedupKey = jobData.idempotencyKey || `${jobData.type}_${jobData.stationCode}_${jobData.payloadBase64?.substring(0, 48)}`;
+  const nowMs = Date.now();
+  if (recentDeliveredFingerprints.has(dedupKey) && nowMs - recentDeliveredFingerprints.get(dedupKey) < 15000) {
+    log("⚠️", `Duplicate job ${jobId} "${jobData.title}" suppressed by bridge daemon (already printed within 15s)`);
+    await updateDoc(jobRef, {
+      status: "SUCCESS",
+      completedAt: new Date().toISOString(),
+      printerIp: "DEDUP_SUPPRESSED",
+      errorMessage: "Suppressed duplicate print within 15s window",
+    }).catch(() => {});
+    activeJobs.delete(jobId);
+    return;
+  }
+
   // 2. Decode payload
   let payloadBuffer;
   try {
@@ -480,6 +493,12 @@ async function processJob(jobId) {
   // 4. Send to physical printer
   try {
     const result = await deliverToPrinter(target, payloadBuffer);
+
+    // Record delivery in dedup cache
+    recentDeliveredFingerprints.set(dedupKey, Date.now());
+    for (const [k, ts] of recentDeliveredFingerprints.entries()) {
+      if (Date.now() - ts > 60000) recentDeliveredFingerprints.delete(k);
+    }
 
     // Delivery succeeded
     await updateDoc(jobRef, {

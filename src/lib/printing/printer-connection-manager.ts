@@ -547,7 +547,8 @@ class PrinterConnectionManager {
     escposBytes?: Uint8Array,
     htmlFallback?: string,
     stationCode?: string,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    skipAutoProcess: boolean = false
   ): PrintJob {
     // Duplicate print protection: suppress identical ticket within 60s
     if (idempotencyKey) {
@@ -570,15 +571,16 @@ class PrinterConnectionManager {
       printerName: device.name,
       stationCode,
       type,
-      status: "QUEUED",
+      status: skipAutoProcess ? "PRINTING" : "QUEUED",
       title,
       idempotencyKey,
       rawPayload: escposBytes ? this.bytesToBase64(escposBytes) : undefined,
       htmlPayload: htmlFallback,
       paperWidth: device.paperWidth,
-      attempts: 0,
+      attempts: skipAutoProcess ? 1 : 0,
       maxAttempts: 3,
       createdAt: new Date().toISOString(),
+      startedAt: skipAutoProcess ? new Date().toISOString() : undefined,
     };
 
     this.jobs.unshift(job);
@@ -590,8 +592,10 @@ class PrinterConnectionManager {
       this.broadcastChannel?.postMessage({ type: "ENQUEUE_JOB", job });
     } catch {}
 
-    // Trigger queue processor
-    this.processQueue();
+    // Trigger queue processor only if caller did not request manual direct execution
+    if (!skipAutoProcess) {
+      this.processQueue();
+    }
     return job;
   }
 
@@ -1650,7 +1654,8 @@ class PrinterConnectionManager {
       escposBytes,
       html,
       "CASHIER",
-      idempotencyKey
+      idempotencyKey,
+      true
     );
 
     const markSuccess = (msg: string) => {
@@ -1854,7 +1859,17 @@ class PrinterConnectionManager {
     const title = `Table Check ${params.party?.partyCode || params.partyCode || "Estimate"}`;
 
     const escposBytes = buildTableCheckEscPos(params, targetPrinter.paperWidth);
-    const job = this.enqueueJob(targetPrinter, title, "TABLE_CHECK", escposBytes, html, "CASHIER");
+    const idempotencyKey = `check-${params.party?.id || params.partyCode || "est"}-${Math.floor(Date.now() / 8000)}`;
+    const job = this.enqueueJob(
+      targetPrinter,
+      title,
+      "TABLE_CHECK",
+      escposBytes,
+      html,
+      "CASHIER",
+      idempotencyKey,
+      true
+    );
 
     const markSuccess = (msg: string) => {
       job.status = "SUCCESS";
@@ -1874,6 +1889,7 @@ class PrinterConnectionManager {
           stationCode: "CASHIER",
           payloadBase64: this.bytesToBase64(escposBytes),
           paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
           createdBy: currentUser.id,
           createdByName: currentUser.name,
         });
@@ -1893,6 +1909,7 @@ class PrinterConnectionManager {
           stationCode: "CASHIER",
           payloadBase64: this.bytesToBase64(escposBytes),
           paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
           createdBy: currentUser.id,
           createdByName: currentUser.name,
         });
@@ -2006,7 +2023,7 @@ class PrinterConnectionManager {
     const escposBytes = buildKotEscPos(kot, stationFilter, isReprint, targetPrinter.paperWidth);
     const idempotencyKey = isReprint ? undefined : `kot-${kot.id || kot.kotNumber}-${stationFilter || "ALL"}`;
 
-    const job = this.enqueueJob(targetPrinter, title, "KOT", escposBytes, html, stationFilter || kot.stationCode, idempotencyKey);
+    const job = this.enqueueJob(targetPrinter, title, "KOT", escposBytes, html, stationFilter || kot.stationCode, idempotencyKey, true);
 
     const markSuccess = (msg: string) => {
       job.status = "SUCCESS";

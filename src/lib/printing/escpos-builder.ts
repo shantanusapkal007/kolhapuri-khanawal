@@ -11,7 +11,16 @@
 
 import { Bill, DayEndReport } from "@/types/billing";
 import { Kot, BreadOption, BREAD_OPTION_LABELS } from "@/types/orders";
-import { getActiveRestaurantProfile, type ActiveRestaurantProfile } from "./restaurant-profile";
+import {
+  getActiveRestaurantProfile,
+  type ActiveRestaurantProfile,
+  RESTAURANT_NAME_EN,
+  RESTAURANT_ADDRESS,
+  RESTAURANT_PHONE,
+  RESTAURANT_UPI_ID,
+  RESTAURANT_UPI_MERCHANT_NAME,
+  RESTAURANT_UPI_TERMINAL,
+} from "./restaurant-profile";
 
 export const ESC = 0x1b;
 export const FS = 0x1c;
@@ -32,18 +41,19 @@ export interface ColumnDefinition {
  * - '—' or '–' -> '-'
  * - '•' or '·' -> '*'
  * - Smart quotes -> standard quotes
- * - Strips or cleans unsupported Unicode, Devanagari, and emoji
- * to eliminate hardware ROM font mojibake (e.g. 'añðaRÜaAtañÜaM#', 'rè|', 'rço', 'rU1')
+ * - Strips all non-ASCII punctuation, Devanagari, and emoji
+ * to eliminate hardware ROM font mojibake (e.g. 'añðaRÜaAtañÜaM#', 'rè|', 'rço', 'rU1', 'Гçö')
  */
 export function cleanThermalText(str: string): string {
   if (!str) return "";
   return str
     .replace(/₹/g, "Rs.")
-    .replace(/[—–]/g, "-")
-    .replace(/[•·]/g, "*")
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[⚡🥡✅⚠️❌📦🔔🍽️]/g, "")
+    .replace(/[\u2014\u2013\u2012\u2015—–]/g, "-")
+    .replace(/[\u2022\u00B7\u25AA\u25CF•·]/g, "*")
+    .replace(/[\u2018\u2019\u201A\u201B']/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F"]/g, '"')
+    .replace(/[\u2026]/g, "...")
+    .replace(/[⚡🥡✅⚠️❌📦🔔🍽️🖨️🔥👍👎]/g, "")
     // Remove Devanagari Unicode characters (0x0900 - 0x097F)
     .replace(/[\u0900-\u097F]/g, "")
     // Clean empty parentheses or brackets left behind like () or [] or (- )
@@ -64,8 +74,8 @@ export class EscPosBuilder {
 
   constructor(paperWidth: "80mm" | "58mm" = "80mm") {
     this.paperWidth = paperWidth;
-    // 80mm standard Font A is 48 chars; 58mm is 32 chars
-    this.maxColumns = paperWidth === "58mm" ? 32 : 48;
+    // 80mm standard Font A safe printable column count is 42 chars; 58mm is 32 chars
+    this.maxColumns = paperWidth === "58mm" ? 32 : 42;
     this.init();
   }
 
@@ -321,6 +331,21 @@ export class EscPosBuilder {
   }
 
   /**
+   * Append raw byte buffer from Base64 string (e.g. pre-rendered GS v 0 raster bitmaps)
+   */
+  rawBase64(base64Str: string): this {
+    if (!base64Str) return this;
+    const binary =
+      typeof window !== "undefined" && window.atob
+        ? window.atob(base64Str)
+        : Buffer.from(base64Str, "base64").toString("binary");
+    for (let i = 0; i < binary.length; i++) {
+      this.buffer.push(binary.charCodeAt(i));
+    }
+    return this;
+  }
+
+  /**
    * Get as Hex encoded string
    */
   toHex(): string {
@@ -329,6 +354,15 @@ export class EscPosBuilder {
       .join("");
   }
 }
+
+// ── Pre-rendered Monochrome 1-bit ESC/POS Raster Bitmaps (GS v 0) ──
+// Header: "कोल्हापुरी खानावळ" (384x64 dots)
+export const MARATHI_HEADER_RASTER_B64 =
+  "HXYwADAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgAAAAAAAAAAAAAAB/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHwAAAAAAAAAAAAAAD/8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAD/+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAAAAAAAAAAADw+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+AAAAAAAAAAAAAADwfAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/AAAAAAAAAAAAAADwPgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAAAAAAAAAAAD4HwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPwAAAAAAAAAAAAAD4D4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP4AAAAAAAAAAAAAD8D8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP///////////////////////wAAP/////////////////////gAAAAAAAAAAAAAAP///////////////////////wAAP/////////////////////gAAAAAAAAAAAAAAP///////////////////////wAAP/////////////////////gAAAAAAAAAAAAAAP///////////////////////wAAP/////////////////////gAAAAAAAAAAAAAAAAPgAD4AAAAAHwHgeA+AB8B8AAAAHgA+A8AAA+B8AAHwAAA8AAAAAAAAAAAAAAAAAAPgAD4AAAAAPwHgeA+AB8B8AAAAHgI+A8AAA+B8AAHwAAA8AAAAAAAAAAAAAAAAAPvgAD4AAAAf/wHgeA+AB8B8AAAAHh++A8AAA+B8AP3wAAA8AAAAAAAAAAAAAAAAA//gAD4AfAA//wHgeA+AB8B8AAAAHj++A8AAA+B8A//wAfB+AAAAAAAAAAAAAAAAB//vwD4B/wE//wHgeA+AB8B8AAAAHj++A8AAA+B8B//wB/z/gAAAAAAAAAAAAAAAD///4D4D/4d//gHgeA+AB4B8AAAAHn++A8B//+B8D//wD///wAAAAAAAAAAAAAAAD///8D4H/998AAHgfA+Ax4B8AAABnng+A8D//+B8H4fwH///wAAAAAAAAAAAAAAAHwP/+D4H//98cAHgfA+D74B8AAAD/ng+A8H//+B8HwHwP///4AAAAAAAAAAAAAAAHwP4+D4Pw/9//AHgfz+D/4B8AAAH/ng+A8P//+B8HgHwPg/j4AAAAAAAAAAAAAAAHwfweD4Pg/4//wHgP/+B/4B8AAAH/n7+A8Pvg+B8HgHwfgfB8AAAAAAAAAAAAAAAD//geD4Pj/g//4HgH/+A/wB8AAAD/D/+A8Pvg+B8HgHwfA+B8AAAAAAAAAAAAAAAD//geD4Pj+A//4HgD/+A/gB8AAAD+D/+A8Png+B8HwPwfA+B8AAAAAAAAAAAAAAAB//g+D4Hx8A/D4HgB/+AfgB8AAAB+B/+A8Pvg+B8H//wfA+B8AAAAAAAAAAAAAAAA//g+D4HwwA+B4HgAA+APwB8AAAA/AP+A8H/g+B8D//wfB8D8AAAAAAAAAAAAAAAAPPh8D4H4AB8B4HgAA+AH4B8AAAA/gD+A8H/A+B8B//wPj+D4AAAAAAAAAAAAAAAAAPh8D4D8AB8D4HgAA+AD8B8AAAAf8f+A8D/A+B8A//wP///4AAAAAAAAAAAAAAAAAPg4D4B8AA8H4HgAA+AB+B8AAAAP//+A8B8A+B8APnwP///wAAAAAAAAAAAAAAAAAPgQD4B+AA+DwHgAA+AA/B8AAAAH//+A8AAA+B8AAHwH///gAAAAAAAAAAAAAAAAAPgAD4A/AA+BgHgAA+AA/h8AAAAB/++A8AAA+B8AAHwD/v/AAAAAAAAAAAAAAAAAAPgAD4AeAAfgAHgAA+AAfh8AAAAAf4+A8AAA+B8AAHwA/D8AAAAAAAAAAAAAAAAAAAAAAAAIAAfwAAAAAAAAPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8AAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH+AAAAA/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD8AAAAD/gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8AAAAD/wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABj4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABgB4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD4D4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD//wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+// Footer: "आम्ही आपल्या सेवेचे ऋणी आहोत" (384x48 dots)
+export const MARATHI_FOOTER_RASTER_B64 =
+  "HXYwADAAMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAHwAAAAAAAAAAAAAAAAAAAAYABAABgAAAAAAAAA/AAAAAAAAABAAAAAAAAAAAAAAAP8AAAAAAAAAAAAAAAAAAAA8ADgADwAAAAAAAAA/gAAAAAAAADgAAAAAAAAAAAAAAe+AAAAAAAAAAAAAAAAAAAAeADwAB4AAAAAAAAB7wAAAAAAAADwAAAAAAAAAAAAAAcOAAAAAAAAAAAAAAAAAAAAPAA8AA8AAAAAAAABx4AAAAAAAAB4AAAAAAAAAAAAAAeHAAAAAAAAAAAAAAAAAAAAHgAeAAeAAAAAAAAA44AAAAAAAAA8AAAAAAAAAAAAAAODgAAAAAAAAAAAAAAAAAAADwAPAAPAAAAAAAAA4cAAAAAAAAAeAAAAAAD4f///////+AAPx///////////8AD////////8AD////////gAB8P////////wAAH+f///////+AAf5///////////8AD////////8AD////////wAD/P////////wAAH+f///////+AAf5///////////8AD////////8AD////////wAD/P////////wAAAPPHgHAAPBwAAA8cODg4AAAPPDgAAHhwAHAAHAAAAcADx54eAAAHHjwA8HAAeAAAAPHDgHAB/BwAAAccODg4AAAPODgAAHhwAHAAHAAAEcABx54eAAAHjjwH8HAAeAAAAOHDgHAH/BwAAA8cODg4AAAPODgAAHhwH/D/nAAAfccBx54eAAAHDjwf8HAAeAAAAeHDgHAP/BwAAB4cODg4H4IPODgAAHhwf/D/nAAA/88Bx54eAAAPDjw/8HAAeAAAD//DgPAPABwAAH/8ODg4P85+ODgAAHjwf/D/nAAA/88Bx54eAAB//jw8AHB/+AAAD//Dg//uYBwAAH/8ODx4P/7+ODgAA3/w8HAcHAAAQ/8Bx54eAAB//jw5gHD/+AAAD//Dh//v/BwAAH/8OD/4eP74ODgAB//w4HA4HAAAB/8Bx54eAAB//jw/8HH/+AAAAPHDh//n/BwAAA8cOB/4efh4eDgAB//w4HA4HAAAH/+B/x4eAAAHjjwf8HHAeAAAAHHDh3AH/hwAAAccOA/4OeA/+DgAA+BwcfA8fAAAf8eA/x4eAAADjjwf+HHAeAAAIHHDh/APDhwAAQccOAA4OIAf+DgAAeBwf/Af/AAA/c+AfB4eAAEDjjw8OHHAeAAAcHHDh+AODhwAB4ccOAA4PAAPuDgAAPBwP/AP/AAAcc4AAB4eAAODjjw4OHHgeAAAf/HDgcAOHBwAB/8cOAA4HgAAODgAAHhwDnADnAAAQd4AAB4eAAP/jjw4eHDweAAAP+HDgAAPDBwAA/4cOAA4DwAAODgAAHxwAHAAHAAAAdwAAB4eAAH/Djw8MHB4eAAAH8HDgAAHgBwAAfwcOAA4BwAAODgAADxwAHAAHAAAAd4QAB4eAAD+DjweAHA8eAAAAAAAAAAHwAAAAAAAAAAAAAAAAAAAABgAAAAAAAAAAA9wAAAAAAAAAAAfAAA4AAAAAAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/wAAAAAAAAAAAPwAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAfgAAAAAAAAAAADgAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
 // ── Helpers ────────────────────────────────────────────────────────
 function formatDateTime(isoString: string): string {
@@ -347,6 +381,102 @@ function formatDateTime(isoString: string): string {
   }
 }
 
+/**
+ * Formats a tabular item row for 80mm (42 columns) or 58mm (32 columns).
+ * Handles long item names by wrapping the name on the second line (indented),
+ * keeping the quantity, rate, and amount perfectly aligned in their columns.
+ */
+function printFormattedItemRow(
+  p: EscPosBuilder,
+  is58mm: boolean,
+  sr: number | null,
+  name: string,
+  qtyStr: string,
+  rateStr: string,
+  amtStr: string
+) {
+  const cleanName = cleanThermalText(name);
+  if (is58mm) {
+    const itemWidth = 15;
+    const qtyWidth = 3;
+    const rateWidth = 6;
+    const amtWidth = 8;
+
+    if (cleanName.length <= itemWidth) {
+      p.tableRow([
+        { text: cleanName, width: itemWidth, align: "LEFT" },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+        { text: rateStr, width: rateWidth, align: "RIGHT" },
+        { text: amtStr, width: amtWidth, align: "RIGHT" },
+      ]);
+    } else {
+      const line1 = cleanName.substring(0, itemWidth);
+      const line2 = " " + cleanName.substring(itemWidth).trim().substring(0, itemWidth - 1);
+      p.tableRow([
+        { text: line1, width: itemWidth, align: "LEFT" },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+        { text: rateStr, width: rateWidth, align: "RIGHT" },
+        { text: amtStr, width: amtWidth, align: "RIGHT" },
+      ]);
+      p.tableRow([
+        { text: line2, width: itemWidth, align: "LEFT" },
+        { text: "", width: qtyWidth, align: "RIGHT" },
+        { text: "", width: rateWidth, align: "RIGHT" },
+        { text: "", width: amtWidth, align: "RIGHT" },
+      ]);
+    }
+  } else {
+    // 80mm: 42 monospace columns total
+    const hasSr = sr !== null;
+    const srWidth = hasSr ? 2 : 0;
+    const itemWidth = hasSr ? 20 : 22;
+    const qtyWidth = 4;
+    const rateWidth = 7;
+    const amtWidth = 9;
+
+    if (cleanName.length <= itemWidth) {
+      const cols = [];
+      if (hasSr) {
+        cols.push({ text: String(sr), width: srWidth, align: "RIGHT" as AlignMode });
+      }
+      cols.push(
+        { text: cleanName, width: itemWidth, align: "LEFT" as AlignMode },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" as AlignMode },
+        { text: rateStr, width: rateWidth, align: "RIGHT" as AlignMode },
+        { text: amtStr, width: amtWidth, align: "RIGHT" as AlignMode }
+      );
+      p.tableRow(cols);
+    } else {
+      const line1 = cleanName.substring(0, itemWidth);
+      const line2 = "  " + cleanName.substring(itemWidth).trim().substring(0, itemWidth - 2);
+
+      const cols1 = [];
+      if (hasSr) {
+        cols1.push({ text: String(sr), width: srWidth, align: "RIGHT" as AlignMode });
+      }
+      cols1.push(
+        { text: line1, width: itemWidth, align: "LEFT" as AlignMode },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" as AlignMode },
+        { text: rateStr, width: rateWidth, align: "RIGHT" as AlignMode },
+        { text: amtStr, width: amtWidth, align: "RIGHT" as AlignMode }
+      );
+      p.tableRow(cols1);
+
+      const cols2 = [];
+      if (hasSr) {
+        cols2.push({ text: "", width: srWidth, align: "RIGHT" as AlignMode });
+      }
+      cols2.push(
+        { text: line2, width: itemWidth, align: "LEFT" as AlignMode },
+        { text: "", width: qtyWidth, align: "RIGHT" as AlignMode },
+        { text: "", width: rateWidth, align: "RIGHT" as AlignMode },
+        { text: "", width: amtWidth, align: "RIGHT" as AlignMode }
+      );
+      p.tableRow(cols2);
+    }
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  1. BILL RECEIPT ESC/POS BUILDER
 // ══════════════════════════════════════════════════════════════════
@@ -359,7 +489,16 @@ export function buildBillReceiptEscPos(
   const p = new EscPosBuilder(paperWidth);
   const is58mm = paperWidth === "58mm";
   const baseProfile = getActiveRestaurantProfile();
-  const profile = customProfile ? { ...baseProfile, ...customProfile } : baseProfile;
+  const rawProfile = customProfile ? { ...baseProfile, ...customProfile } : baseProfile;
+  const profile = {
+    ...rawProfile,
+    nameEn: RESTAURANT_NAME_EN,
+    address: RESTAURANT_ADDRESS,
+    phone: RESTAURANT_PHONE,
+    upiId: RESTAURANT_UPI_ID,
+    upiMerchantName: RESTAURANT_UPI_MERCHANT_NAME,
+    upiTerminal: RESTAURANT_UPI_TERMINAL,
+  };
 
   // DUPLICATE OR PARCEL BANNER
   if (isDuplicate) {
@@ -370,62 +509,45 @@ export function buildBillReceiptEscPos(
   if (bill.isTakeaway) {
     p.align("CENTER").bold(true).line(">> TAKEAWAY / PARCEL <<").bold(false);
     if (bill.customerName) {
-      p.align("CENTER").line(`Customer: ${bill.customerName} ${bill.customerPhone ? `(${bill.customerPhone})` : ""}`);
+      p.align("CENTER").line(`Customer: ${cleanThermalText(bill.customerName)} ${bill.customerPhone ? `(${cleanThermalText(bill.customerPhone)})` : ""}`);
     }
     p.separator("*");
   }
 
-  // Restaurant Header
+  // Restaurant Header in Marathi Devanagari Raster (at top)
   p.align("CENTER");
-  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameEn || "KOLHAPURI KHANAWAL").size("NORMAL").bold(false);
-  if (profile.address) {
-    p.line(profile.address);
-  }
-  if (profile.phone) {
-    const sec = profile.secondaryPhone ? ` / ${profile.secondaryPhone}` : "";
-    p.line(`Ph: ${profile.phone}${sec}`);
-  }
-
-  // Compliance Line (GSTIN / FSSAI) - ONLY print if data exists
-  const compParts: string[] = [];
-  if (profile.gstin && profile.gstin.trim()) {
-    compParts.push(`GSTIN: ${profile.gstin.trim()}`);
-  }
-  if (profile.fssai && profile.fssai.trim()) {
-    compParts.push(`FSSAI: ${profile.fssai.trim()}`);
-  }
-  if (compParts.length > 0) {
-    p.line(compParts.join(" | "));
-  }
+  p.rawBase64(MARATHI_HEADER_RASTER_B64);
+  p.feed(1);
+  p.line(profile.address);
+  p.line(`Ph: ${profile.phone}`);
 
   p.separator();
 
-  // Invoice Title & Metadata
-  p.align("CENTER").bold(true).line(profile.gstin ? "TAX INVOICE" : "BILL RECEIPT").bold(false);
+  // Invoice Title & Metadata (No waiter or cashier name)
+  p.align("CENTER").bold(true).line("BILL RECEIPT").bold(false);
   p.align("LEFT");
   p.twoColumns(`Bill: ${bill.billNumber}`, formatDateTime(bill.createdAt));
   p.twoColumns(`Table: ${bill.tableNumber} | ${bill.partyCode}`, bill.isTakeaway ? "Type: PARCEL" : "Dine-in");
-  p.twoColumns(`Waiter: ${bill.waiterName}`, `Cashier: ${bill.cashierName}`);
 
   p.doubleSeparator();
 
-  // Table Columns Setup
-  // 80mm (48 cols): Sr(3), Item(23), Qty(4), Rate(8), Amt(10) = 48
-  // 58mm (32 cols): Item(16), Qty(4), Rate(5), Amt(7) = 32
+  // Table Column Headers:
+  // 80mm (42 cols): #(2) + Item(20) + Qty(4) + Rate(7) + Amt(9) = 42
+  // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
   if (is58mm) {
     p.tableRow([
-      { text: "Item", width: 16, align: "LEFT" },
-      { text: "Qty", width: 4, align: "CENTER" },
-      { text: "Rate", width: 5, align: "RIGHT" },
-      { text: "Amt", width: 7, align: "RIGHT" },
+      { text: "Item", width: 15, align: "LEFT" },
+      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Rate", width: 6, align: "RIGHT" },
+      { text: "Amt", width: 8, align: "RIGHT" },
     ], true);
   } else {
     p.tableRow([
-      { text: "#", width: 3, align: "CENTER" },
-      { text: "Item", width: 23, align: "LEFT" },
-      { text: "Qty", width: 4, align: "CENTER" },
-      { text: "Rate", width: 8, align: "RIGHT" },
-      { text: "Amt", width: 10, align: "RIGHT" },
+      { text: "#", width: 2, align: "RIGHT" },
+      { text: "Item", width: 20, align: "LEFT" },
+      { text: "Qty", width: 4, align: "RIGHT" },
+      { text: "Rate", width: 7, align: "RIGHT" },
+      { text: "Amt", width: 9, align: "RIGHT" },
     ], true);
   }
   p.separator();
@@ -436,50 +558,30 @@ export function buildBillReceiptEscPos(
     const breadSuffix = item.breadOption ? ` [${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption}]` : "";
     const name = cleanThermalText(item.menuItemName + breadSuffix);
     const qty = String(item.quantity);
-    const rate = item.unitPrice.toFixed(0);
+    const rate = item.unitPrice.toFixed(2);
     const amt = item.totalPrice.toFixed(2);
 
-    if (is58mm) {
-      p.tableRow([
-        { text: name, width: 16, align: "LEFT" },
-        { text: qty, width: 4, align: "CENTER" },
-        { text: rate, width: 5, align: "RIGHT" },
-        { text: amt, width: 7, align: "RIGHT" },
-      ]);
-    } else {
-      p.tableRow([
-        { text: String(sr), width: 3, align: "CENTER" },
-        { text: name, width: 23, align: "LEFT" },
-        { text: qty, width: 4, align: "CENTER" },
-        { text: rate, width: 8, align: "RIGHT" },
-        { text: amt, width: 10, align: "RIGHT" },
-      ]);
-    }
+    printFormattedItemRow(
+      p,
+      is58mm,
+      sr,
+      name,
+      qty,
+      rate,
+      amt
+    );
   }
 
   p.separator();
 
-  // Financial Totals
+  // Financial Totals (Right-aligned values, NO GST / CGST / SGST)
   p.twoColumns("Subtotal:", `Rs. ${bill.subtotal.toFixed(2)}`, true);
   if (bill.discountAmount > 0) {
-    p.twoColumns(`Discount${bill.discountReason ? ` (${bill.discountReason})` : ""}:`, `-Rs. ${bill.discountAmount.toFixed(2)}`, true);
+    p.twoColumns(`Discount${bill.discountReason ? ` (${cleanThermalText(bill.discountReason)})` : ""}:`, `-Rs. ${bill.discountAmount.toFixed(2)}`, true);
   }
   if (bill.packagingCharges && bill.packagingCharges > 0) {
     p.twoColumns("Packaging / Parcel Fee:", `Rs. ${bill.packagingCharges.toFixed(2)}`, true);
   }
-
-  const hasGst = Boolean(
-    profile.gstin &&
-    profile.gstin.trim() &&
-    (bill.cgstAmount > 0 || bill.sgstAmount > 0 || bill.totalTaxAmount > 0)
-  );
-
-  if (hasGst) {
-    p.twoColumns("Taxable Amount:", `Rs. ${bill.taxableAmount.toFixed(2)}`);
-    p.twoColumns("CGST (2.5%):", `Rs. ${bill.cgstAmount.toFixed(2)}`);
-    p.twoColumns("SGST (2.5%):", `Rs. ${bill.sgstAmount.toFixed(2)}`);
-  }
-
   if (bill.roundOff !== 0) {
     p.twoColumns("Round Off:", `${bill.roundOff > 0 ? "+" : "-"}Rs. ${Math.abs(bill.roundOff).toFixed(2)}`);
   }
@@ -492,7 +594,7 @@ export function buildBillReceiptEscPos(
   if (bill.payments && bill.payments.length > 0) {
     p.align("CENTER").bold(true).line("-- PAYMENT DETAILS --").bold(false);
     for (const pay of bill.payments) {
-      p.twoColumns(`${pay.paymentMethod}${pay.transactionReference ? ` (${pay.transactionReference})` : ""}:`, `Rs. ${pay.amount.toFixed(2)}`);
+      p.twoColumns(`${cleanThermalText(pay.paymentMethod)}${pay.transactionReference ? ` (${cleanThermalText(pay.transactionReference)})` : ""}:`, `Rs. ${pay.amount.toFixed(2)}`);
     }
     p.twoColumns("Total Paid:", `Rs. ${bill.paidAmount.toFixed(2)}`, true);
     const change = bill.payments.filter((x) => x.paymentMethod === "CASH").reduce((s, x) => s + x.amount, 0) - bill.grandTotal;
@@ -502,7 +604,7 @@ export function buildBillReceiptEscPos(
     p.separator();
   }
 
-  // QR Code on receipt for UPI settlement
+  // QR Code on receipt for UPI settlement (NO TERMINAL)
   if (profile.upiId && profile.upiId.trim()) {
     const upiId = profile.upiId;
     const upiName = profile.upiMerchantName || "Kolapuri khanawal";
@@ -515,25 +617,14 @@ export function buildBillReceiptEscPos(
     p.qrCode(upiUrl, is58mm ? 4 : 5);
     p.align("CENTER")
       .bold(true).line(`UPI ID: ${upiId}`).bold(false)
-      .line(`Payee: ${upiName}`)
-      .line(`Terminal: ${profile.upiTerminal || "Terminal 1-Q338740118"}`);
+      .line(`Payee: ${upiName}`);
     p.separator();
   }
 
-  // Footer
-  p.align("CENTER")
-    .bold(true)
-    .line("Thank you! Please visit again!")
-    .line("Aamhi Aplya Seveche Runi Aahot")
-    .bold(false);
-
-  if (hasGst) {
-    p.line("HSN/SAC: 996331 | Standalone Restaurant (5% GST)");
-    p.line("This is a computer-generated tax invoice.");
-  } else {
-    p.line("This is a computer-generated bill receipt.");
-  }
-  p.line(`Printed: ${formatDateTime(new Date().toISOString())}`);
+  // Footer: Marathi Devanagari "आम्ही आपल्या सेवेचे ऋणी आहोत" (NOTHING ELSE BELOW THIS)
+  p.align("CENTER");
+  p.rawBase64(MARATHI_FOOTER_RASTER_B64);
+  p.feed(1);
 
   p.cut();
   return p.toBytes();
@@ -658,8 +749,19 @@ export function buildTableCheckEscPos(
   paperWidth: "80mm" | "58mm" = "80mm"
 ): Uint8Array {
   const p = new EscPosBuilder(paperWidth);
+  const is58mm = paperWidth === "58mm";
   const baseProfile = getActiveRestaurantProfile();
-  const profile = params.profile ? { ...baseProfile, ...params.profile } : baseProfile;
+  const rawProfile = params.profile ? { ...baseProfile, ...params.profile } : baseProfile;
+  const profile = {
+    ...rawProfile,
+    nameEn: RESTAURANT_NAME_EN,
+    address: RESTAURANT_ADDRESS,
+    phone: RESTAURANT_PHONE,
+    upiId: RESTAURANT_UPI_ID,
+    upiMerchantName: RESTAURANT_UPI_MERCHANT_NAME,
+    upiTerminal: RESTAURANT_UPI_TERMINAL,
+  };
+
   const tableNum = params.party?.tableNumber || params.tableNumber || 1;
   const partyCode = params.party?.partyCode || params.partyCode || "P-101";
   const subtotal = typeof params.subtotal === "number" ? params.subtotal : 0;
@@ -667,52 +769,80 @@ export function buildTableCheckEscPos(
 
   p.align("CENTER")
     .bold(true)
-    .line("*** TABLE CHECK / PRE-BILL ESTIMATE ***")
+    .line("*** TABLE CHECK / PRE-BILL ***")
     .line("(Not a Tax Invoice - Kachha Bill)")
-    .line("THIS IS NOT A TAX INVOICE");
+    .feed(1);
 
-  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameEn || "KOLHAPURI KHANAWAL").size("NORMAL").bold(false);
-  if (profile.address) p.line(profile.address);
-  if (profile.phone) p.line(`Ph: ${profile.phone}`);
-
-  p.size("DOUBLE_HEIGHT")
-    .bold(true)
-    .line(`TABLE ${tableNum}`)
-    .size("NORMAL")
-    .line(`Party: ${partyCode}`)
-    .bold(false);
+  // Restaurant Header in Marathi Devanagari Raster (at top)
+  p.align("CENTER");
+  p.rawBase64(MARATHI_HEADER_RASTER_B64);
+  p.feed(1);
+  p.line(profile.address);
+  p.line(`Ph: ${profile.phone}`);
 
   p.separator();
+
+  // Table & Metadata Block (No waiter or cashier name)
   p.align("LEFT");
-  p.twoColumns(`Table: ${tableNum}`, formatDateTime(new Date().toISOString()));
-  p.twoColumns(`Party: ${partyCode}`, `Guests: ${params.party?.guestCount || 2}`);
-  if (params.party?.assignedWaiterName || params.waiterName) {
-    p.line(`Waiter: ${cleanThermalText(params.party?.assignedWaiterName || params.waiterName)}`);
-  }
+  p.twoColumns(`Table: ${tableNum}`, `Party: ${partyCode}`, true);
+  p.twoColumns(`Date : ${formatDateTime(new Date().toISOString())}`, `Guests: ${params.party?.guestCount || 2}`);
+
   p.doubleSeparator();
 
-  // Order Items
+  // Table Column Headers:
+  // 80mm (42 cols): Item(22) + Qty(4) + Rate(7) + Amt(9) = 42
+  // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
+  if (is58mm) {
+    p.tableRow([
+      { text: "Item", width: 15, align: "LEFT" },
+      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Rate", width: 6, align: "RIGHT" },
+      { text: "Amt", width: 8, align: "RIGHT" },
+    ], true);
+  } else {
+    p.tableRow([
+      { text: "Item", width: 22, align: "LEFT" },
+      { text: "Qty", width: 4, align: "RIGHT" },
+      { text: "Rate", width: 7, align: "RIGHT" },
+      { text: "Amt", width: 9, align: "RIGHT" },
+    ], true);
+  }
+  p.separator();
+
+  // Order Items in neat columns
   const items = params.items || [];
   for (const item of items) {
     if (item.isCancelled) continue;
     const qty = item.quantity || 1;
-    const name = cleanThermalText(item.menuItemName || "Item");
-    const amt = typeof item.totalPrice === "number" ? item.totalPrice : (item.unitPrice || 0) * qty;
-    p.twoColumns(`${qty}x ${name}`, `Rs. ${amt.toFixed(2)}`);
+    const breadSuffix = item.breadOption ? ` [${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption}]` : "";
+    const name = cleanThermalText((item.menuItemName || "Item") + breadSuffix);
+    const unitRate = typeof item.unitPrice === "number"
+      ? item.unitPrice
+      : (typeof item.totalPrice === "number" ? item.totalPrice / qty : 0);
+    const amt = typeof item.totalPrice === "number" ? item.totalPrice : unitRate * qty;
+
+    printFormattedItemRow(
+      p,
+      is58mm,
+      null,
+      name,
+      String(qty),
+      unitRate.toFixed(2),
+      amt.toFixed(2)
+    );
   }
 
   p.separator();
+
+  // Financial Totals (Right-aligned values, NO GST / CGST / SGST)
   p.twoColumns("Subtotal:", `Rs. ${subtotal.toFixed(2)}`, true);
-  if (params.taxEstimate && params.taxEstimate > 0) {
-    p.twoColumns("Estimated GST (5%):", `Rs. ${params.taxEstimate.toFixed(2)}`);
-  }
   p.doubleSeparator();
   p.bold(true).size("DOUBLE_HEIGHT").twoColumns("TOTAL ESTIMATE:", `Rs. ${grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
   p.doubleSeparator();
 
-  const is58mm = paperWidth === "58mm";
-  const upiId = profile.upiId || "Q338740118@ybl";
-  const upiName = profile.upiMerchantName || "Kolapuri khanawal";
+  // Dynamic PhonePe QR Code (NO TERMINAL)
+  const upiId = profile.upiId;
+  const upiName = profile.upiMerchantName;
   const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Table%20${tableNum}`;
 
   p.align("CENTER")
@@ -722,10 +852,13 @@ export function buildTableCheckEscPos(
   p.qrCode(upiUrl, is58mm ? 4 : 5);
   p.align("CENTER")
     .bold(true).line(`UPI ID: ${upiId}`).bold(false)
-    .line(`Payee: ${upiName}`)
-    .line(`Terminal: ${profile.upiTerminal || "Terminal 1-Q338740118"}`)
-    .feed(1)
-    .line("Please settle with your waiter or at counter.");
+    .line(`Payee: ${upiName}`);
+  p.feed(1);
+
+  // Footer: Marathi Devanagari "आम्ही आपल्या सेवेचे ऋणी आहोत" (NOTHING ELSE BELOW THIS)
+  p.align("CENTER");
+  p.rawBase64(MARATHI_FOOTER_RASTER_B64);
+  p.feed(1);
 
   p.cut();
   return p.toBytes();
