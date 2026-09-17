@@ -21,6 +21,8 @@ import {
   Laptop,
   Radio,
   Search,
+  Cloud,
+  ExternalLink,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -29,13 +31,14 @@ import {
   generatePrinterTestHtml,
 } from "@/lib/printing/thermal-printer";
 import { PrinterSettings, PrinterDevice } from "@/types/billing";
+import { subscribeToBridgeStatus, isBridgeOnline } from "@/lib/printing/cloud-print-queue";
 
 interface PrinterSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type SimplePrintMode = "SYSTEM" | "BLUETOOTH" | "NETWORK";
+type SimplePrintMode = "SYSTEM" | "BLUETOOTH" | "NETWORK" | "CLOUD_BRIDGE";
 
 export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalProps) {
   const store = globalRestaurantStore;
@@ -70,6 +73,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
   const [isScanningNetwork, setIsScanningNetwork] = useState(false);
   const [isPingingNetwork, setIsPingingNetwork] = useState(false);
   const [networkPingResult, setNetworkPingResult] = useState<{ online: boolean; message: string } | null>(null);
+  const [isBridgeRunning, setIsBridgeRunning] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -80,6 +84,15 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
       setIsAndroid(androidCheck);
     }
   }, []);
+
+  // Bridge status listener
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = subscribeToBridgeStatus((bridges) => {
+      setIsBridgeRunning(isBridgeOnline(bridges));
+    });
+    return () => unsub();
+  }, [isOpen]);
 
   // Initialize from store settings
   useEffect(() => {
@@ -98,14 +111,16 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
     setDevices(devList);
 
     // Determine primary mode
-    const primary = devList[0];
+    const primary = devList.find((d) => d.isDefaultReceiptPrinter || d.isDefaultKotPrinter) || devList[0];
     if (primary) {
-      if (primary.connectionType === "BLUETOOTH" || primary.connectionType === "RAWBT" || primary.connectionType === "BLUETOOTH_SPP") {
+      if (primary.connectionType === "CLOUD_QUEUE") {
+        setPrintMode("CLOUD_BRIDGE");
+      } else if (primary.connectionType === "BLUETOOTH" || primary.connectionType === "RAWBT" || primary.connectionType === "BLUETOOTH_SPP") {
         setPrintMode("BLUETOOTH");
         setBluetoothName(primary.bluetoothDeviceName || primary.name || "");
       } else if (primary.connectionType === "NETWORK") {
         setPrintMode("NETWORK");
-        setNetworkIp(primary.ipAddress || "192.168.1.200");
+        setNetworkIp(primary.ipAddress || "192.168.0.108");
       } else {
         setPrintMode("SYSTEM");
       }
@@ -215,6 +230,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
     try {
       // Find matching device from existing fleet or construct one
       const existingDev = devices.find((d) => {
+        if (printMode === "CLOUD_BRIDGE") return d.connectionType === "CLOUD_QUEUE";
         if (printMode === "BLUETOOTH") {
           return d.connectionType === "BLUETOOTH_SPP" || d.connectionType === "BLUETOOTH" || d.connectionType === "RAWBT";
         }
@@ -233,16 +249,30 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
             assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
           }
         : {
-            id: "test-device",
-            name: printMode === "BLUETOOTH" ? (bluetoothName || "Bluetooth Thermal") : printMode === "NETWORK" ? `Network (${networkIp})` : "System Print Spooler",
-            connectionType: printMode === "BLUETOOTH" ? "BLUETOOTH_SPP" : printMode === "NETWORK" ? "NETWORK" : "BROWSER_SYSTEM",
+            id: printMode === "CLOUD_BRIDGE" ? "printer-cloud-bridge" : "test-device",
+            name:
+              printMode === "CLOUD_BRIDGE"
+                ? "Cloud Print Bridge (क्लाउड प्रिंटर)"
+                : printMode === "BLUETOOTH"
+                ? (bluetoothName || "Bluetooth Thermal")
+                : printMode === "NETWORK"
+                ? `Network (${networkIp})`
+                : "System Print Spooler",
+            connectionType:
+              printMode === "CLOUD_BRIDGE"
+                ? "CLOUD_QUEUE"
+                : printMode === "BLUETOOTH"
+                ? "BLUETOOTH_SPP"
+                : printMode === "NETWORK"
+                ? "NETWORK"
+                : "BROWSER_SYSTEM",
             paperWidth,
             isEnabled: true,
             status: "ONLINE",
             ipAddress: networkIp,
             port: 9100,
             bluetoothDeviceName: bluetoothName,
-            assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+            assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
             isDefaultReceiptPrinter: true,
             isDefaultKotPrinter: true,
             autoCut: true,
@@ -272,6 +302,7 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
   const handleSave = () => {
     // Look for existing device matching selected mode
     const existingIdx = devices.findIndex((d) => {
+      if (printMode === "CLOUD_BRIDGE") return d.connectionType === "CLOUD_QUEUE";
       if (printMode === "BLUETOOTH") {
         return d.connectionType === "BLUETOOTH_SPP" || d.connectionType === "BLUETOOTH" || d.connectionType === "RAWBT";
       }
@@ -294,9 +325,23 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
       };
     } else {
       activeDev = {
-        id: `printer-${printMode.toLowerCase()}-${Date.now()}`,
-        name: printMode === "BLUETOOTH" ? (bluetoothName || "Bluetooth Thermal") : printMode === "NETWORK" ? `Network POS (${networkIp})` : "System Print Spooler",
-        connectionType: printMode === "BLUETOOTH" ? "BLUETOOTH_SPP" : printMode === "NETWORK" ? "NETWORK" : "BROWSER_SYSTEM",
+        id: printMode === "CLOUD_BRIDGE" ? "printer-cloud-bridge" : `printer-${printMode.toLowerCase()}-${Date.now()}`,
+        name:
+          printMode === "CLOUD_BRIDGE"
+            ? "Cloud Print Bridge (क्लाउड प्रिंटर)"
+            : printMode === "BLUETOOTH"
+            ? (bluetoothName || "Bluetooth Thermal")
+            : printMode === "NETWORK"
+            ? `Network POS (${networkIp})`
+            : "System Print Spooler",
+        connectionType:
+          printMode === "CLOUD_BRIDGE"
+            ? "CLOUD_QUEUE"
+            : printMode === "BLUETOOTH"
+            ? "BLUETOOTH_SPP"
+            : printMode === "NETWORK"
+            ? "NETWORK"
+            : "BROWSER_SYSTEM",
         paperWidth,
         isEnabled: true,
         status: "ONLINE",
@@ -606,6 +651,66 @@ export function PrinterSettingsModal({ isOpen, onClose }: PrinterSettingsModalPr
                   <p className="text-[9.5px] text-blue-900/80 leading-relaxed border-t border-blue-200/60 pt-1.5">
                     💡 <strong>IP शोधण्यासाठी:</strong> प्रिंटर बंद करून समोरील <strong>FEED बटण दाबून धरून</strong> चालू करा. २ सेकंदांनी सोडा, पावतीवर IP पत्ता दिसेल.
                   </p>
+                </div>
+              )}
+
+              {/* Option D: Cloud Print Bridge */}
+              <button
+                type="button"
+                onClick={() => setPrintMode("CLOUD_BRIDGE")}
+                className={`w-full p-3.5 rounded-2xl border text-left transition-all touch-manipulation flex items-start gap-3 ${
+                  printMode === "CLOUD_BRIDGE"
+                    ? "bg-amber-50/70 border-amber-500 text-amber-950 ring-2 ring-amber-400/30 font-semibold shadow-xs"
+                    : "bg-white border-stone-200 text-stone-700 hover:bg-stone-50/80"
+                }`}
+              >
+                <div className={`p-2 rounded-xl mt-0.5 ${printMode === "CLOUD_BRIDGE" ? "bg-amber-600 text-white" : "bg-stone-100 text-stone-600"}`}>
+                  <Cloud className="h-4 w-4" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black text-stone-900">क्लाउड प्रिंट ब्रिज (Cloud Print Bridge)</span>
+                    <span className="bg-amber-100 text-amber-800 text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-200">
+                      मोबाईल + Wi-Fi साठी उत्तम
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-stone-500 mt-1 leading-snug">
+                    मोबाईल फोनवरून दिलेली ऑर्डर्स थेट हॉटेलच्या कॅशियर/किचन प्रिंटरवर आपोआप छापली जातात.
+                  </p>
+                </div>
+                {printMode === "CLOUD_BRIDGE" && <Check className="h-4 w-4 text-amber-700 shrink-0 mt-1" />}
+              </button>
+
+              {/* Cloud Bridge Info Subpanel */}
+              {printMode === "CLOUD_BRIDGE" && (
+                <div className="p-3.5 bg-amber-50/80 rounded-2xl border border-amber-200 space-y-2.5 animate-in slide-in-from-top-2 duration-150">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-amber-950">ब्रिज स्थिती (Bridge Status):</span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 ${
+                        isBridgeRunning
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                          : "bg-rose-100 text-rose-800 border border-rose-300"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${isBridgeRunning ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                      <span>{isBridgeRunning ? "ब्रिज चालू (ONLINE)" : "ब्रिज बंद (OFFLINE)"}</span>
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-amber-900/80 leading-relaxed">
+                    कॅशियर कॉम्प्युटरवर <code>npm run bridge</code> चालू ठेवा. मोबाईलवरून बिल किंवा KOT देताच ते थेट प्रिंटरवर निघेल.
+                  </p>
+                  <div className="pt-1.5 flex items-center justify-between border-t border-amber-200/60">
+                    <a
+                      href="/print-bridge"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] font-bold text-amber-900 hover:text-amber-950 underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>ब्रिज डॅशबोर्ड व रांग उघडा (Bridge Dashboard)</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               )}
             </div>

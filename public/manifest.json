@@ -90,6 +90,18 @@
           "sizes": "192x192"
         }
       ]
+    },
+    {
+      "name": "Print Bridge & Cloud",
+      "short_name": "Printers",
+      "description": "Cloud print bridge and printer configuration",
+      "url": "/print-bridge",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }

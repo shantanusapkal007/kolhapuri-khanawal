@@ -302,6 +302,15 @@ export default function WaiterFloorPage() {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            onClick={() => setShowPrinterModal(true)}
+            className="flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold px-3 py-2 rounded-xl border border-stone-300 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
+            title="Configure waiter thermal printer"
+          >
+            <Printer className="w-3.5 h-3.5 text-amber-600" />
+            <span>🖨️ प्रिंटर सेटिंग्ज</span>
+          </button>
+          <button
             onClick={() => handleOpenAddParty(1)}
             className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white text-xs font-black px-3.5 py-2 rounded-xl shadow-2xs active:scale-95 transition-all shrink-0"
           >
@@ -319,14 +328,24 @@ export default function WaiterFloorPage() {
             {availableCount} Free
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => handleOpenAddParty(1)}
-          className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1"
-        >
-          <Plus className="w-3 h-3 text-amber-200" />
-          <span>+ Seat Table</span>
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowPrinterModal(true)}
+            className="px-2 py-1 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <Printer className="w-3 h-3 text-amber-300" />
+            <span>प्रिंटर</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleOpenAddParty(1)}
+            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+          >
+            <Plus className="w-3 h-3 text-amber-200" />
+            <span>+ Seat</span>
+          </button>
+        </div>
       </div>
 
       {/* Fast Filter Bar */}
@@ -1133,6 +1152,12 @@ export default function WaiterFloorPage() {
           </div>
         </div>
       )}
+
+      {/* Waiter Printer Settings Modal */}
+      <WaiterPrinterSettingsModal
+        isOpen={showPrinterModal}
+        onClose={() => setShowPrinterModal(false)}
+      />
     </div>
   );
 }

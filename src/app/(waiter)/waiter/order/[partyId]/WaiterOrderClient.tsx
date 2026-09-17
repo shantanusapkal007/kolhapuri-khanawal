@@ -478,6 +478,16 @@ export default function WaiterOrderClient({
             </span>
           </div>
 
+          {/* Quick Printer Settings Button */}
+          <button
+            type="button"
+            onClick={() => setShowPrinterModal(true)}
+            className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer"
+            title="प्रिंटर सेटिंग्ज (Printer Settings)"
+          >
+            <Printer className="w-4 h-4 text-amber-600" />
+          </button>
+
           {/* More Actions Dropdown */}
           <div className="relative">
             <button

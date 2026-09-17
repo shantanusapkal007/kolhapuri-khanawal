@@ -219,6 +219,7 @@ export type PrinterConnectionType =
   | "SERIAL_USB"     // Web Serial COM port / direct USB
   | "RAWBT"          // RawBT print service (Android HTTP daemon :40213 or App Intent)
   | "LOCAL_BRIDGE"   // Local HTTP print daemon / gateway (e.g. http://localhost:9180/print)
+  | "CLOUD_QUEUE"    // Cloud Print Queue — PWA writes to Firestore, local bridge delivers to printer
   | "BROWSER_SYSTEM"; // Browser window / iframe print dialog fallback
 
 export type PrinterStatus =
@@ -308,7 +309,7 @@ export interface PrintJob {
   completedAt?: string;
 }
 
-export type PrintJobStatus = "QUEUED" | "PRINTING" | "SUCCESS" | "FAILED" | "RETRYING";
+export type PrintJobStatus = "QUEUED" | "PRINTING" | "SUCCESS" | "FAILED" | "RETRYING" | "UNCERTAIN";
 
 export interface StationPrinterConfig {
   stationCode: string;
@@ -339,3 +340,47 @@ export interface PrinterSettings {
   duplicatePrintProtection?: boolean;// Suppress repeated prints of identical ticket within 60s
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+//  Cloud Print Queue — Firestore Document Types
+// ══════════════════════════════════════════════════════════════════
+
+export interface CloudPrintJob {
+  id: string;
+  restaurantId: string;
+  type: "RECEIPT" | "KOT" | "TABLE_CHECK" | "CANCELLED_KOT" | "DAY_END" | "TEST";
+  status: "PENDING" | "CLAIMED" | "PRINTING" | "SUCCESS" | "FAILED" | "UNCERTAIN";
+  title: string;
+  stationCode: string;
+  payloadBase64: string;
+  paperWidth: "80mm" | "58mm";
+  idempotencyKey?: string;
+
+  // Lifecycle timestamps (ISO strings for Firestore compatibility)
+  createdAt: string;
+  createdBy: string;
+  createdByName: string;
+
+  // Claim tracking
+  claimedAt?: string;
+  claimedBy?: string;
+  leaseExpiresAt?: string;
+
+  // Completion
+  completedAt?: string;
+  errorMessage?: string;
+  attempts: number;
+  printerIp?: string;
+}
+
+export interface PrintBridgeHeartbeat {
+  bridgeId: string;
+  restaurantId: string;
+  hostname: string;
+  version: string;
+  lastHeartbeat: string;
+  status: "ONLINE" | "OFFLINE";
+  printerMapping: Record<string, { ip: string; port: number }>;
+  jobsDelivered: number;
+  lastJobAt?: string;
+}

@@ -28,9 +28,13 @@ import {
   LogOut,
   KeyRound,
   User,
+  Printer,
+  Cloud,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { NotificationCenterDrawer } from "@/components/notifications/NotificationCenterDrawer";
+import { PrinterSettingsModal } from "@/components/printing/PrinterSettingsModal";
+import { subscribeToBridgeStatus, isBridgeOnline } from "@/lib/printing/cloud-print-queue";
 
 interface TopHeaderProps {
   onOpenMobileSidebar: () => void;
@@ -42,6 +46,8 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
   const [, setTick] = React.useState(0);
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState(true);
+  const [isPrinterModalOpen, setIsPrinterModalOpen] = React.useState(false);
+  const [isBridgeOnlineState, setIsBridgeOnlineState] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -63,6 +69,14 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
         window.removeEventListener("kk-state-changed", handleSync);
       };
     }
+  }, []);
+
+  // Bridge status listener
+  React.useEffect(() => {
+    const unsub = subscribeToBridgeStatus((bridges) => {
+      setIsBridgeOnlineState(isBridgeOnline(bridges));
+    });
+    return () => unsub();
   }, []);
 
   React.useEffect(() => {
@@ -232,6 +246,33 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           <span className="hidden sm:inline">{isOnline ? "Wi-Fi Sync" : "Offline"}</span>
         </div>
 
+        {/* Quick Printer Status & Settings Toggle */}
+        <button
+          type="button"
+          onClick={() => setIsPrinterModalOpen(true)}
+          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all touch-manipulation active:scale-95 cursor-pointer ${
+            isBridgeOnlineState
+              ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 shadow-2xs"
+              : "bg-[#FAF8F5] text-stone-700 border-[#E7E2DA] hover:bg-stone-100"
+          }`}
+          title={
+            isBridgeOnlineState
+              ? "🖨️ प्रिंटर ब्रिज ऑनलाइन (Bridge Online) — सेटिंग्ज उघडा"
+              : "🖨️ प्रिंटर सेटिंग्ज (Printer Settings) — सेटिंग्ज उघडा"
+          }
+          aria-label="Open printer settings"
+        >
+          <Printer className="w-3.5 h-3.5 text-amber-600" />
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isBridgeOnlineState
+                ? "bg-emerald-500 ring-2 ring-emerald-200 animate-pulse"
+                : "bg-stone-400"
+            }`}
+          />
+          <span className="hidden md:inline">प्रिंटर</span>
+        </button>
+
         {/* Real-time Notification & Reminder Bell */}
         <button
           onClick={() => setIsNotificationDrawerOpen(true)}
@@ -310,6 +351,12 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
       <NotificationCenterDrawer
         isOpen={isNotificationDrawerOpen}
         onClose={() => setIsNotificationDrawerOpen(false)}
+      />
+
+      {/* Quick Access Printer Settings Modal */}
+      <PrinterSettingsModal
+        isOpen={isPrinterModalOpen}
+        onClose={() => setIsPrinterModalOpen(false)}
       />
     </header>
   );

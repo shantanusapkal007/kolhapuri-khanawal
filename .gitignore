@@ -31,6 +31,8 @@ ui-debug.log*
 
 # local env files (do not push secret keys)
 .env*.local
+.bridge-env
+scripts/.bridge-env
 
 # vercel
 .vercel

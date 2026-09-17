@@ -17,6 +17,7 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  Cloud,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { globalPrinterManager } from "@/lib/printing/printer-connection-manager";
@@ -31,12 +32,13 @@ interface WaiterPrinterSettingsModalProps {
 export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSettingsModalProps) {
   const store = globalRestaurantStore;
 
-  const initialMode = (): "SYSTEM" | "RAWBT" | "NETWORK" => {
+  const initialMode = (): "SYSTEM" | "RAWBT" | "NETWORK" | "CLOUD_BRIDGE" => {
     const devices = store.printerSettings.devices || [];
     const kotDev = devices.find((d) => d.isDefaultKotPrinter && d.isEnabled) || devices[0];
+    if (kotDev?.connectionType === "CLOUD_QUEUE") return "CLOUD_BRIDGE";
     if (kotDev?.connectionType === "RAWBT") return "RAWBT";
     if (kotDev?.connectionType === "NETWORK") return "NETWORK";
-    return "SYSTEM";
+    return "CLOUD_BRIDGE";
   };
 
   const initialIp = (): string => {
@@ -45,7 +47,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
     return netDev?.ipAddress || "192.168.0.108";
   };
 
-  const [printMode, setPrintMode] = useState<"SYSTEM" | "RAWBT" | "NETWORK">(initialMode);
+  const [printMode, setPrintMode] = useState<"SYSTEM" | "RAWBT" | "NETWORK" | "CLOUD_BRIDGE">(initialMode);
   const [wifiIp, setWifiIp] = useState<string>(initialIp);
   const [paperWidth, setPaperWidth] = useState<"80mm" | "58mm">(
     store.printerSettings?.paperWidth || "80mm"
@@ -64,12 +66,14 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
 
   const handleSaveSettings = () => {
     let activeDev: PrinterDevice;
-    if (printMode === "SYSTEM") {
+    if (printMode === "CLOUD_BRIDGE") {
+      activeDev = globalPrinterManager.activateCloudQueuePrint(paperWidth);
+    } else if (printMode === "SYSTEM") {
       activeDev = globalPrinterManager.activateAndroidSystemPrint(paperWidth);
     } else if (printMode === "RAWBT") {
       activeDev = globalPrinterManager.activateAndroidRawBtPrint(paperWidth);
     } else {
-      activeDev = globalPrinterManager.activateWifiNetworkPrint(wifiIp || "192.168.1.50", paperWidth);
+      activeDev = globalPrinterManager.activateWifiNetworkPrint(wifiIp || "192.168.0.108", paperWidth);
     }
 
     const currentDevices = store.printerSettings.devices || [];
@@ -164,7 +168,21 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
     setStatusMessage(null);
     try {
       let kotDevice: PrinterDevice;
-      if (printMode === "SYSTEM") {
+      if (printMode === "CLOUD_BRIDGE") {
+        kotDevice = {
+          id: "waiter-cloud-dev",
+          name: "☁️ Cloud Print Bridge",
+          connectionType: "CLOUD_QUEUE",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["MAIN_KITCHEN", "CASHIER"],
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        };
+      } else if (printMode === "SYSTEM") {
         kotDevice = {
           id: "waiter-system-dev",
           name: "📱 Android System Print",
@@ -198,7 +216,7 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
           id: "waiter-wifi-dev",
           name: `Wi-Fi (${wifiIp})`,
           connectionType: "NETWORK",
-          ipAddress: wifiIp.trim() || "192.168.1.50",
+          ipAddress: wifiIp.trim() || "192.168.0.108",
           port: 9100,
           paperWidth,
           isEnabled: true,
@@ -261,11 +279,29 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
                 <Printer className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-black text-white leading-tight">POSIFLOW KPC307-UEWB</h4>
+                <h4 className="text-sm font-black text-white leading-tight">
+                  {printMode === "CLOUD_BRIDGE"
+                    ? "☁️ क्लाउड प्रिंट ब्रिज (Cloud Bridge)"
+                    : printMode === "SYSTEM"
+                    ? "📱 Android System Print"
+                    : printMode === "RAWBT"
+                    ? "⚡ RawBT Bluetooth"
+                    : "POSIFLOW KPC307-UEWB"}
+                </h4>
                 <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-mono mt-0.5">
-                  <Wifi className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{wifiIp || "192.168.0.108"}:9100</span>
-                  <span className="text-stone-400">• 80mm</span>
+                  {printMode === "CLOUD_BRIDGE" ? (
+                    <>
+                      <Cloud className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{wifiIp || "192.168.0.108"}:9100</span>
+                      <span className="text-stone-400">• Cloud Queue</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                      <span>{wifiIp || "192.168.0.108"}:9100</span>
+                      <span className="text-stone-400">• 80mm</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -386,9 +422,37 @@ export function WaiterPrinterSettingsModal({ isOpen, onClose }: WaiterPrinterSet
               {/* Alternative Print Modes */}
               <div className="space-y-2 pt-2 border-t border-stone-200">
                 <span className="text-[11px] font-bold text-stone-700 block">
-                  पर्यायी प्रिंटिंग पद्धत (Alternative Mode):
+                  पर्यायी प्रिंटिंग पद्धत (Select Mode):
                 </span>
                 <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("CLOUD_BRIDGE")}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      printMode === "CLOUD_BRIDGE"
+                        ? "bg-amber-50 border-amber-500 text-amber-950 font-bold"
+                        : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    <Cloud className="w-4 h-4 mb-1 text-amber-600" />
+                    <div className="text-xs font-black">क्लाउड प्रिंट ब्रिज</div>
+                    <div className="text-[9.5px] text-amber-800 font-bold">★ शिफारस केलेले</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPrintMode("NETWORK")}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      printMode === "NETWORK"
+                        ? "bg-blue-50 border-blue-500 text-blue-950 font-bold"
+                        : "bg-white border-stone-200 text-stone-700 hover:bg-stone-100"
+                    }`}
+                  >
+                    <Wifi className="w-4 h-4 mb-1 text-blue-600" />
+                    <div className="text-xs font-black">Wi-Fi डायरेक्ट TCP</div>
+                    <div className="text-[9.5px] text-stone-500">192.168.0.108:9100</div>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setPrintMode("RAWBT")}

@@ -6,6 +6,7 @@
  * - Network (LAN/Wi-Fi TCP Port 9100 via Next.js Server API)
  * - Web Bluetooth (BLE/SPP GATT Thermal characteristic)
  * - Web Serial / USB (Direct COM Port streams)
+ * - Cloud Print Queue (Firestore queue → local bridge → printer)
  * - Local Print Gateway / Bridge (Lightweight HTTP print daemon)
  * - Browser System Print (Seamless zero-popup iframe fallback)
  */
@@ -29,6 +30,8 @@ import {
   EscPosBuilder,
 } from "./escpos-builder";
 import { openPrintWindow } from "./thermal-printer";
+import { enqueuePrintJob, subscribeToBridgeStatus, isBridgeOnline, type EnqueuePrintJobParams } from "./cloud-print-queue";
+import type { CloudPrintJob, PrintBridgeHeartbeat } from "@/types/billing";
 
 // Default Initial Hardware Printer Fleet — Tailored for POSIFLOW KP307-UEWB & Mobile Spooling
 export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
@@ -470,6 +473,32 @@ class PrinterConnectionManager {
       };
     }
 
+    // Cloud Print Queue: Check bridge heartbeat from Firestore
+    if (device.connectionType === "CLOUD_QUEUE") {
+      try {
+        const bridgeOnline = await new Promise<boolean>((resolve) => {
+          const unsub = subscribeToBridgeStatus((bridges) => {
+            unsub();
+            resolve(isBridgeOnline(bridges));
+          });
+          // Timeout after 3s if Firestore doesn't respond
+          setTimeout(() => resolve(false), 3000);
+        });
+        return {
+          online: bridgeOnline,
+          latencyMs: bridgeOnline ? 50 : undefined,
+          message: bridgeOnline
+            ? "☁️ Cloud Print Bridge connected — jobs will be delivered by the restaurant PC"
+            : "⚠️ Print Bridge offline — start the bridge on your cashier PC",
+        };
+      } catch {
+        return {
+          online: false,
+          message: "Could not check bridge status",
+        };
+      }
+    }
+
     return { online: true };
   }
 
@@ -755,6 +784,25 @@ class PrinterConnectionManager {
       if (!res.ok) {
         throw new Error(`Local bridge returned error: ${res.statusText}`);
       }
+      return;
+    }
+
+    // 7. CLOUD_QUEUE DRIVER — Enqueue to Firestore for local bridge delivery
+    if (device.connectionType === "CLOUD_QUEUE") {
+      if (!job.rawPayload) {
+        throw new Error("No ESC/POS payload for Cloud Queue");
+      }
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: job.type as CloudPrintJob["type"],
+        title: job.title,
+        stationCode: job.stationCode || "CASHIER",
+        payloadBase64: job.rawPayload,
+        paperWidth: job.paperWidth,
+        idempotencyKey: job.idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
       return;
     }
   }
@@ -1444,6 +1492,22 @@ class PrinterConnectionManager {
       return { success: true, message: "Printed via Local POS Bridge" };
     }
 
+    // 7. Cloud Print Queue
+    if (device.connectionType === "CLOUD_QUEUE") {
+      const escposBytes = buildDiagnosticTestEscPos(device.name, device.paperWidth);
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "TEST",
+        title: `Diagnostic Test (${device.name})`,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: device.paperWidth,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return { success: true, message: "☁️ Sent test slip to Cloud Print Queue — bridge will deliver" };
+    }
+
     // Fallback: Dispatch through standard spooler queue
     this.dispatchTestSlip(device, htmlFallbackFn);
     return { success: true, message: "Queued in spooler" };
@@ -1587,6 +1651,22 @@ class PrinterConnectionManager {
       return markSuccess("Dispatched to Print Window (Network Fallback)");
     }
 
+    // 5. Cloud Print Queue — enqueue to Firestore for bridge delivery
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "RECEIPT",
+        title,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
+    }
+
     // Default Fallback
     if (html) openPrintWindow(html, title);
     return markSuccess("Dispatched to Print Window");
@@ -1665,6 +1745,21 @@ class PrinterConnectionManager {
 
       if (html) openPrintWindow(html, title);
       return markSuccess("Dispatched to Print Window");
+    }
+
+    // Cloud Print Queue — enqueue to Firestore for bridge delivery
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "TABLE_CHECK",
+        title,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
     }
 
     if (html) openPrintWindow(html, title);
@@ -1781,6 +1876,22 @@ class PrinterConnectionManager {
       }
       if (html) openPrintWindow(html, title);
       return markSuccess("Dispatched to Print Window (Network Fallback)");
+    }
+
+    // Cloud Print Queue — enqueue to Firestore for bridge delivery
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "KOT",
+        title,
+        stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
     }
 
     if (html) openPrintWindow(html, title);
@@ -1967,6 +2078,21 @@ class PrinterConnectionManager {
     return new Uint8Array(Buffer.from(base64, "base64"));
   }
 
+  private getCurrentUser(): { id: string; name: string } {
+    try {
+      if (typeof window !== "undefined") {
+        const stored = localStorage.getItem("kk_current_user");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.id && parsed?.name) {
+            return { id: parsed.id, name: parsed.name };
+          }
+        }
+      }
+    } catch {}
+    return { id: "STAFF", name: "Restaurant Staff" };
+  }
+
   public getDevices(settings?: PrinterSettings): PrinterDevice[] {
     return this.getActiveDevices(settings);
   }
@@ -2108,6 +2234,66 @@ class PrinterConnectionManager {
         {
           id: "printer-android-system",
           name: "📱 Android फोन प्रिंटर (Wi-Fi Fallback)",
+          modelName: "Android System Print Spooler",
+          connectionType: "BROWSER_SYSTEM",
+          paperWidth,
+          isEnabled: true,
+          status: "ONLINE",
+          assignedStations: ["CASHIER", "MAIN_KITCHEN"],
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+          autoCut: true,
+          openDrawerOnPrint: false,
+        },
+        ...(currentSettings.devices || []).filter(
+          (d) => d.id !== device.id && d.id !== "printer-android-system"
+        ).map((d) => ({
+          ...d,
+          isDefaultReceiptPrinter: false,
+          isDefaultKotPrinter: false,
+        })),
+      ],
+    };
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("kk_printer_settings", JSON.stringify(updatedSettings));
+      } catch {}
+    }
+
+    return device;
+  }
+
+  /**
+   * 1-Tap Activation: Cloud Print Queue & Local Bridge (Recommended for PWA Android + Counter Printer)
+   * Phone enqueues to Firestore; Cashier PC bridge delivers to thermal printer over local Wi-Fi.
+   */
+  public activateCloudQueuePrint(paperWidth: "80mm" | "58mm" = "80mm"): PrinterDevice {
+    const device: PrinterDevice = {
+      id: "printer-cloud-bridge",
+      name: "☁️ क्लाउड प्रिंट ब्रिज (Cloud Print Bridge)",
+      modelName: "Cloud Print Queue Spooler",
+      connectionType: "CLOUD_QUEUE",
+      paperWidth,
+      isEnabled: true,
+      status: "ONLINE",
+      assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
+      isDefaultReceiptPrinter: true,
+      isDefaultKotPrinter: true,
+      autoCut: true,
+      openDrawerOnPrint: true,
+      failoverPrinterId: "printer-android-system",
+    };
+
+    const currentSettings = this.getStoredSettings();
+    const updatedSettings: PrinterSettings = {
+      ...currentSettings,
+      paperWidth,
+      devices: [
+        device,
+        {
+          id: "printer-android-system",
+          name: "📱 Android फोन प्रिंटर (System Fallback)",
           modelName: "Android System Print Spooler",
           connectionType: "BROWSER_SYSTEM",
           paperWidth,

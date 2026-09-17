@@ -1,0 +1,26 @@
+# ══════════════════════════════════════════════════════════════════
+# Kolhapuri Khanawal — Local Print Bridge Configuration
+# Copy this file to `scripts/.bridge-env` and adjust the printer IP
+# ══════════════════════════════════════════════════════════════════
+
+# Restaurant & Bridge Identity
+BRIDGE_RESTAURANT_ID=kolhapuri-khanawal
+BRIDGE_ID=kk-bridge-cashier-pc
+
+# Firebase Authentication (Optional — falls back to anonymous auth if left blank)
+BRIDGE_EMAIL=
+BRIDGE_PASSWORD=
+
+# Default Printer (IP:PORT of thermal printer on restaurant Wi-Fi/Ethernet)
+DEFAULT_PRINTER=192.168.0.108:9100
+
+# Station-Specific Printer Mappings (if multiple thermal printers exist)
+PRINTER_CASHIER=192.168.0.108:9100
+PRINTER_MAIN_KITCHEN=192.168.0.108:9100
+PRINTER_THALI_SECTION=192.168.0.108:9100
+PRINTER_TANDOOR_BHAKRI=192.168.0.108:9100
+PRINTER_FRY_SECTION=192.168.0.108:9100
+PRINTER_BEVERAGE_DESSERT=192.168.0.108:9100
+
+# TCP Socket Timeout (milliseconds)
+BRIDGE_TCP_TIMEOUT_MS=6000

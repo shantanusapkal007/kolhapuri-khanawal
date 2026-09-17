@@ -37,6 +37,7 @@ import {
   Globe,
   Radio,
   Info,
+  Cloud,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -994,6 +995,33 @@ export default function PrintersManagementPage() {
             </label>
           </div>
         </div>
+      </div>
+
+      {/* ☁️ Cloud Print Bridge Banner */}
+      <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-stone-900 via-stone-900 to-amber-950 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center shrink-0">
+            <Cloud className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-bold text-white">क्लाउड प्रिंट ब्रिज (Cloud Print Bridge)</h3>
+              <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                मोबाईल PWA + Wi-Fi
+              </span>
+            </div>
+            <p className="text-xs text-stone-400 mt-0.5">
+              मोबाईल फोनवरून येणारी बिले थेट स्थानिक प्रिंटरवर आपोआप छापण्यासाठी कॅशियर PC वर ब्रिज चालू ठेवा.
+            </p>
+          </div>
+        </div>
+        <a
+          href="/print-bridge"
+          className="shrink-0 px-4 py-2.5 bg-amber-400 hover:bg-amber-300 text-stone-950 rounded-xl text-xs font-black flex items-center gap-2 transition-all shadow-md cursor-pointer"
+        >
+          <span>ब्रिज डॅशबोर्ड व रांग</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
       </div>
 
       {/* ⚙️ अधिक प्रगत पर्याय (Advanced Options Accordion) */}

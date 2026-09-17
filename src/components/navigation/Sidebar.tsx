@@ -29,6 +29,7 @@ import {
   Wallet,
   Sliders,
   Printer,
+  Cloud,
   KeyRound,
   LogIn,
   LogOut,
@@ -48,6 +49,7 @@ const ROUTE_PERM_MAP: Record<string, PermissionCode> = {
   "/kitchen": "kot.status_update",
   "/settings": "settings.manage",
   "/printers": "settings.manage",
+  "/print-bridge": "settings.manage",
   "/staff": "staff.manage",
   "/expenses": "reports.financial",
   "/daily-closing": "bill.create",
@@ -301,6 +303,12 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
           label: "Printers & KP307 KOT",
           subtitle: "वाय-फाय, ब्लूटूथ व स्पूलर",
           icon: Printer,
+        },
+        {
+          href: "/print-bridge",
+          label: "Print Bridge & Cloud",
+          subtitle: "क्लाउड रांग व PC ब्रिज",
+          icon: Cloud,
         },
         {
           href: "/settings",

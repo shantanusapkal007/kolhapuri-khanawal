@@ -32,6 +32,7 @@ import {
   ExternalLink,
   ShieldAlert,
   LogIn,
+  Cloud,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
@@ -755,6 +756,24 @@ export default function SettingsPage() {
               </p>
 
               <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrinterModalOpen(true)}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 p-3 text-xs font-black shadow-md active:scale-95 transition-all touch-manipulation cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-stone-950" />
+                  <span>🖨️ जलद प्रिंटर सेटिंग्ज (Quick Printer Mode)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push("/print-bridge")}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-stone-900 to-stone-800 hover:from-black hover:to-stone-900 text-amber-300 p-3 text-xs font-black shadow-xs active:scale-95 transition-all touch-manipulation border border-amber-500/30 cursor-pointer"
+                >
+                  <Cloud className="w-4 h-4 text-amber-400" />
+                  <span>☁️ क्लाउड प्रिंट ब्रिज डॅशबोर्ड (Print Bridge Dashboard)</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => router.push("/printers")}
