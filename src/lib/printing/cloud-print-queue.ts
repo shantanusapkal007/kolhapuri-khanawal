@@ -13,6 +13,7 @@
 import { app } from "@/lib/firebase/config";
 import {
   getFirestore,
+  initializeFirestore,
   collection,
   doc,
   addDoc,
@@ -52,7 +53,13 @@ let authPromise: Promise<void> | null = null;
 
 function getDb(): Firestore {
   if (!db) {
-    db = getFirestore(app);
+    try {
+      db = initializeFirestore(app, {
+        ignoreUndefinedProperties: true,
+      });
+    } catch {
+      db = getFirestore(app);
+    }
   }
   return db;
 }
@@ -139,20 +146,26 @@ export async function enqueuePrintJob(
   }
 
   const now = new Date().toISOString();
-  const jobData: Omit<CloudPrintJob, "id"> = {
+  const rawJobData: Record<string, any> = {
     restaurantId: RESTAURANT_ID,
     type: params.type,
     status: "PENDING",
     title: params.title,
-    stationCode: params.stationCode,
     payloadBase64: params.payloadBase64,
-    paperWidth: params.paperWidth,
-    idempotencyKey: params.idempotencyKey || undefined,
+    paperWidth: params.paperWidth || "80mm",
     createdAt: now,
-    createdBy: params.createdBy,
-    createdByName: params.createdByName,
     attempts: 0,
   };
+
+  if (params.stationCode) rawJobData.stationCode = params.stationCode;
+  if (params.idempotencyKey) rawJobData.idempotencyKey = params.idempotencyKey;
+  if (params.createdBy) rawJobData.createdBy = params.createdBy;
+  if (params.createdByName) rawJobData.createdByName = params.createdByName;
+
+  // Filter out any undefined values so Firestore addDoc never receives unsupported undefined fields
+  const jobData = Object.fromEntries(
+    Object.entries(rawJobData).filter(([_, v]) => v !== undefined)
+  ) as unknown as Omit<CloudPrintJob, "id">;
 
   try {
     const docRef = await addDoc(jobsRef, jobData);
