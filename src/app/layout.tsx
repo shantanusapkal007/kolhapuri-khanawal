@@ -42,7 +42,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-stone-900 antialiased font-sans">
+      <body className="min-h-screen bg-[#F7F4EF] text-stone-900 antialiased font-sans">
         <PwaRegister />
         <PwaInstallPrompt />
         <FirebaseAnalytics />

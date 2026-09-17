@@ -184,7 +184,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-sm sm:text-base lg:text-lg font-black text-stone-900 leading-tight tracking-tight truncate">
+              <h1 className="text-sm sm:text-base lg:text-lg font-black text-stone-900 leading-tight tracking-tight truncate max-w-[130px] xs:max-w-[170px] sm:max-w-none">
                 {pageMeta.title}
               </h1>
               {pageMeta.marathi && (
@@ -201,8 +201,8 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
       </div>
 
       {/* Right: Quick Operational Indicators & Seat Party Action */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Occupancy Indicator */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
+        {/* Occupancy Indicator - Large Screens */}
         <div className="hidden xl:flex items-center gap-2 bg-[#FAF8F5] border border-[#E7E2DA] px-3 py-1.5 rounded-xl text-xs shadow-2xs">
           <div className="w-2 h-2 rounded-full bg-emerald-500 ring-3 ring-emerald-100 animate-pulse" />
           <span className="font-bold text-stone-800">
@@ -210,7 +210,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           </span>
         </div>
 
-        {/* Waiter Mode Active Badge */}
+        {/* Waiter Mode Active Badge - Large Screens */}
         {store.currentUser.role === "WAITER" ? (
           <div className="hidden xl:flex items-center gap-1.5 bg-red-50 border border-red-200/80 px-3 py-1.5 rounded-xl text-xs font-bold text-red-900 shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-red-600 animate-ping" />
@@ -229,9 +229,9 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           )
         )}
 
-        {/* Real-time Local Sync Pill */}
+        {/* Real-time Local Sync Pill - Tablet and Desktop only */}
         <div
-          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all ${
+          className={`hidden sm:flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-black border transition-all ${
             isOnline
               ? "bg-emerald-50 text-emerald-800 border-emerald-200"
               : "bg-amber-50 text-amber-900 border-amber-300 animate-pulse"
@@ -246,37 +246,39 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           <span className="hidden lg:inline">{isOnline ? "Wi-Fi Sync" : "Offline"}</span>
         </div>
 
-        {/* Quick Printer Status & Settings Toggle */}
+        {/* Quick Printer Status & Settings Toggle - Mobile compact icon, Tablet+ with text */}
         <button
           type="button"
           onClick={() => setIsPrinterModalOpen(true)}
-          className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all touch-manipulation active:scale-95 cursor-pointer ${
+          className={`flex items-center justify-center p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
             isBridgeOnlineState
               ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 shadow-2xs"
               : "bg-[#FAF8F5] text-stone-700 border-[#E7E2DA] hover:bg-stone-100"
           }`}
           title={
             isBridgeOnlineState
-              ? "🖨️ प्रिंटर ब्रिज ऑनलाइन (Bridge Online) — सेटिंग्ज उघडा"
-              : "🖨️ प्रिंटर सेटिंग्ज (Printer Settings) — सेटिंग्ज उघडा"
+              ? "🖨️ प्रिंटर ब्रिज चालू (Online) — सेटिंग्ज उघडा"
+              : "🖨️ प्रिंटर सेटिंग्ज — सेटिंग्ज उघडा"
           }
           aria-label="Open printer settings"
         >
-          <Printer className="w-3.5 h-3.5 text-amber-600" />
-          <span
-            className={`w-2 h-2 rounded-full ${
-              isBridgeOnlineState
-                ? "bg-emerald-500 ring-2 ring-emerald-200 animate-pulse"
-                : "bg-stone-400"
-            }`}
-          />
-          <span className="hidden md:inline">प्रिंटर</span>
+          <div className="relative flex items-center justify-center">
+            <Printer className="w-4 h-4 text-stone-700" />
+            <span
+              className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ring-2 ring-white ${
+                isBridgeOnlineState
+                  ? "bg-emerald-500 animate-pulse"
+                  : "bg-stone-400"
+              }`}
+            />
+          </div>
+          <span className="hidden sm:inline-block ml-1.5 font-bold">प्रिंटर</span>
         </button>
 
         {/* Real-time Notification & Reminder Bell */}
         <button
           onClick={() => setIsNotificationDrawerOpen(true)}
-          className={`relative p-2 rounded-xl transition-all border touch-manipulation active:scale-95 ${
+          className={`relative p-2 rounded-xl transition-all border touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
             totalAlertCount > 0
               ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs"
               : "bg-[#FAF8F5] text-stone-600 border-[#E7E2DA] hover:bg-stone-100"
@@ -330,17 +332,17 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
         ) : (
           <Link
             href="/login"
-            className="flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
+            className="hidden sm:flex items-center gap-1.5 bg-red-600 hover:bg-red-700 text-white px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0"
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>लॉगिन</span>
           </Link>
         )}
 
-        {/* Quick Seating Action */}
+        {/* Quick Seating Action - Tablet & Desktop only (Hidden on narrow mobile phones) */}
         <Link
           href="/waiter"
-          className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-black text-xs px-3 sm:px-4 py-2 rounded-xl shadow-sm shadow-red-700/20 border border-red-600 active:scale-95 transition-all touch-manipulation"
+          className="hidden sm:inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-black text-xs px-3 sm:px-4 py-2 rounded-xl shadow-sm shadow-red-700/20 border border-red-600 active:scale-95 transition-all touch-manipulation shrink-0"
         >
           <Plus className="w-3.5 h-3.5 text-amber-200" />
           <span>Seat Party</span>

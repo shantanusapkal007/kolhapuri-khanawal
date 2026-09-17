@@ -142,12 +142,12 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
   return (
     <nav
       aria-label="Mobile Navigation Bar"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden glass-bottom-bar bg-white/95 backdrop-blur-lg border-t border-[#E7E2DA] shadow-[0_-4px_25px_rgba(28,25,23,0.08)] px-1.5 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden glass-bottom-bar bg-[#FCFAF7]/95 backdrop-blur-2xl border-t border-[#E8E1D7] shadow-[0_-8px_30px_rgba(40,25,15,0.08)] px-1 pt-1 pb-[max(0.55rem,env(safe-area-inset-bottom))]"
     >
       <div
         className={`grid ${
-          isWaiter ? "grid-cols-3 max-w-sm" : "grid-cols-5 max-w-md"
-        } items-center mx-auto`}
+          isWaiter ? "grid-cols-3 max-w-xs" : "grid-cols-5 max-w-md"
+        } items-stretch mx-auto gap-0.5`}
       >
         {itemsToRender.map((item) => {
           const Icon = item.icon;
@@ -158,39 +158,36 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
               key={item.href}
               href={item.href}
               onClick={() => triggerHaptic("tap")}
-              className={`relative flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl transition-all touch-manipulation active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center min-h-[46px] py-1 px-0.5 rounded-xl transition-all touch-manipulation active:scale-95 ${
                 active
                   ? "text-red-700 font-black"
-                  : "text-stone-500 hover:text-stone-900 font-semibold"
+                  : "text-stone-500 hover:text-stone-900 font-bold"
               }`}
             >
               {/* Active Indicator Backdrop */}
               {active && (
-                <div className="absolute inset-x-0.5 inset-y-0.5 bg-red-50/80 rounded-lg -z-10 border border-red-200/50" />
+                <div className="absolute inset-x-1 inset-y-1 bg-gradient-to-b from-red-50/90 to-amber-50/40 rounded-xl -z-10 border border-red-200/60 shadow-2xs" />
               )}
 
-              <div className="relative">
+              <div className="relative flex items-center justify-center">
                 <Icon
                   className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${
-                    active ? "scale-110 text-red-700" : "text-stone-500"
+                    active ? "scale-110 text-red-700 stroke-[2.5]" : "text-stone-500 stroke-[2]"
                   }`}
                 />
 
                 {/* Badge indicator */}
                 {item.badge && (
                   <span
-                    className={`absolute -top-1.5 -right-2 min-w-3.5 h-3.5 px-0.5 rounded-full text-[8px] font-black flex items-center justify-center shadow-2xs ${item.badgeColor}`}
+                    className={`absolute -top-1.5 -right-2.5 min-w-[14px] h-[14px] px-1 rounded-full text-[8px] font-black leading-none flex items-center justify-center ring-2 ring-[#FCFAF7] shadow-xs ${item.badgeColor}`}
                   >
                     {item.badge}
                   </span>
                 )}
               </div>
 
-              <span className="text-[9.5px] leading-tight mt-0.5 font-bold truncate max-w-[50px] text-center">
+              <span className="text-[10px] leading-tight mt-1 font-extrabold tracking-tight truncate max-w-full text-center">
                 {item.label}
-              </span>
-              <span className="text-[7.5px] leading-none text-stone-400 font-medium truncate max-w-[50px] text-center">
-                {item.localLabel}
               </span>
             </Link>
           );
@@ -203,17 +200,16 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
             triggerHaptic("tap");
             onOpenMoreDrawer();
           }}
-          className="flex flex-col items-center justify-center min-h-[44px] py-1 px-1 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-semibold"
+          className="relative flex flex-col items-center justify-center min-h-[46px] py-1 px-0.5 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-bold cursor-pointer"
           aria-label="Open staff & back-office options"
         >
-          <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-lg bg-stone-100 border border-stone-200 text-stone-700">
-            {isWaiter ? <KeyRound className="w-3 h-3" /> : <LayoutGrid className="w-3 h-3" />}
+          <div className="relative flex items-center justify-center">
+            <div className="w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center rounded-lg bg-stone-100 border border-stone-200/80 text-stone-700">
+              {isWaiter ? <KeyRound className="w-3 h-3" /> : <LayoutGrid className="w-3 h-3" />}
+            </div>
           </div>
-          <span className="text-[9.5px] leading-tight mt-0.5 font-bold">
+          <span className="text-[10px] leading-tight mt-1 font-extrabold tracking-tight truncate max-w-full text-center">
             {isWaiter ? "Staff" : "More"}
-          </span>
-          <span className="text-[7.5px] leading-none text-stone-400 font-medium">
-            {isWaiter ? "खाते" : "इतर"}
           </span>
         </button>
       </div>

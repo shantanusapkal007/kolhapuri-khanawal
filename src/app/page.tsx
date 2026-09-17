@@ -33,7 +33,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
-import { openPrintWindow, generateDayEndReportHtml } from "@/lib/printing/thermal-printer";
+import { printDayEndReport, generateDayEndReportHtml } from "@/lib/printing/thermal-printer";
 
 export default function HomePage() {
   const store = globalRestaurantStore;
@@ -43,7 +43,16 @@ export default function HomePage() {
     const interval = setInterval(() => {
       setTick((t) => t + 1);
     }, 1000);
-    return () => clearInterval(interval);
+
+    const handleSync = () => {
+      setTick((t) => t + 1);
+    };
+    window.addEventListener("kk-state-changed", handleSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("kk-state-changed", handleSync);
+    };
   }, []);
 
   const summary = store.getOwnerSummary();
@@ -55,8 +64,7 @@ export default function HomePage() {
 
   const handlePrintDailyReport = () => {
     const report = store.generateDayEndReport(today);
-    const html = generateDayEndReportHtml(report);
-    openPrintWindow(html, `Owner-Report-${today}`);
+    printDayEndReport(report, "80mm");
   };
 
   return (

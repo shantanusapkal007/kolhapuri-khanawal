@@ -2284,6 +2284,7 @@ class PrinterConnectionManager {
 
     // 6. Fallback to first available enabled device
     const enabled = devices.filter((d) => d.isEnabled);
+    return enabled[0] || DEFAULT_PRINTER_DEVICES[0];
   }
 
   private getStoredSettings(): PrinterSettings {

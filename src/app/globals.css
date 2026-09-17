@@ -25,7 +25,6 @@ body {
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain; /* Prevents accidental pull-to-refresh on mobile Android APK */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -33,15 +32,23 @@ body {
     radial-gradient(ellipse at 100% -10%, rgba(199, 114, 22, 0.11) 0%, transparent 42%),
     radial-gradient(ellipse at -10% 100%, rgba(141, 29, 36, 0.07) 0%, transparent 46%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(247, 244, 239, 0.15));
-  background-attachment: fixed;
   max-width: 100%;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 html {
   max-width: 100%;
   overflow-x: hidden;
   background: var(--bg-main);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Eliminate 300ms mobile touch delay and prevent double-tap zoom accidents during fast order taking */

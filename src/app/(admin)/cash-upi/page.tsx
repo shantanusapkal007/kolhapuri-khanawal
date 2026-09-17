@@ -24,7 +24,7 @@ import {
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
 import { triggerHaptic } from "@/lib/mobile/haptics";
-import { openPrintWindow } from "@/lib/printing/thermal-printer";
+import { printCashUpiReconciliationSlip } from "@/lib/printing/thermal-printer";
 
 interface DenominationRow {
   label: string;
@@ -351,10 +351,19 @@ export default function CashUPIReconciliationPage() {
     `.trim();
   };
 
-  const handlePrintSlip = () => {
+  const handlePrintSlip = async () => {
     triggerHaptic("tap");
-    const html = generateThermalSlipHtml();
-    openPrintWindow(html, `Reconciliation-Slip-${todayDateStr}`);
+    await printCashUpiReconciliationSlip({
+      date: todayDateStr,
+      expectedCash: currentExpectedCash,
+      actualCash: actualCashCount,
+      cashVariance: cashVariance,
+      expectedUpi: currentExpectedUpi,
+      actualUpi: actualUpiCount,
+      upiVariance: upiVariance,
+      denominations: denominations,
+      paperWidth: "80mm",
+    });
   };
 
   const handleCopyTextSummary = () => {

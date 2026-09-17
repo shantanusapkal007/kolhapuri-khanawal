@@ -17,9 +17,39 @@ import { Kot, OrderItem, BreadOption, BREAD_OPTION_LABELS } from "@/types/orders
 import { DiningParty } from "@/types/tables";
 import { WaiterCredential } from "@/types/domain";
 import { DEFAULT_PRINTER_DEVICES, globalPrinterManager } from "./printer-connection-manager";
-import { EscPosBuilder } from "./escpos-builder";
+import { EscPosBuilder, buildCashUpiReconciliationEscPos, type CashUpiReconciliationEscPosParams } from "./escpos-builder";
+import { enqueuePrintJob } from "./cloud-print-queue";
 
-export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder };
+export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder, buildCashUpiReconciliationEscPos };
+export type { CashUpiReconciliationEscPosParams };
+
+export async function printCashUpiReconciliationSlip(
+  params: CashUpiReconciliationEscPosParams
+): Promise<{ success: boolean; message?: string }> {
+  try {
+    const escposBytes = buildCashUpiReconciliationEscPos(params, params.paperWidth || "80mm");
+    let binary = "";
+    for (let i = 0; i < escposBytes.length; i++) {
+      binary += String.fromCharCode(escposBytes[i]);
+    }
+    const b64 =
+      typeof window !== "undefined" && window.btoa
+        ? window.btoa(binary)
+        : Buffer.from(binary, "binary").toString("base64");
+    await enqueuePrintJob({
+      type: "TEST",
+      title: `Cash & UPI Reconciliation (${params.date})`,
+      stationCode: "CASHIER",
+      payloadBase64: b64,
+      paperWidth: params.paperWidth || "80mm",
+      createdBy: "CASHIER",
+      createdByName: "Cashier Desk",
+    });
+    return { success: true, message: "पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)" };
+  } catch (err: any) {
+    return { success: false, message: err?.message || "Failed" };
+  }
+}
 
 // ── Restaurant Header Constants & Profile Provider ───────────────
 export {

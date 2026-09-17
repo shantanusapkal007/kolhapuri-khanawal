@@ -15,7 +15,7 @@ import {
   Snowflake,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
-import { openPrintWindow, generateDayEndReportHtml } from "@/lib/printing/thermal-printer";
+import { printDayEndReport, generateDayEndReportHtml } from "@/lib/printing/thermal-printer";
 import { ThermalReceiptModal } from "@/components/printing/ThermalReceiptModal";
 
 export default function DailyClosingPage() {
@@ -76,8 +76,7 @@ export default function DailyClosingPage() {
   const currentReport = store.generateDayEndReport(today);
 
   const handleDirectPrintZReport = () => {
-    const html = generateDayEndReportHtml(currentReport);
-    openPrintWindow(html, `Z-Report-${today}`);
+    printDayEndReport(currentReport, "80mm");
   };
 
   return (
@@ -313,6 +312,10 @@ export default function DailyClosingPage() {
           title={`Z-Report ${today}`}
           generateHtml={(width) => generateDayEndReportHtml(currentReport, width)}
           onClose={() => setPrintModalOpen(false)}
+          onDirectPrint={() => {
+            printDayEndReport(currentReport, "80mm");
+            setPrintModalOpen(false);
+          }}
         />
       )}
     </div>

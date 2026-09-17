@@ -750,3 +750,73 @@ export function buildDiagnosticTestEscPos(
   p.cut();
   return p.toBytes();
 }
+
+export interface CashUpiReconciliationEscPosParams {
+  date: string;
+  expectedCash: number;
+  actualCash: number;
+  cashVariance: number;
+  expectedUpi: number;
+  actualUpi: number;
+  upiVariance: number;
+  denominations?: { label: string; value: number; count: number }[];
+  paperWidth?: "80mm" | "58mm";
+}
+
+export function buildCashUpiReconciliationEscPos(
+  params: CashUpiReconciliationEscPosParams,
+  paperWidth: "80mm" | "58mm" = "80mm"
+): Uint8Array {
+  const profile = getActiveRestaurantProfile();
+  const p = new EscPosBuilder(paperWidth);
+
+  p.align("CENTER");
+  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameMr).bold(false).size("NORMAL");
+  p.bold(true).line(profile.nameEn).bold(false);
+  p.line("CASH & UPI RECONCILIATION SLIP");
+  p.line(`Date: ${params.date} | Time: ${new Date().toLocaleTimeString("en-IN")}`);
+  p.doubleSeparator();
+
+  p.align("LEFT").bold(true).line("1. CASH DRAWER AUDIT").bold(false);
+  p.twoColumns("System Expected:", `Rs.${params.expectedCash.toLocaleString("en-IN")}`);
+  p.twoColumns("Actual Drawer Count:", `Rs.${params.actualCash.toLocaleString("en-IN")}`);
+  p.bold(true).twoColumns(
+    "Cash Variance:",
+    params.cashVariance === 0
+      ? "Rs.0 (Balanced)"
+      : params.cashVariance > 0
+      ? `+Rs.${params.cashVariance} (Surplus)`
+      : `-Rs.${Math.abs(params.cashVariance)} (Shortage)`
+  ).bold(false);
+
+  p.separator();
+  p.align("LEFT").bold(true).line("2. UPI BANK / SOUNDBOX").bold(false);
+  p.twoColumns("System Expected:", `Rs.${params.expectedUpi.toLocaleString("en-IN")}`);
+  p.twoColumns("Actual Bank Count:", `Rs.${params.actualUpi.toLocaleString("en-IN")}`);
+  p.bold(true).twoColumns(
+    "UPI Variance:",
+    params.upiVariance === 0 ? "Rs.0 (Balanced)" : `Rs.${params.upiVariance}`
+  ).bold(false);
+
+  p.doubleSeparator();
+  p.bold(true).twoColumns(
+    "TOTAL LIQUID FUNDS:",
+    `Rs.${(params.actualCash + params.actualUpi).toLocaleString("en-IN")}`
+  ).bold(false);
+
+  if (params.denominations && params.denominations.some((d) => d.count > 0)) {
+    p.separator();
+    p.bold(true).line("DENOMINATIONS:").bold(false);
+    for (const d of params.denominations.filter((d) => d.count > 0)) {
+      p.twoColumns(`${d.label} x ${d.count}`, `= Rs.${(d.value * d.count).toLocaleString("en-IN")}`);
+    }
+  }
+
+  p.feed(2);
+  p.twoColumns("Cashier: _________", "Manager: _________");
+  p.separator();
+  p.align("CENTER").line("Kolhapuri Khanawal Restaurant OS");
+  p.cut();
+  return p.toBytes();
+}
+

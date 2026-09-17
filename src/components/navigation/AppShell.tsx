@@ -30,15 +30,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 w-full flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
         <TopHeader onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)} />
 
-        {/* Responsive main padding: tailored for waiter floor, order screen, and other views */}
+        {/* Responsive main padding: full window vertical scrolling with safe clearance above mobile bottom nav */}
         <main
-          className={`flex-1 ${
+          className={`flex-1 w-full max-w-7xl min-w-0 mx-auto premium-page ${
             isOrderScreen
-              ? "p-2.5 sm:p-6 lg:p-8 pb-36 lg:pb-8"
-              : isWaiterFloor
-              ? "floor-scroll h-[calc(100dvh-4rem)] min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-6 pb-32 lg:h-auto lg:overflow-visible lg:p-8 lg:pb-8"
-              : "p-3.5 sm:p-6 lg:p-8 pb-28 lg:pb-8"
-          } premium-page max-w-7xl min-w-0 w-full mx-auto`}
+              ? "p-2 sm:p-5 lg:p-8 pb-36 lg:pb-12"
+              : "p-2.5 sm:p-5 lg:p-8 pb-32 sm:pb-28 lg:pb-12"
+          }`}
         >
           <AuthGuard>{children}</AuthGuard>
         </main>
