@@ -10,6 +10,7 @@ interface ThermalReceiptModalProps {
   title: string;
   generateHtml: (paperWidth: "80mm" | "58mm") => string;
   defaultPaperWidth?: "80mm" | "58mm";
+  onDirectPrint?: (paperWidth: "80mm" | "58mm") => Promise<void> | void;
 }
 
 export function ThermalReceiptModal({
@@ -18,16 +19,30 @@ export function ThermalReceiptModal({
   title,
   generateHtml,
   defaultPaperWidth = "80mm",
+  onDirectPrint,
 }: ThermalReceiptModalProps) {
   const [paperWidth, setPaperWidth] = useState<"80mm" | "58mm">(defaultPaperWidth);
   const [copied, setCopied] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   if (!isOpen) return null;
 
   const html = generateHtml(paperWidth);
 
-  const handlePrint = () => {
-    openPrintWindow(html, title);
+  const handlePrint = async () => {
+    if (onDirectPrint) {
+      try {
+        setIsPrinting(true);
+        await onDirectPrint(paperWidth);
+        onClose();
+      } catch (err) {
+        console.error("Direct print failed:", err);
+      } finally {
+        setIsPrinting(false);
+      }
+    } else {
+      openPrintWindow(html, title);
+    }
   };
 
   const handleCopy = () => {
@@ -139,10 +154,11 @@ export function ThermalReceiptModal({
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-700/20 hover:bg-red-800 active:scale-95 transition-all"
+              disabled={isPrinting}
+              className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-xs font-bold text-white shadow-md shadow-red-700/20 hover:bg-red-800 active:scale-95 transition-all disabled:opacity-60 cursor-pointer"
             >
               <Printer className="h-4 w-4" />
-              <span>Print to Thermal ({paperWidth})</span>
+              <span>{isPrinting ? "Printing to Thermal..." : `Print to Thermal (${paperWidth})`}</span>
             </button>
           </div>
         </div>

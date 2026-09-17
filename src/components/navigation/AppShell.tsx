@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             isOrderScreen
               ? "p-2.5 sm:p-6 lg:p-8 pb-36 lg:pb-8"
               : isWaiterFloor
-              ? "p-2 sm:p-6 lg:p-8 pb-24 lg:pb-8"
+              ? "floor-scroll h-[calc(100dvh-4rem)] min-h-0 overflow-y-auto overscroll-contain p-2 sm:p-6 pb-32 lg:h-auto lg:overflow-visible lg:p-8 lg:pb-8"
               : "p-3.5 sm:p-6 lg:p-8 pb-28 lg:pb-8"
           } premium-page max-w-7xl min-w-0 w-full mx-auto`}
         >

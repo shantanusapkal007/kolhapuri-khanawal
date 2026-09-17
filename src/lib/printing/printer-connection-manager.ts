@@ -40,7 +40,7 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     name: "POSIFLOW KP307-UEWB (Counter Bill)",
     modelName: "POSIFLOW KP307-UEWB",
     connectionType: "NETWORK",
-    ipAddress: "192.168.0.108",
+    ipAddress: "192.168.0.112",
     port: 9100,
     paperWidth: "80mm",
     isEnabled: true,
@@ -57,7 +57,7 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     name: "POSIFLOW KP307-UEWB (Kitchen KOT)",
     modelName: "POSIFLOW KP307-UEWB",
     connectionType: "NETWORK",
-    ipAddress: "192.168.1.51",
+    ipAddress: "192.168.0.112",
     port: 9100,
     paperWidth: "80mm",
     isEnabled: true,
@@ -67,14 +67,37 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     isDefaultKotPrinter: true,
     autoCut: true,
     openDrawerOnPrint: false,
-    failoverPrinterId: "printer-kitchen-fallback",
+    failoverPrinterId: "printer-posiflow-cloud-bridge",
+  },
+  {
+    id: "printer-posiflow-cloud-bridge",
+    name: "POSIFLOW KP307-UEWB (Cloud Bridge / 192.168.0.112)",
+    modelName: "POSIFLOW KP307-UEWB",
+    connectionType: "CLOUD_QUEUE",
+    ipAddress: "192.168.0.112",
+    port: 9100,
+    paperWidth: "80mm",
+    isEnabled: true,
+    status: "ONLINE",
+    assignedStations: [
+      "CASHIER",
+      "MAIN_KITCHEN",
+      "THALI_SECTION",
+      "TANDOOR_BHAKRI",
+      "FRY_SECTION",
+      "BEVERAGE_DESSERT",
+    ],
+    isDefaultReceiptPrinter: false,
+    isDefaultKotPrinter: false,
+    autoCut: true,
+    openDrawerOnPrint: true,
   },
   {
     id: "printer-cashier-fallback",
     name: "Counter System Print (Browser Spooler)",
     connectionType: "BROWSER_SYSTEM",
     paperWidth: "80mm",
-    isEnabled: true,
+    isEnabled: false,
     status: "ONLINE",
     assignedStations: ["CASHIER"],
     isDefaultReceiptPrinter: false,
@@ -87,7 +110,7 @@ export const DEFAULT_PRINTER_DEVICES: PrinterDevice[] = [
     name: "Kitchen System Print (Fallback Spooler)",
     connectionType: "BROWSER_SYSTEM",
     paperWidth: "80mm",
-    isEnabled: true,
+    isEnabled: false,
     status: "ONLINE",
     assignedStations: ["MAIN_KITCHEN"],
     isDefaultReceiptPrinter: false,
@@ -642,21 +665,41 @@ class PrinterConnectionManager {
     const device = settings.devices?.find((d) => d.id === job.printerId);
 
     if (!device) {
-      // Fallback: Use browser window if device no longer found
-      if (job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      // Route through Cloud Queue so ticket prints without opening browser window
+      if (job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
       throw new Error(`Printer device ${job.printerId} not found in configuration`);
     }
 
-    // 1. BROWSER_SYSTEM DRIVER
+    // 1. BROWSER_SYSTEM DRIVER (Route to Cloud Queue instead of opening browser window)
     if (device.connectionType === "BROWSER_SYSTEM") {
-      if (job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      if (job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
-      throw new Error("No HTML payload available for browser print");
+      throw new Error("No ESC/POS payload available for direct printing");
     }
 
     // 2. NETWORK (LAN TCP/IP 9100) DRIVER
@@ -695,8 +738,18 @@ class PrinterConnectionManager {
       const isMobile =
         typeof window !== "undefined" &&
         (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
-      if (isMobile && job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      if (isMobile && job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
 
@@ -714,8 +767,18 @@ class PrinterConnectionManager {
       const isMobile =
         typeof window !== "undefined" &&
         (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
-      if (isMobile && job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      if (isMobile && job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
 
@@ -733,8 +796,18 @@ class PrinterConnectionManager {
       const isMobile =
         typeof window !== "undefined" &&
         (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
-      if (isMobile && job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      if (isMobile && job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
 
@@ -752,8 +825,18 @@ class PrinterConnectionManager {
       const isMobile =
         typeof window !== "undefined" &&
         (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
-      if (isMobile && job.htmlPayload) {
-        openPrintWindow(job.htmlPayload, job.title);
+      if (isMobile && job.rawPayload) {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
         return;
       }
 
@@ -837,12 +920,27 @@ class PrinterConnectionManager {
       }
     }
 
-    // 2. Fallback to Browser System Print window so no receipt is lost
-    if (job.htmlPayload) {
-      openPrintWindow(job.htmlPayload, `${job.title} (Fallback)`);
-      return;
+    // 2. Fallback to Cloud Print Queue so no ticket is lost
+    if (job.rawPayload) {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: job.type as CloudPrintJob["type"],
+          title: job.title,
+          stationCode: job.stationCode || "CASHIER",
+          payloadBase64: job.rawPayload,
+          paperWidth: job.paperWidth,
+          idempotencyKey: job.idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+        return;
+      } catch (cloudErr) {
+        console.warn("[Failover] Cloud queue fallback failed:", cloudErr);
+      }
     }
 
+    console.error(`[Failover] All direct printing paths exhausted for "${job.title}": ${err?.message}`);
     throw err;
   }
 
@@ -1563,13 +1661,47 @@ class PrinterConnectionManager {
       return { success: true, message: msg };
     };
 
-    // 1. Browser System Print
-    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Browser print window opened");
+    // 1. Cloud Print Queue — Direct POSIFLOW Print Bridge (No browser popups)
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "RECEIPT",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (Sent to POSIFLOW)");
     }
 
-    // 2. Serial USB or Bluetooth SPP (Virtual COM / Web Serial)
+    // 2. Browser System Print (Route to Cloud Queue instead of opening browser window)
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "RECEIPT",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)");
+    }
+
+    // 3. Serial USB or Bluetooth SPP (Virtual COM / Web Serial)
     if (
       targetPrinter.connectionType === "SERIAL_USB" ||
       targetPrinter.connectionType === "BLUETOOTH_SPP"
@@ -1584,8 +1716,19 @@ class PrinterConnectionManager {
           await this.sendRawBtPayload(targetPrinter, b64);
           return markSuccess("Sent via RawBT Android");
         }
-        if (html) openPrintWindow(html, title);
-        return markSuccess("Dispatched to System Print (Mobile mode)");
+        // Mobile fallback: Route to Cloud Queue instead of opening new window
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "RECEIPT",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+        return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)");
       }
 
       // Desktop: Check Web Serial API
@@ -1598,7 +1741,6 @@ class PrinterConnectionManager {
               port = availablePorts[0];
               this.serialPorts.set(targetPrinter.id, port);
             } else {
-              // Direct user click: prompt port chooser
               port = await (navigator as any).serial.requestPort();
               if (port) {
                 this.serialPorts.set(targetPrinter.id, port);
@@ -1613,27 +1755,33 @@ class PrinterConnectionManager {
             );
           }
         } catch (err: any) {
-          console.warn("Serial direct bill print failed, falling back to openPrintWindow:", err);
-          if (err.name === "NotFoundError") {
-            if (html) openPrintWindow(html, title);
-            return markSuccess("Dispatched to Print Window");
-          }
+          console.warn("Serial direct bill print failed, falling back to Cloud Queue:", err);
         }
       }
 
-      // Fallback to openPrintWindow
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Dispatched to Print Window");
+      // Fallback: Route to Cloud Queue
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "RECEIPT",
+        title,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)");
     }
 
-    // 3. RawBT
+    // 4. RawBT
     if (targetPrinter.connectionType === "RAWBT") {
       const b64 = this.bytesToBase64(escposBytes);
       await this.sendRawBtPayload(targetPrinter, b64);
       return markSuccess("Sent via RawBT Android");
     }
 
-    // 4. Network (Wi-Fi / LAN)
+    // 5. Network (Wi-Fi / LAN)
     if (targetPrinter.connectionType === "NETWORK") {
       if (targetPrinter.ipAddress) {
         try {
@@ -1652,15 +1800,10 @@ class PrinterConnectionManager {
             return markSuccess(`Printed on Network ${targetPrinter.ipAddress}`);
           }
         } catch (err) {
-          console.warn("Network print failed, falling back to browser print:", err);
+          console.warn("Network print failed, falling back to Cloud Queue:", err);
         }
       }
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Dispatched to Print Window (Network Fallback)");
-    }
-
-    // 5. Cloud Print Queue — enqueue to Firestore for bridge delivery
-    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      // Network Fallback: Route to Cloud Queue
       const currentUser = this.getCurrentUser();
       await enqueuePrintJob({
         type: "RECEIPT",
@@ -1672,12 +1815,27 @@ class PrinterConnectionManager {
         createdBy: currentUser.id,
         createdByName: currentUser.name,
       });
-      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
+      return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)");
     }
 
-    // Default Fallback
-    if (html) openPrintWindow(html, title);
-    return markSuccess("Dispatched to Print Window");
+    // Default Fallback: Route to Cloud Queue (no window popups)
+    try {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "RECEIPT",
+        title,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("पावती क्लाउड प्रिंटरवर पाठवली (POSIFLOW)");
+    } catch (err: any) {
+      console.error("Direct bill print failed:", err);
+      return { success: false, message: `प्रिंट एरर: ${err?.message || "Failed"}` };
+    }
   }
 
   /**
@@ -1706,11 +1864,45 @@ class PrinterConnectionManager {
       return { success: true, message: msg };
     };
 
-    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Browser print window opened");
+    // 1. Cloud Print Queue — Direct POSIFLOW Print Bridge (No browser popups)
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "TABLE_CHECK",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("कच्चा बिल क्लाउड प्रिंटरवर पाठवले (Sent to POSIFLOW)");
     }
 
+    // 2. Browser System Print (Route to Cloud Queue instead of opening browser window)
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "TABLE_CHECK",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("कच्चा बिल क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
+    }
+
+    // 3. Serial USB or Bluetooth SPP
     if (
       targetPrinter.connectionType === "SERIAL_USB" ||
       targetPrinter.connectionType === "BLUETOOTH_SPP"
@@ -1725,8 +1917,17 @@ class PrinterConnectionManager {
           await this.sendRawBtPayload(targetPrinter, b64);
           return markSuccess("Sent via RawBT Android");
         }
-        if (html) openPrintWindow(html, title);
-        return markSuccess("Dispatched to System Print (Mobile mode)");
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "TABLE_CHECK",
+          title,
+          stationCode: "CASHIER",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+        return markSuccess("कच्चा बिल क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
       }
 
       if (typeof window !== "undefined" && "serial" in navigator) {
@@ -1751,12 +1952,6 @@ class PrinterConnectionManager {
         }
       }
 
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Dispatched to Print Window");
-    }
-
-    // Cloud Print Queue — enqueue to Firestore for bridge delivery
-    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
       const currentUser = this.getCurrentUser();
       await enqueuePrintJob({
         type: "TABLE_CHECK",
@@ -1767,11 +1962,26 @@ class PrinterConnectionManager {
         createdBy: currentUser.id,
         createdByName: currentUser.name,
       });
-      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
+      return markSuccess("कच्चा बिल क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
     }
 
-    if (html) openPrintWindow(html, title);
-    return markSuccess("Dispatched to Print Window");
+    // Default Fallback: Route to Cloud Queue (no window popups)
+    try {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "TABLE_CHECK",
+        title,
+        stationCode: "CASHIER",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("कच्चा बिल क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
+    } catch (err: any) {
+      console.error("Direct table check print failed:", err);
+      return { success: false, message: `कच्चा बिल एरर: ${err?.message || "Failed"}` };
+    }
   }
 
   /**
@@ -1806,11 +2016,47 @@ class PrinterConnectionManager {
       return { success: true, message: msg };
     };
 
-    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Browser print window opened");
+    // 1. Cloud Print Queue — Direct POSIFLOW Print Bridge (No browser popups)
+    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "KOT",
+          title,
+          stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (Sent to POSIFLOW)");
     }
 
+    // 2. Browser System Print (Route to Cloud Queue instead of opening browser window)
+    if (targetPrinter.connectionType === "BROWSER_SYSTEM") {
+      try {
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "KOT",
+          title,
+          stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+      } catch (err: any) {
+        console.warn("Cloud queue notice:", err?.message);
+      }
+      return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
+    }
+
+    // 3. Serial USB or Bluetooth SPP
     if (
       targetPrinter.connectionType === "SERIAL_USB" ||
       targetPrinter.connectionType === "BLUETOOTH_SPP"
@@ -1825,8 +2071,18 @@ class PrinterConnectionManager {
           await this.sendRawBtPayload(targetPrinter, b64);
           return markSuccess("Sent via RawBT Android");
         }
-        if (html) openPrintWindow(html, title);
-        return markSuccess("Dispatched to System Print (Mobile mode)");
+        const currentUser = this.getCurrentUser();
+        await enqueuePrintJob({
+          type: "KOT",
+          title,
+          stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+          payloadBase64: this.bytesToBase64(escposBytes),
+          paperWidth: targetPrinter.paperWidth,
+          idempotencyKey,
+          createdBy: currentUser.id,
+          createdByName: currentUser.name,
+        });
+        return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
       }
 
       if (typeof window !== "undefined" && "serial" in navigator) {
@@ -1851,8 +2107,18 @@ class PrinterConnectionManager {
         }
       }
 
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Dispatched to Print Window");
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "KOT",
+        title,
+        stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
     }
 
     if (targetPrinter.connectionType === "RAWBT") {
@@ -1882,12 +2148,6 @@ class PrinterConnectionManager {
           console.warn("Network KOT print failed:", err);
         }
       }
-      if (html) openPrintWindow(html, title);
-      return markSuccess("Dispatched to Print Window (Network Fallback)");
-    }
-
-    // Cloud Print Queue — enqueue to Firestore for bridge delivery
-    if (targetPrinter.connectionType === "CLOUD_QUEUE") {
       const currentUser = this.getCurrentUser();
       await enqueuePrintJob({
         type: "KOT",
@@ -1899,11 +2159,27 @@ class PrinterConnectionManager {
         createdBy: currentUser.id,
         createdByName: currentUser.name,
       });
-      return markSuccess("☁️ Sent to Cloud Print Queue — bridge will deliver");
+      return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
     }
 
-    if (html) openPrintWindow(html, title);
-    return markSuccess("Dispatched to Print Window");
+    // Default Fallback: Route to Cloud Queue (no window popups)
+    try {
+      const currentUser = this.getCurrentUser();
+      await enqueuePrintJob({
+        type: "KOT",
+        title,
+        stationCode: stationFilter || kot.stationCode || "MAIN_KITCHEN",
+        payloadBase64: this.bytesToBase64(escposBytes),
+        paperWidth: targetPrinter.paperWidth,
+        idempotencyKey,
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+      });
+      return markSuccess("KOT क्लाउड प्रिंटरवर पाठवले (POSIFLOW)");
+    } catch (err: any) {
+      console.error("Direct KOT print failed:", err);
+      return { success: false, message: `KOT एरर: ${err?.message || "Failed"}` };
+    }
   }
 
   private generateDiagnosticHtml(device: PrinterDevice): string {
@@ -1966,85 +2242,110 @@ class PrinterConnectionManager {
     stationCode: string,
     role: "RECEIPT" | "KOT"
   ): PrinterDevice {
-    // 1. For RECEIPT: ALWAYS prioritize the designated default receipt printer!
-    if (role === "RECEIPT") {
-      const defaultReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
-      if (defaultReceipt) return defaultReceipt;
-
-      // Check if user has paired a real hardware printer (Serial, Bluetooth SPP, RawBT)
-      const hardwareDev = devices.find(
-        (d) =>
-          d.connectionType === "BLUETOOTH_SPP" ||
-          d.connectionType === "SERIAL_USB" ||
-          d.connectionType === "RAWBT" ||
-          /Serial|POS-80|POS-58/i.test(d.name) ||
-          /Serial|POS-80|POS-58/i.test(d.bluetoothDeviceName || "")
+    // 1. Station-specific match: If a device in `devices` is explicitly assigned to this stationCode
+    if (stationCode && stationCode !== "CASHIER" && stationCode !== "ALL") {
+      const stationMatch = devices.find(
+        (d) => d.isEnabled && d.assignedStations && d.assignedStations.includes(stationCode)
       );
-      if (hardwareDev) return hardwareDev;
+      if (stationMatch) return stationMatch;
     }
 
-    // 2. Look for a printer explicitly assigned to this stationCode
-    const match = devices.find((d) => d.assignedStations && d.assignedStations.includes(stationCode));
-    if (match) return match;
-
-    // 3. Look for default role printer
+    // 2. Look for designated default receipt or KOT printer
     if (role === "RECEIPT") {
-      const defaultReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
+      const defaultReceipt = devices.find((d) => d.isEnabled && d.isDefaultReceiptPrinter);
       if (defaultReceipt) return defaultReceipt;
+
+      const hardwareDev = devices.find(
+        (d) =>
+          d.isEnabled &&
+          (d.connectionType === "BLUETOOTH_SPP" ||
+            d.connectionType === "SERIAL_USB" ||
+            d.connectionType === "RAWBT" ||
+            /Serial|POS-80|POS-58/i.test(d.name) ||
+            /Serial|POS-80|POS-58/i.test(d.bluetoothDeviceName || ""))
+      );
+      if (hardwareDev) return hardwareDev;
     } else {
-      const defaultKot = devices.find((d) => d.isDefaultKotPrinter);
+      const defaultKot = devices.find((d) => d.isEnabled && d.isDefaultKotPrinter);
       if (defaultKot) return defaultKot;
     }
 
-    // 4. Fallback to default receipt printer if any
-    const defReceipt = devices.find((d) => d.isDefaultReceiptPrinter);
+    // 3. Look for an enabled Cloud Queue printer in devices
+    const cloudPrinter = devices.find((d) => d.isEnabled && d.connectionType === "CLOUD_QUEUE");
+    if (cloudPrinter) return cloudPrinter;
+
+    // 4. Look for a printer explicitly assigned to this stationCode
+    const match = devices.find((d) => d.isEnabled && d.assignedStations && d.assignedStations.includes(stationCode));
+    if (match) return match;
+
+    // 5. Fallback to default receipt printer if any
+    const defReceipt = devices.find((d) => d.isEnabled && d.isDefaultReceiptPrinter);
     if (defReceipt) return defReceipt;
 
-    // 5. Fallback to first available device
-    return devices[0] || DEFAULT_PRINTER_DEVICES[0];
+    // 6. Fallback to first available enabled device
+    const enabled = devices.filter((d) => d.isEnabled);
   }
 
   private getStoredSettings(): PrinterSettings {
+    let stored: PrinterSettings | null = null;
     if (typeof window !== "undefined") {
       try {
         const raw = localStorage.getItem("kk_printer_settings");
-        if (raw) return JSON.parse(raw);
+        if (raw) stored = JSON.parse(raw);
       } catch {}
     }
 
-    const isMobile =
-      typeof window !== "undefined" &&
-      (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth < 768);
+    // Cloud Queue printer device definition
+    const cloudBridgeDevice: PrinterDevice = {
+      id: "printer-posiflow-cloud-bridge",
+      name: "POSIFLOW KP307-UEWB (Cloud Bridge / 192.168.0.112)",
+      modelName: "POSIFLOW KP307-UEWB",
+      connectionType: "CLOUD_QUEUE",
+      ipAddress: "192.168.0.112",
+      port: 9100,
+      paperWidth: "80mm",
+      isEnabled: true,
+      status: "ONLINE",
+      assignedStations: [
+        "CASHIER",
+        "MAIN_KITCHEN",
+        "THALI_SECTION",
+        "TANDOOR_BHAKRI",
+        "FRY_SECTION",
+        "BEVERAGE_DESSERT",
+      ],
+      isDefaultReceiptPrinter: true,
+      isDefaultKotPrinter: true,
+      autoCut: true,
+      openDrawerOnPrint: true,
+    };
 
-    const devices = isMobile
-      ? [
-          {
-            id: "printer-mobile-system",
-            name: "Android System Print (सर्वोत्तम व सोपे)",
-            connectionType: "BROWSER_SYSTEM" as const,
-            paperWidth: "80mm" as const,
-            isEnabled: true,
-            status: "ONLINE" as const,
-            assignedStations: [
-              "CASHIER",
-              "MAIN_KITCHEN",
-              "THALI_SECTION",
-              "TANDOOR_BHAKRI",
-              "FRY_SECTION",
-              "BEVERAGE_DESSERT",
-            ],
-            isDefaultReceiptPrinter: true,
-            isDefaultKotPrinter: true,
-            autoCut: true,
-            openDrawerOnPrint: false,
-          },
-          ...DEFAULT_PRINTER_DEVICES.filter((d) => d.id !== "printer-posiflow-counter").map((d) => ({
+    if (stored && stored.devices && stored.devices.length > 0) {
+      const cloudIdx = stored.devices.findIndex((d) => d.connectionType === "CLOUD_QUEUE");
+      if (cloudIdx === -1) {
+        stored.devices = [
+          cloudBridgeDevice,
+          ...stored.devices.map((d) => ({
             ...d,
             isDefaultReceiptPrinter: false,
             isDefaultKotPrinter: false,
           })),
-        ]
-      : DEFAULT_PRINTER_DEVICES;
+        ];
+      } else {
+        stored.devices[cloudIdx] = {
+          ...stored.devices[cloudIdx],
+          isEnabled: true,
+          isDefaultReceiptPrinter: true,
+          isDefaultKotPrinter: true,
+          ipAddress: "192.168.0.112",
+          port: 9100,
+        };
+      }
+      try {
+        localStorage.setItem("kk_printer_settings", JSON.stringify(stored));
+      } catch {}
+      return stored;
+    }
 
     return {
       paperWidth: "80mm",
@@ -2055,11 +2356,13 @@ class PrinterConnectionManager {
       numberOfReceiptCopies: 1,
       printMarathiHeader: true,
       stationPrinters: [],
-      devices,
+      devices: DEFAULT_PRINTER_DEVICES,
       autoSplitKotByStation: true,
       printMasterKotToKitchen: true,
       printSpoolerEnabled: true,
     };
+
+
   }
 
   private bytesToBase64(bytes: Uint8Array): string {

@@ -443,6 +443,10 @@ export default function SellPage() {
           title={`Bill #${previewBill.billNumber} Receipt`}
           generateHtml={(width) => generateBillReceiptHtml(previewBill, true, width)}
           defaultPaperWidth={store.printerSettings?.paperWidth || "80mm"}
+          onDirectPrint={async () => {
+            await handlePrintReprint(previewBill);
+            setIsPreviewModalOpen(false);
+          }}
         />
       )}
     </div>

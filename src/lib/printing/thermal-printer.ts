@@ -97,29 +97,13 @@ export function getStoredPrinterSettings(): PrinterSettings {
   try {
     const raw = localStorage.getItem("kk_printer_settings");
     if (raw) {
-      return { ...DEFAULT_PRINTER_SETTINGS, ...JSON.parse(raw) };
-    }
-    // Mobile / Android first run: provide ready-to-use Android System Print default
-    if (isMobileDevice()) {
-      return {
-        ...DEFAULT_PRINTER_SETTINGS,
-        devices: [
-          {
-            id: "printer-android-system",
-            name: "📱 Android फोन प्रिंटर (System Spooler)",
-            modelName: "Android System Print Spooler",
-            connectionType: "BROWSER_SYSTEM",
-            paperWidth: "80mm",
-            isEnabled: true,
-            status: "ONLINE",
-            assignedStations: ["CASHIER", "MAIN_KITCHEN", "THALI_SECTION", "TANDOOR_BHAKRI", "FRY_SECTION", "BEVERAGE_DESSERT"],
-            isDefaultReceiptPrinter: true,
-            isDefaultKotPrinter: true,
-            autoCut: true,
-            openDrawerOnPrint: false,
-          },
-        ],
-      };
+      const parsed = JSON.parse(raw);
+      const settings: PrinterSettings = { ...DEFAULT_PRINTER_SETTINGS, ...parsed };
+      const hasCloud = settings.devices?.some((d: any) => d.connectionType === "CLOUD_QUEUE");
+      if (!hasCloud || !settings.devices?.length) {
+        settings.devices = [...DEFAULT_PRINTER_DEVICES];
+      }
+      return settings;
     }
     return DEFAULT_PRINTER_SETTINGS;
   } catch {

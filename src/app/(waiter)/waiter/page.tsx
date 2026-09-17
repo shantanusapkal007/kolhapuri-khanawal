@@ -270,7 +270,7 @@ export default function WaiterFloorPage() {
   });
 
   return (
-    <div className="space-y-2 sm:space-y-4">
+    <div className="space-y-2 sm:space-y-4 pb-4">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-4 right-4 z-50 bg-stone-900 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-sm font-semibold animate-bounce">
@@ -395,7 +395,7 @@ export default function WaiterFloorPage() {
       </div>
 
       {/* 12 Physical Tables Grid: Exactly 3 Tables per Line on Mobile, Responsive & Touch-Friendly */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 md:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full pb-4">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
             (p) => p.tableId === table.id && p.status !== "CLOSED" && p.status !== "CANCELLED"
@@ -418,7 +418,7 @@ export default function WaiterFloorPage() {
           return (
             <div
               key={table.id}
-              className={`min-h-[140px] sm:min-h-[165px] w-full luxury-card rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between p-1.5 sm:p-2.5 md:p-3 relative overflow-hidden shadow-2xs hover:shadow-md touch-manipulation select-none ${
+              className={`min-h-[126px] sm:min-h-[165px] w-full luxury-card rounded-xl sm:rounded-2xl border transition-all flex flex-col justify-between p-1.5 sm:p-2.5 md:p-3 relative overflow-hidden shadow-2xs hover:shadow-md touch-manipulation select-none ${
                 hasBillRequested
                   ? "border-amber-400 bg-amber-50/40 ring-2 ring-amber-300"
                   : isShared

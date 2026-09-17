@@ -130,6 +130,12 @@ input:focus, select:focus, textarea:focus {
   min-width: 0;
 }
 
+.floor-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #C9B8A6 transparent;
+}
+
 .premium-page::before {
   content: "";
   position: absolute;
@@ -224,6 +230,10 @@ input:focus, select:focus, textarea:focus {
   .luxury-card:hover,
   .premium-card:hover {
     transform: none;
+  }
+
+  .floor-scroll {
+    scroll-padding-bottom: 6rem;
   }
 }
 

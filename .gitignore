@@ -40,5 +40,8 @@ scripts/.bridge-env
 # firebase
 .firebase
 
+# local scratch
+scratch/
+
 # typescript
 *.tsbuildinfo

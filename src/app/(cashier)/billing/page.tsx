@@ -326,7 +326,7 @@ export default function CashierBillingPage() {
         if (paymentMethod === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
           triggerCashDrawerKick();
         }
-        setIsPrintModalOpen(true);
+        // Direct print completed silently to physical POSIFLOW printer
 
         // Notify floor staff that table is now settled and available
         store.addNotification({
@@ -1027,6 +1027,10 @@ export default function CashierBillingPage() {
           title={`Tax Invoice — ${activeBill.billNumber}`}
           generateHtml={(width) => generateBillReceiptHtml(activeBill, false, width)}
           defaultPaperWidth={printerPaperWidth}
+          onDirectPrint={async () => {
+            await handlePrintReceipt(activeBill, false);
+            setIsPrintModalOpen(false);
+          }}
         />
       )}
 
