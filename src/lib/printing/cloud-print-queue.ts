@@ -149,12 +149,45 @@ export async function enqueuePrintJob(
     attempts: 0,
   };
 
-  const docRef = await addDoc(jobsRef, jobData);
-  console.log(
-    `[CloudPrintQueue] Enqueued job ${docRef.id} "${params.title}" (${params.type})`
-  );
+  try {
+    const docRef = await addDoc(jobsRef, jobData);
+    console.log(
+      `[CloudPrintQueue] Enqueued job ${docRef.id} "${params.title}" (${params.type})`
+    );
+    return { id: docRef.id, ...jobData };
+  } catch (firestoreErr: any) {
+    console.warn(
+      `[CloudPrintQueue] Cloud Firestore enqueue failed (${firestoreErr?.message || "Error"}). Attempting local bridge delivery...`
+    );
 
-  return { id: docRef.id, ...jobData };
+    // Fallback: Dispatch directly through local print bridge route / daemon
+    if (typeof window !== "undefined") {
+      try {
+        const localRes = await fetch("/api/print/bridge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            payloadBase64: params.payloadBase64,
+            stationCode: params.stationCode,
+            title: params.title,
+          }),
+        });
+        if (localRes.ok) {
+          console.log(`[CloudPrintQueue] Delivered directly via local print bridge!`);
+          return {
+            id: `local-job-${Date.now()}`,
+            ...jobData,
+            status: "SUCCESS",
+            completedAt: new Date().toISOString(),
+          };
+        }
+      } catch (bridgeErr) {
+        console.warn("[CloudPrintQueue] Local print bridge fallback also failed:", bridgeErr);
+      }
+    }
+
+    throw firestoreErr;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -267,31 +300,126 @@ export function subscribeToPrintJobs(
 
 /**
  * Subscribe to bridge heartbeat status.
+ * Probes the local print bridge daemon and listens to Cloud Firestore heartbeats.
  * Returns an unsubscribe function.
  */
 export function subscribeToBridgeStatus(
   callback: (bridges: PrintBridgeHeartbeat[]) => void
 ): Unsubscribe {
-  const firestore = getDb();
-  const bridgesQuery = query(
-    collection(firestore, BRIDGES_COLLECTION),
-    where("restaurantId", "==", RESTAURANT_ID)
-  );
+  let firestoreBridges: PrintBridgeHeartbeat[] = [];
+  let localBridge: PrintBridgeHeartbeat | null = null;
+  let isSubscribed = true;
 
-  return onSnapshot(
-    bridgesQuery,
-    (snapshot) => {
-      const bridges: PrintBridgeHeartbeat[] = snapshot.docs.map((d) => ({
-        bridgeId: d.id,
-        ...d.data(),
-      })) as PrintBridgeHeartbeat[];
-      callback(bridges);
-    },
-    (error) => {
-      console.error("[CloudPrintQueue] Bridge status subscription error:", error);
-      callback([]);
+  const emitCombined = () => {
+    if (!isSubscribed) return;
+    const combinedMap = new Map<string, PrintBridgeHeartbeat>();
+    if (localBridge) {
+      combinedMap.set(localBridge.bridgeId, localBridge);
     }
-  );
+    for (const fb of firestoreBridges) {
+      combinedMap.set(fb.bridgeId, fb);
+    }
+    callback(Array.from(combinedMap.values()));
+  };
+
+  // 1. Direct Local Print Bridge Probe (via /api/print/bridge and port 9180)
+  const probeLocalBridge = async () => {
+    if (typeof window === "undefined" || !isSubscribed) return;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch("/api/print/bridge", {
+        signal: controller.signal,
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.online && data.bridge) {
+          localBridge = data.bridge as PrintBridgeHeartbeat;
+          emitCombined();
+          return;
+        }
+      }
+
+      // Fallback: Try direct connection to local daemon port 9180
+      try {
+        const directCtrl = new AbortController();
+        const directTimer = setTimeout(() => directCtrl.abort(), 1500);
+        const directRes = await fetch("http://127.0.0.1:9180/health", {
+          signal: directCtrl.signal,
+          headers: { Accept: "application/json" },
+        });
+        clearTimeout(directTimer);
+        if (directRes.ok) {
+          const directData = await directRes.json();
+          if (directData.status === "ONLINE") {
+            localBridge = {
+              bridgeId: directData.bridgeId || "kk-bridge-local",
+              restaurantId: directData.restaurantId || RESTAURANT_ID,
+              hostname: directData.hostname || "Local POS Terminal",
+              version: directData.version || "1.0.0",
+              lastHeartbeat: new Date().toISOString(),
+              status: "ONLINE",
+              printerMapping: directData.mappedPrinters || directData.printerMapping || {
+                DEFAULT: { ip: "192.168.0.108", port: 9100 },
+              },
+              jobsDelivered: directData.jobsDelivered || 0,
+            };
+            emitCombined();
+            return;
+          }
+        }
+      } catch {
+        // Direct local bridge not reachable
+      }
+
+      localBridge = null;
+      emitCombined();
+    } catch {
+      localBridge = null;
+      emitCombined();
+    }
+  };
+
+  // Immediate probe and recurring timer (every 3 seconds)
+  probeLocalBridge();
+  const pollTimer = setInterval(probeLocalBridge, 3000);
+
+  // 2. Cloud Firestore Real-time listener
+  let unsubFirestore: Unsubscribe = () => {};
+  try {
+    const firestore = getDb();
+    const bridgesQuery = query(
+      collection(firestore, BRIDGES_COLLECTION),
+      where("restaurantId", "==", RESTAURANT_ID)
+    );
+    unsubFirestore = onSnapshot(
+      bridgesQuery,
+      (snapshot) => {
+        firestoreBridges = snapshot.docs.map((d) => ({
+          bridgeId: d.id,
+          ...d.data(),
+        })) as PrintBridgeHeartbeat[];
+        emitCombined();
+      },
+      (error) => {
+        // Ignore Firestore permission errors when local bridge is active
+        firestoreBridges = [];
+        emitCombined();
+      }
+    );
+  } catch (err) {
+    // Non-fatal
+  }
+
+  return () => {
+    isSubscribed = false;
+    clearInterval(pollTimer);
+    unsubFirestore();
+  };
 }
 
 /**
