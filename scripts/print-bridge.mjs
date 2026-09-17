@@ -247,11 +247,11 @@ function deliverViaTcp(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_MS) {
           return; // 'error' event will handle socket closure
         }
         bytesSent = payloadBuffer.length;
+        socket.end();
       });
     });
 
     socket.on("drain", () => {
-      // Buffer drained to network stack, safely close
       socket.end();
     });
 
