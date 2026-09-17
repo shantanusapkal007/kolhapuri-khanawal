@@ -116,7 +116,7 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(html).toContain("KOLHAPURI KHANAWAL");
       expect(html).toContain("GSTIN: 27AAAAA0000A1Z5");
       expect(html).toContain("FSSAI: 11026999000123");
-      expect(html).toContain("CSMT Road, Shahupuri, Kolhapur - 416001");
+      expect(html).toContain("Lalit Estate, Baner, Pune, Maharashtra 411045");
     });
 
     it("renders bill metadata, staff details, and itemized dish rows", () => {
@@ -230,7 +230,7 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
         fssai: "",
       });
 
-      expect(html).not.toContain("CSMT Road");
+      expect(html).not.toContain("Lalit Estate");
       expect(html).not.toContain("Ph:");
       expect(html).not.toContain("GSTIN:");
       expect(html).not.toContain("FSSAI:");
@@ -327,7 +327,7 @@ describe("Thermal Printer Utility (80mm Monospace Print)", () => {
       expect(html).toContain("THIS IS NOT A TAX INVOICE");
       expect(html).toContain("PAY VIA UPI AT TABLE");
       expect(html).toContain("upi://pay?");
-      expect(html).toContain("kolhapurikhanawal@okaxis");
+      expect(html).toContain("Q338740118@ybl");
       expect(html).toContain("Total Estimate:");
       expect(html).toContain("₹964.00");
     });

@@ -88,15 +88,15 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
     nameMr: "कोल्हापुरी खानावळ",
     nameEn: "KOLHAPURI KHANAWAL",
     tagline: "अस्सल कोल्हापुरी चव • Baner, Pune",
-    address: "Shop 4-5, Shahu Complex, Pan Card Club Road, Baner",
+    address: "Lalit Estate, Baner, Pune, Maharashtra 411045",
     city: "Pune",
     pincode: "411045",
-    primaryPhone: "+91 98230 12345",
-    secondaryPhone: "+91 98230 54321",
+    primaryPhone: "+91 91753 86576",
+    secondaryPhone: "",
     gstin: "27AAAAA0000A1Z5",
     fssai: "11026999000123",
-    upiId: "kolhapurikhanawal@okhdfcbank",
-    upiMerchantName: "Kolhapuri Khanawal Baner",
+    upiId: "Q338740118@ybl",
+    upiMerchantName: "Kolapuri khanawal",
   },
   billing: {
     gstRatePercent: 5,
@@ -507,8 +507,33 @@ export class RestaurantStore {
       const raw = localStorage.getItem("kk_restaurant_settings");
       if (!raw) return DEFAULT_RESTAURANT_SETTINGS;
       const parsed = JSON.parse(raw);
+      const mergedProfile = { ...DEFAULT_RESTAURANT_SETTINGS.profile, ...(parsed.profile || {}) };
+
+      // Migrate any legacy cached profile values
+      if (
+        !mergedProfile.address ||
+        mergedProfile.address.includes("Shahupuri") ||
+        mergedProfile.address.includes("CSMT") ||
+        mergedProfile.address.includes("Shahu Complex")
+      ) {
+        mergedProfile.address = DEFAULT_RESTAURANT_SETTINGS.profile.address;
+      }
+      if (!mergedProfile.primaryPhone || mergedProfile.primaryPhone.includes("98230 12345")) {
+        mergedProfile.primaryPhone = DEFAULT_RESTAURANT_SETTINGS.profile.primaryPhone;
+      }
+      if (
+        !mergedProfile.upiId ||
+        mergedProfile.upiId.includes("okaxis") ||
+        mergedProfile.upiId.includes("okhdfcbank")
+      ) {
+        mergedProfile.upiId = DEFAULT_RESTAURANT_SETTINGS.profile.upiId;
+      }
+      if (!mergedProfile.upiMerchantName || mergedProfile.upiMerchantName.includes("Baner")) {
+        mergedProfile.upiMerchantName = DEFAULT_RESTAURANT_SETTINGS.profile.upiMerchantName;
+      }
+
       return {
-        profile: { ...DEFAULT_RESTAURANT_SETTINGS.profile, ...(parsed.profile || {}) },
+        profile: mergedProfile,
         billing: { ...DEFAULT_RESTAURANT_SETTINGS.billing, ...(parsed.billing || {}) },
         dining: { ...DEFAULT_RESTAURANT_SETTINGS.dining, ...(parsed.dining || {}) },
         operations: { ...DEFAULT_RESTAURANT_SETTINGS.operations, ...(parsed.operations || {}) },

@@ -215,7 +215,17 @@ describe("Multi-Device Thermal Printer Connection System", () => {
         { party: { tableNumber: 5, partyCode: "P-101", guestCount: 3 }, subtotal: 900, grandTotal: 945 },
         "80mm"
       );
-      expect(new TextDecoder().decode(checkBytes)).toContain("TABLE CHECK / PRE-BILL ESTIMATE");
+      const checkText = new TextDecoder().decode(checkBytes);
+      expect(checkText).toContain("TABLE CHECK / PRE-BILL ESTIMATE");
+      expect(checkText).toContain("Not a Tax Invoice - Kachha Bill");
+      expect(checkText).toContain("KOLHAPURI KHANAWAL");
+      expect(checkText).toContain("Lalit Estate, Baner, Pune, Maharashtra 411045");
+      expect(checkText).toContain("Ph: +91 91753 86576");
+      expect(checkText).toContain("Q338740118@ybl");
+      expect(checkText).toContain("Kolapuri khanawal");
+      expect(checkText).toContain("Terminal 1-Q338740118");
+      expect(checkText).toContain("Rs. 900.00");
+      expect(checkText).toContain("Rs. 945.00");
 
       const zReportBytes = buildDayEndReportEscPos(
         {

@@ -25,10 +25,42 @@ export interface ColumnDefinition {
   align?: AlignMode;
 }
 
+/**
+ * Sanitizes any text string for 100% reliable single-byte ESC/POS thermal printing.
+ * Converts Unicode symbols to clean ASCII:
+ * - '₹' -> 'Rs.'
+ * - '—' or '–' -> '-'
+ * - '•' or '·' -> '*'
+ * - Smart quotes -> standard quotes
+ * - Strips or cleans unsupported Unicode, Devanagari, and emoji
+ * to eliminate hardware ROM font mojibake (e.g. 'añðaRÜaAtañÜaM#', 'rè|', 'rço', 'rU1')
+ */
+export function cleanThermalText(str: string): string {
+  if (!str) return "";
+  return str
+    .replace(/₹/g, "Rs.")
+    .replace(/[—–]/g, "-")
+    .replace(/[•·]/g, "*")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[⚡🥡✅⚠️❌📦🔔🍽️]/g, "")
+    // Remove Devanagari Unicode characters (0x0900 - 0x097F)
+    .replace(/[\u0900-\u097F]/g, "")
+    // Clean empty parentheses or brackets left behind like () or [] or (- )
+    .replace(/\(\s*[- ]*\s*\)/g, "")
+    .replace(/\[\s*[- ]*\s*\]/g, "")
+    // Remove characters outside printable ASCII range (32-126) + newline (10)
+    .replace(/[^\x20-\x7E\n]/g, "")
+    // Collapse multiple consecutive spaces
+    .replace(/ +/g, " ")
+    .trim();
+}
+
 export class EscPosBuilder {
   private buffer: number[] = [];
   public paperWidth: "80mm" | "58mm";
   public maxColumns: number;
+  public currentSize: TextSize = "NORMAL";
 
   constructor(paperWidth: "80mm" | "58mm" = "80mm") {
     this.paperWidth = paperWidth;
@@ -47,6 +79,7 @@ export class EscPosBuilder {
     this.buffer.push(ESC, 0x40); // ESC @ (initialize printer)
     this.buffer.push(ESC, 0x45, 0x01); // ESC E 1 (emphasized mode on)
     this.buffer.push(ESC, 0x47, 0x01); // ESC G 1 (double-strike mode on)
+    this.currentSize = "NORMAL";
     return this;
   }
 
@@ -89,12 +122,27 @@ export class EscPosBuilder {
    * Text size selection
    */
   size(size: TextSize = "NORMAL"): this {
+    this.currentSize = size;
     let val = 0x00;
     if (size === "DOUBLE_HEIGHT") val = 0x01;
     else if (size === "DOUBLE_WIDTH") val = 0x10;
     else if (size === "DOUBLE_BOTH" || size === "BIG") val = 0x11;
     this.buffer.push(GS, 0x21, val); // GS ! n
     return this;
+  }
+
+  /**
+   * Get effective horizontal monospace columns available for current text size
+   */
+  get effectiveColumns(): number {
+    if (
+      this.currentSize === "BIG" ||
+      this.currentSize === "DOUBLE_WIDTH" ||
+      this.currentSize === "DOUBLE_BOTH"
+    ) {
+      return Math.floor(this.maxColumns / 2);
+    }
+    return this.maxColumns;
   }
 
   /**
@@ -158,11 +206,12 @@ export class EscPosBuilder {
   }
 
   /**
-   * Append raw ASCII / UTF-8 text string
+   * Append ASCII sanitized text string
    */
   text(str: string): this {
+    const cleaned = cleanThermalText(str);
     const encoder = new TextEncoder();
-    const bytes = encoder.encode(str);
+    const bytes = encoder.encode(cleaned);
     for (let i = 0; i < bytes.length; i++) {
       this.buffer.push(bytes[i]);
     }
@@ -182,7 +231,7 @@ export class EscPosBuilder {
    * Print a repeated separator line
    */
   separator(char: string = "-"): this {
-    const repeated = char.repeat(this.maxColumns);
+    const repeated = char.repeat(this.effectiveColumns);
     return this.line(repeated);
   }
 
@@ -195,15 +244,22 @@ export class EscPosBuilder {
 
   /**
    * Print a two-column row with left and right aligned content
+   * Guarantees that left and right fit on a single line without wrapping.
    */
   twoColumns(left: string, right: string, bold: boolean = false): this {
     if (bold) this.bold(true);
-    const space = this.maxColumns - left.length - right.length;
-    if (space <= 0) {
-      this.line(`${left} ${right}`);
-    } else {
-      this.line(`${left}${" ".repeat(space)}${right}`);
+    const cleanLeft = cleanThermalText(left);
+    const cleanRight = cleanThermalText(right);
+    const width = this.effectiveColumns;
+
+    const maxLeft = width - cleanRight.length - 1;
+    let displayLeft = cleanLeft;
+    if (displayLeft.length > maxLeft && maxLeft > 3) {
+      displayLeft = displayLeft.substring(0, maxLeft - 1) + ".";
     }
+
+    const spaceCount = Math.max(1, width - displayLeft.length - cleanRight.length);
+    this.line(`${displayLeft}${" ".repeat(spaceCount)}${cleanRight}`);
     if (bold) this.bold(false);
     return this;
   }
@@ -215,7 +271,7 @@ export class EscPosBuilder {
     if (bold) this.bold(true);
     let rowStr = "";
     for (const col of cols) {
-      const rawText = col.text || "";
+      const rawText = cleanThermalText(col.text || "");
       const align = col.align || "LEFT";
       const width = col.width;
 
@@ -319,19 +375,9 @@ export function buildBillReceiptEscPos(
     p.separator("*");
   }
 
-  // Header
+  // Restaurant Header
   p.align("CENTER");
-  if (profile.nameMr) {
-    p.bold(true).size("BIG").line(profile.nameMr);
-  }
-  if (profile.nameEn) {
-    p.size("NORMAL").bold(true).line(profile.nameEn).bold(false);
-  } else {
-    p.size("NORMAL").bold(false);
-  }
-  if (profile.tagline) {
-    p.line(profile.tagline);
-  }
+  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameEn || "KOLHAPURI KHANAWAL").size("NORMAL").bold(false);
   if (profile.address) {
     p.line(profile.address);
   }
@@ -340,7 +386,7 @@ export function buildBillReceiptEscPos(
     p.line(`Ph: ${profile.phone}${sec}`);
   }
 
-  // Compliance Line (GSTIN / FSSAI) - ONLY print if there is data!
+  // Compliance Line (GSTIN / FSSAI) - ONLY print if data exists
   const compParts: string[] = [];
   if (profile.gstin && profile.gstin.trim()) {
     compParts.push(`GSTIN: ${profile.gstin.trim()}`);
@@ -354,7 +400,8 @@ export function buildBillReceiptEscPos(
 
   p.separator();
 
-  // Metadata
+  // Invoice Title & Metadata
+  p.align("CENTER").bold(true).line(profile.gstin ? "TAX INVOICE" : "BILL RECEIPT").bold(false);
   p.align("LEFT");
   p.twoColumns(`Bill: ${bill.billNumber}`, formatDateTime(bill.createdAt));
   p.twoColumns(`Table: ${bill.tableNumber} | ${bill.partyCode}`, bill.isTakeaway ? "Type: PARCEL" : "Dine-in");
@@ -387,10 +434,10 @@ export function buildBillReceiptEscPos(
   for (const item of bill.items) {
     sr++;
     const breadSuffix = item.breadOption ? ` [${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption}]` : "";
-    const name = item.menuItemName + breadSuffix;
+    const name = cleanThermalText(item.menuItemName + breadSuffix);
     const qty = String(item.quantity);
-    const rate = `₹${item.unitPrice.toFixed(0)}`;
-    const amt = `₹${item.totalPrice.toFixed(2)}`;
+    const rate = item.unitPrice.toFixed(0);
+    const amt = item.totalPrice.toFixed(2);
 
     if (is58mm) {
       p.tableRow([
@@ -413,12 +460,12 @@ export function buildBillReceiptEscPos(
   p.separator();
 
   // Financial Totals
-  p.twoColumns("Subtotal:", `₹${bill.subtotal.toFixed(2)}`, true);
+  p.twoColumns("Subtotal:", `Rs. ${bill.subtotal.toFixed(2)}`, true);
   if (bill.discountAmount > 0) {
-    p.twoColumns(`Discount${bill.discountReason ? ` (${bill.discountReason})` : ""}:`, `-₹${bill.discountAmount.toFixed(2)}`, true);
+    p.twoColumns(`Discount${bill.discountReason ? ` (${bill.discountReason})` : ""}:`, `-Rs. ${bill.discountAmount.toFixed(2)}`, true);
   }
   if (bill.packagingCharges && bill.packagingCharges > 0) {
-    p.twoColumns("Packaging / Parcel Fee:", `₹${bill.packagingCharges.toFixed(2)}`, true);
+    p.twoColumns("Packaging / Parcel Fee:", `Rs. ${bill.packagingCharges.toFixed(2)}`, true);
   }
 
   const hasGst = Boolean(
@@ -428,38 +475,56 @@ export function buildBillReceiptEscPos(
   );
 
   if (hasGst) {
-    p.twoColumns("Taxable Amount:", `₹${bill.taxableAmount.toFixed(2)}`);
-    p.twoColumns("CGST (2.5%):", `₹${bill.cgstAmount.toFixed(2)}`);
-    p.twoColumns("SGST (2.5%):", `₹${bill.sgstAmount.toFixed(2)}`);
+    p.twoColumns("Taxable Amount:", `Rs. ${bill.taxableAmount.toFixed(2)}`);
+    p.twoColumns("CGST (2.5%):", `Rs. ${bill.cgstAmount.toFixed(2)}`);
+    p.twoColumns("SGST (2.5%):", `Rs. ${bill.sgstAmount.toFixed(2)}`);
   }
 
   if (bill.roundOff !== 0) {
-    p.twoColumns("Round Off:", `${bill.roundOff > 0 ? "+" : "-"}₹${Math.abs(bill.roundOff).toFixed(2)}`);
+    p.twoColumns("Round Off:", `${bill.roundOff > 0 ? "+" : "-"}Rs. ${Math.abs(bill.roundOff).toFixed(2)}`);
   }
 
   p.doubleSeparator();
-  p.bold(true).size("BIG").twoColumns("GRAND TOTAL:", `₹${bill.grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
+  p.bold(true).size("DOUBLE_HEIGHT").twoColumns("GRAND TOTAL:", `Rs. ${bill.grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
   p.doubleSeparator();
 
   // Payment Breakdown
   if (bill.payments && bill.payments.length > 0) {
-    p.align("CENTER").bold(true).line("— PAYMENT DETAILS —").bold(false);
+    p.align("CENTER").bold(true).line("-- PAYMENT DETAILS --").bold(false);
     for (const pay of bill.payments) {
-      p.twoColumns(`${pay.paymentMethod}${pay.transactionReference ? ` (${pay.transactionReference})` : ""}:`, `₹${pay.amount.toFixed(2)}`);
+      p.twoColumns(`${pay.paymentMethod}${pay.transactionReference ? ` (${pay.transactionReference})` : ""}:`, `Rs. ${pay.amount.toFixed(2)}`);
     }
-    p.twoColumns("Total Paid:", `₹${bill.paidAmount.toFixed(2)}`, true);
+    p.twoColumns("Total Paid:", `Rs. ${bill.paidAmount.toFixed(2)}`, true);
     const change = bill.payments.filter((x) => x.paymentMethod === "CASH").reduce((s, x) => s + x.amount, 0) - bill.grandTotal;
     if (change > 0) {
-      p.twoColumns("Change Return:", `₹${change.toFixed(2)}`, true);
+      p.twoColumns("Change Return:", `Rs. ${change.toFixed(2)}`, true);
     }
+    p.separator();
+  }
+
+  // QR Code on receipt for UPI settlement
+  if (profile.upiId && profile.upiId.trim()) {
+    const upiId = profile.upiId;
+    const upiName = profile.upiMerchantName || "Kolapuri khanawal";
+    const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${bill.grandTotal.toFixed(2)}&cu=INR&tn=Bill%20${bill.billNumber}`;
+
+    p.align("CENTER")
+      .bold(true)
+      .line("SCAN TO PAY VIA UPI")
+      .bold(false);
+    p.qrCode(upiUrl, is58mm ? 4 : 5);
+    p.align("CENTER")
+      .bold(true).line(`UPI ID: ${upiId}`).bold(false)
+      .line(`Payee: ${upiName}`)
+      .line(`Terminal: ${profile.upiTerminal || "Terminal 1-Q338740118"}`);
     p.separator();
   }
 
   // Footer
   p.align("CENTER")
     .bold(true)
-    .line("धन्यवाद! पुन्हा भेट द्या!")
-    .line("Thank you for dining with us!")
+    .line("Thank you! Please visit again!")
+    .line("Aamhi Aplya Seveche Runi Aahot")
     .bold(false);
 
   if (hasGst) {
@@ -487,7 +552,7 @@ export function buildKotEscPos(
 
   let title = "*** K O T ***";
   if (isReprint) {
-    title = "*** REPRINT KOT / किचन प्रत ***";
+    title = "*** REPRINT KOT - KITCHEN COPY ***";
   } else if (kot.isAddOn) {
     title = `*** ADD-ON KOT #${kot.kotSequenceNumber || 2} ***`;
   }
@@ -495,8 +560,8 @@ export function buildKotEscPos(
   p.align("CENTER")
     .bold(true)
     .line(title)
-    .size("BIG")
-    .line(`TABLE ${kot.tableNumber} — ${kot.partyCode}`)
+    .size("DOUBLE_HEIGHT")
+    .line(`TABLE ${kot.tableNumber} - ${kot.partyCode}`)
     .size("NORMAL")
     .bold(false);
 
@@ -507,8 +572,8 @@ export function buildKotEscPos(
   p.separator();
   p.align("LEFT");
   p.twoColumns(`Ticket: ${kot.kotNumber}`, formatDateTime(kot.createdAt));
-  p.twoColumns(`Waiter: ${kot.waiterName}`, `Guests: ${kot.guestCount}`);
-  p.bold(true).line(`Station: ${kot.stationCode}`).bold(false);
+  p.twoColumns(`Waiter: ${cleanThermalText(kot.waiterName)}`, `Guests: ${kot.guestCount}`);
+  p.bold(true).line(`Station: ${cleanThermalText(kot.stationCode)}`).bold(false);
   p.doubleSeparator();
 
   // Items
@@ -517,29 +582,30 @@ export function buildKotEscPos(
     : kot.items;
 
   for (const item of items) {
-    p.bold(true).size("BIG").line(`${item.quantity}x ${item.menuItemName}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`).size("NORMAL").bold(false);
+    const itemName = cleanThermalText(item.menuItemName);
+    p.bold(true).size("DOUBLE_HEIGHT").line(`${item.quantity}x ${itemName}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`).size("NORMAL").bold(false);
     if (item.breadOption) {
       const breadObj = BREAD_OPTION_LABELS[item.breadOption as BreadOption];
-      const breadLabel = breadObj ? `${breadObj.en} / ${breadObj.mr}` : item.breadOption;
+      const breadLabel = breadObj?.en || item.breadOption;
       p.bold(true).line(`  * Bread: [${breadLabel}]`).bold(false);
     }
     if (item.spiceLevel && item.spiceLevel !== "MEDIUM") {
       p.line(`  * Spice: ${item.spiceLevel.replace(/_/g, " ")}`);
     }
     if (item.notes) {
-      p.line(`  * Note: ${item.notes}`);
+      p.line(`  * Note: ${cleanThermalText(item.notes)}`);
     }
     p.separator(".");
   }
 
   p.doubleSeparator();
   if (kot.notes) {
-    p.line(`Order Notes: ${kot.notes}`);
+    p.line(`Order Notes: ${cleanThermalText(kot.notes)}`);
     p.separator();
   }
 
   p.twoColumns(`Items: ${items.length}`, `Total Qty: ${items.reduce((s, i) => s + i.quantity, 0)}`, true);
-  p.align("CENTER").bold(true).line("KOLHAPURI KHANAWAL — Kitchen Copy").bold(false);
+  p.align("CENTER").bold(true).line("KOLHAPURI KHANAWAL - Kitchen Copy").bold(false);
 
   p.cut();
   return p.toBytes();
@@ -558,25 +624,25 @@ export function buildCancelledKotEscPos(
 
   p.align("CENTER")
     .bold(true)
-    .line("*** CANCELLED KOT / रद्द पावती ***")
-    .size("BIG")
+    .line("*** CANCELLED KOT - DO NOT PREPARE ***")
+    .size("DOUBLE_HEIGHT")
     .line("DO NOT PREPARE - ORDER CANCELLED")
     .size("NORMAL")
-    .line(`TABLE ${kot.tableNumber} — ${kot.partyCode}`)
+    .line(`TABLE ${kot.tableNumber} - ${kot.partyCode}`)
     .bold(false);
 
   p.separator("!");
   p.twoColumns(`Ticket: ${kot.kotNumber}`, formatDateTime(new Date().toISOString()));
-  p.twoColumns(`Waiter: ${kot.waiterName}`, `Cancelled By: ${cancelledBy}`);
+  p.twoColumns(`Waiter: ${cleanThermalText(kot.waiterName)}`, `Cancelled By: ${cleanThermalText(cancelledBy)}`);
   p.doubleSeparator();
 
   p.bold(true).line("Items to Cancel:").bold(false);
   for (const item of kot.items) {
-    p.line(`  [CANCELLED] ${item.quantity}x ${item.menuItemName}`);
+    p.line(`  [CANCELLED] ${item.quantity}x ${cleanThermalText(item.menuItemName)}`);
   }
 
   p.doubleSeparator();
-  p.line(`Reason: ${reason}`);
+  p.line(`Reason: ${cleanThermalText(reason)}`);
   p.separator();
   p.align("CENTER").line("Stock reservation released to inventory.");
 
@@ -602,14 +668,15 @@ export function buildTableCheckEscPos(
   p.align("CENTER")
     .bold(true)
     .line("*** TABLE CHECK / PRE-BILL ESTIMATE ***")
-    .line("(Not a Tax Invoice — कच्चा बिल)")
+    .line("(Not a Tax Invoice - Kachha Bill)")
     .line("THIS IS NOT A TAX INVOICE");
 
-  if (profile.nameMr) p.size("BIG").line(profile.nameMr);
-  if (profile.nameEn) p.size("NORMAL").bold(true).line(profile.nameEn).bold(false);
+  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameEn || "KOLHAPURI KHANAWAL").size("NORMAL").bold(false);
   if (profile.address) p.line(profile.address);
+  if (profile.phone) p.line(`Ph: ${profile.phone}`);
 
-  p.size("BIG")
+  p.size("DOUBLE_HEIGHT")
+    .bold(true)
     .line(`TABLE ${tableNum}`)
     .size("NORMAL")
     .line(`Party: ${partyCode}`)
@@ -619,33 +686,46 @@ export function buildTableCheckEscPos(
   p.align("LEFT");
   p.twoColumns(`Table: ${tableNum}`, formatDateTime(new Date().toISOString()));
   p.twoColumns(`Party: ${partyCode}`, `Guests: ${params.party?.guestCount || 2}`);
+  if (params.party?.assignedWaiterName || params.waiterName) {
+    p.line(`Waiter: ${cleanThermalText(params.party?.assignedWaiterName || params.waiterName)}`);
+  }
   p.doubleSeparator();
 
+  // Order Items
   const items = params.items || [];
   for (const item of items) {
-    p.twoColumns(`${item.quantity}x ${item.menuItemName}`, `₹${(item.totalPrice || 0).toFixed(2)}`);
+    if (item.isCancelled) continue;
+    const qty = item.quantity || 1;
+    const name = cleanThermalText(item.menuItemName || "Item");
+    const amt = typeof item.totalPrice === "number" ? item.totalPrice : (item.unitPrice || 0) * qty;
+    p.twoColumns(`${qty}x ${name}`, `Rs. ${amt.toFixed(2)}`);
   }
 
-  p.doubleSeparator();
-  p.twoColumns("Subtotal:", `₹${subtotal.toFixed(2)}`, true);
-  p.bold(true).size("BIG").twoColumns("Estimated Total:", `₹${grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
   p.separator();
+  p.twoColumns("Subtotal:", `Rs. ${subtotal.toFixed(2)}`, true);
+  if (params.taxEstimate && params.taxEstimate > 0) {
+    p.twoColumns("Estimated GST (5%):", `Rs. ${params.taxEstimate.toFixed(2)}`);
+  }
+  p.doubleSeparator();
+  p.bold(true).size("DOUBLE_HEIGHT").twoColumns("TOTAL ESTIMATE:", `Rs. ${grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
+  p.doubleSeparator();
 
   const is58mm = paperWidth === "58mm";
-  if (profile.upiId && profile.upiId.trim()) {
-    const upiUrl = `upi://pay?pa=${profile.upiId}&pn=${encodeURIComponent(profile.upiMerchantName || profile.nameEn || "KolhapuriKhanawal")}&am=${grandTotal.toFixed(2)}&cu=INR`;
+  const upiId = profile.upiId || "Q338740118@ybl";
+  const upiName = profile.upiMerchantName || "Kolapuri khanawal";
+  const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(upiName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=Table%20${tableNum}`;
 
-    p.align("CENTER")
-      .bold(true)
-      .line("⚡ SCAN TO PAY VIA UPI ⚡")
-      .bold(false);
-    p.qrCode(upiUrl, is58mm ? 4 : 5);
-    p.align("CENTER")
-      .line(`UPI ID: ${profile.upiId}`)
-      .line("Please settle with your waiter or at counter.");
-  } else {
-    p.align("CENTER").line("Please settle with your waiter or at counter.");
-  }
+  p.align("CENTER")
+    .bold(true)
+    .line("SCAN TO PAY VIA UPI")
+    .bold(false);
+  p.qrCode(upiUrl, is58mm ? 4 : 5);
+  p.align("CENTER")
+    .bold(true).line(`UPI ID: ${upiId}`).bold(false)
+    .line(`Payee: ${upiName}`)
+    .line(`Terminal: ${profile.upiTerminal || "Terminal 1-Q338740118"}`)
+    .feed(1)
+    .line("Please settle with your waiter or at counter.");
 
   p.cut();
   return p.toBytes();
@@ -662,15 +742,15 @@ export function buildDayEndReportEscPos(
 
   p.align("CENTER")
     .bold(true)
-    .size("BIG")
+    .size("DOUBLE_HEIGHT")
     .line("KOLHAPURI KHANAWAL")
     .size("NORMAL")
-    .line("*** DAY-END Z-REPORT (दिवसाचा हिशोब) ***")
+    .line("*** DAY-END Z-REPORT (DAILY CLOSING) ***")
     .line(`Date: ${report.date} | Shift: ${report.shiftName}`)
     .bold(false);
 
   p.separator();
-  p.twoColumns(`Generated: ${formatDateTime(report.generatedAt)}`, `By: ${report.generatedByName}`);
+  p.twoColumns(`Generated: ${formatDateTime(report.generatedAt)}`, `By: ${cleanThermalText(report.generatedByName)}`);
   p.doubleSeparator();
 
   p.bold(true).line("TRANSACTION METRICS:").bold(false);
@@ -680,22 +760,22 @@ export function buildDayEndReportEscPos(
 
   p.separator();
   p.bold(true).line("REVENUE & TAX BREAKDOWN:").bold(false);
-  p.twoColumns("Gross Sales Subtotal:", `₹${report.grossSalesSubtotal.toFixed(2)}`);
+  p.twoColumns("Gross Sales Subtotal:", `Rs. ${report.grossSalesSubtotal.toFixed(2)}`);
   if (report.totalDiscountAmount > 0) {
-    p.twoColumns("Discounts Allowed:", `-₹${report.totalDiscountAmount.toFixed(2)}`);
+    p.twoColumns("Discounts Allowed:", `-Rs. ${report.totalDiscountAmount.toFixed(2)}`);
   }
-  p.twoColumns("Net Taxable Sales:", `₹${report.netTaxableSales.toFixed(2)}`);
-  p.twoColumns("Total GST (5%):", `₹${report.totalTaxAmount.toFixed(2)}`);
+  p.twoColumns("Net Taxable Sales:", `Rs. ${report.netTaxableSales.toFixed(2)}`);
+  p.twoColumns("Total GST (5%):", `Rs. ${report.totalTaxAmount.toFixed(2)}`);
   p.doubleSeparator();
-  p.bold(true).size("BIG").twoColumns("NET REVENUE:", `₹${report.netRevenue.toFixed(2)}`).size("NORMAL").bold(false);
+  p.bold(true).size("DOUBLE_HEIGHT").twoColumns("NET REVENUE:", `Rs. ${report.netRevenue.toFixed(2)}`).size("NORMAL").bold(false);
   p.doubleSeparator();
 
   p.bold(true).line("PAYMENT TENDERS:").bold(false);
-  p.twoColumns("Cash Collected:", `₹${report.tenders.cash.toFixed(2)}`);
-  p.twoColumns("UPI / QR Collected:", `₹${report.tenders.upi.toFixed(2)}`);
-  p.twoColumns("Card Collected:", `₹${report.tenders.card.toFixed(2)}`);
+  p.twoColumns("Cash Collected:", `Rs. ${report.tenders.cash.toFixed(2)}`);
+  p.twoColumns("UPI / QR Collected:", `Rs. ${report.tenders.upi.toFixed(2)}`);
+  p.twoColumns("Card Collected:", `Rs. ${report.tenders.card.toFixed(2)}`);
   const totalCollected = report.tenders.cash + report.tenders.upi + report.tenders.card + (report.tenders.other || 0);
-  p.twoColumns("Total Collections:", `₹${totalCollected.toFixed(2)}`, true);
+  p.twoColumns("Total Collections:", `Rs. ${totalCollected.toFixed(2)}`, true);
 
   p.feed(2);
   p.line("Cashier: ___________   Manager: ___________");
@@ -715,12 +795,13 @@ export function buildDiagnosticTestEscPos(
 
   p.align("CENTER")
     .bold(true)
-    .size("BIG")
+    .size("DOUBLE_HEIGHT")
     .line("=== PRINTER TEST TICKET ===")
     .size("NORMAL")
-    .line("कोल्हापुरी खानावळ")
     .line("KOLHAPURI KHANAWAL")
-    .line(`Printer: ${printerName}`)
+    .line("Lalit Estate, Baner, Pune")
+    .line("Ph: +91 91753 86576")
+    .line(`Printer: ${cleanThermalText(printerName)}`)
     .bold(false);
 
   p.separator();
@@ -740,7 +821,7 @@ export function buildDiagnosticTestEscPos(
   p.align("CENTER").bold(true).line("--- FONT & PITCH CHECK ---").bold(false);
   p.align("LEFT");
   p.line("Normal: Kolhapuri Khanawal Restaurant OS");
-  p.bold(true).line("Bold: तांबडा रस्सा • पांढरा रस्sa • मटण").bold(false);
+  p.bold(true).line("Bold: Tambda Rassa / Pandhra Rassa / Sukka Mutton").bold(false);
   p.underline(true).line("Underlined: Authentic Kolhapur Flavors").underline(false);
   p.inverse(true).align("CENTER").line(" INVERTED WHITE ON BLACK ").inverse(false);
 
@@ -771,44 +852,45 @@ export function buildCashUpiReconciliationEscPos(
   const p = new EscPosBuilder(paperWidth);
 
   p.align("CENTER");
-  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameMr).bold(false).size("NORMAL");
-  p.bold(true).line(profile.nameEn).bold(false);
+  p.bold(true).size("DOUBLE_HEIGHT").line(profile.nameEn || "KOLHAPURI KHANAWAL").bold(false).size("NORMAL");
+  p.line("Lalit Estate, Baner, Pune");
+  p.line("Ph: +91 91753 86576");
   p.line("CASH & UPI RECONCILIATION SLIP");
   p.line(`Date: ${params.date} | Time: ${new Date().toLocaleTimeString("en-IN")}`);
   p.doubleSeparator();
 
   p.align("LEFT").bold(true).line("1. CASH DRAWER AUDIT").bold(false);
-  p.twoColumns("System Expected:", `Rs.${params.expectedCash.toLocaleString("en-IN")}`);
-  p.twoColumns("Actual Drawer Count:", `Rs.${params.actualCash.toLocaleString("en-IN")}`);
+  p.twoColumns("System Expected:", `Rs. ${params.expectedCash.toLocaleString("en-IN")}`);
+  p.twoColumns("Actual Drawer Count:", `Rs. ${params.actualCash.toLocaleString("en-IN")}`);
   p.bold(true).twoColumns(
     "Cash Variance:",
     params.cashVariance === 0
-      ? "Rs.0 (Balanced)"
+      ? "Rs. 0 (Balanced)"
       : params.cashVariance > 0
-      ? `+Rs.${params.cashVariance} (Surplus)`
-      : `-Rs.${Math.abs(params.cashVariance)} (Shortage)`
+      ? `+Rs. ${params.cashVariance} (Surplus)`
+      : `-Rs. ${Math.abs(params.cashVariance)} (Shortage)`
   ).bold(false);
 
   p.separator();
   p.align("LEFT").bold(true).line("2. UPI BANK / SOUNDBOX").bold(false);
-  p.twoColumns("System Expected:", `Rs.${params.expectedUpi.toLocaleString("en-IN")}`);
-  p.twoColumns("Actual Bank Count:", `Rs.${params.actualUpi.toLocaleString("en-IN")}`);
+  p.twoColumns("System Expected:", `Rs. ${params.expectedUpi.toLocaleString("en-IN")}`);
+  p.twoColumns("Actual Bank Count:", `Rs. ${params.actualUpi.toLocaleString("en-IN")}`);
   p.bold(true).twoColumns(
     "UPI Variance:",
-    params.upiVariance === 0 ? "Rs.0 (Balanced)" : `Rs.${params.upiVariance}`
+    params.upiVariance === 0 ? "Rs. 0 (Balanced)" : `Rs. ${params.upiVariance}`
   ).bold(false);
 
   p.doubleSeparator();
-  p.bold(true).twoColumns(
+  p.bold(true).size("DOUBLE_HEIGHT").twoColumns(
     "TOTAL LIQUID FUNDS:",
-    `Rs.${(params.actualCash + params.actualUpi).toLocaleString("en-IN")}`
-  ).bold(false);
+    `Rs. ${(params.actualCash + params.actualUpi).toLocaleString("en-IN")}`
+  ).bold(false).size("NORMAL");
 
   if (params.denominations && params.denominations.some((d) => d.count > 0)) {
     p.separator();
     p.bold(true).line("DENOMINATIONS:").bold(false);
     for (const d of params.denominations.filter((d) => d.count > 0)) {
-      p.twoColumns(`${d.label} x ${d.count}`, `= Rs.${(d.value * d.count).toLocaleString("en-IN")}`);
+      p.twoColumns(`${d.label} x ${d.count}`, `= Rs. ${(d.value * d.count).toLocaleString("en-IN")}`);
     }
   }
 
@@ -819,4 +901,3 @@ export function buildCashUpiReconciliationEscPos(
   p.cut();
   return p.toBytes();
 }
-
