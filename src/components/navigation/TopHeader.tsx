@@ -167,7 +167,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
   const Icon = pageMeta.icon;
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E7E2DA] px-3 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between shadow-[0_1px_3px_rgba(28,25,23,0.03)]">
+    <header className="premium-header sticky top-0 z-30 backdrop-blur-xl border-b border-[#E7E2DA] px-3 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between">
       {/* Left: Mobile Menu Drawer Toggle & Title */}
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
         <button

@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#F9F7F4] text-stone-900 selection:bg-red-700 selection:text-amber-100">
+    <div className="min-h-screen flex bg-[#F7F4EF] text-stone-900 selection:bg-red-700 selection:text-amber-100">
       {/* Sideways Navigation Bar (Desktop fixed / Mobile drawer) */}
       <Sidebar
         isMobileOpen={isMobileSidebarOpen}
@@ -38,7 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               : isWaiterFloor
               ? "p-2 sm:p-6 lg:p-8 pb-24 lg:pb-8"
               : "p-3.5 sm:p-6 lg:p-8 pb-28 lg:pb-8"
-          } max-w-7xl w-full mx-auto`}
+          } premium-page max-w-7xl w-full mx-auto`}
         >
           <AuthGuard>{children}</AuthGuard>
         </main>
