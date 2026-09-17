@@ -13,6 +13,7 @@
  */
 
 import net from "node:net";
+import http from "node:http";
 import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
@@ -180,8 +181,9 @@ async function authenticate() {
     log("✅", `Firebase authenticated silently (Anonymous UID: ${anonCred.user.uid.slice(0, 8)}...)`);
     return anonCred.user;
   } catch (err) {
-    log("❌", `Firebase Authentication failed: ${err.message}`);
-    throw err;
+    log("⚠️", `Firebase Authentication not configured or restricted: ${err.message}`);
+    log("ℹ️", "Proceeding with direct Firestore connection & Local HTTP Gateway...");
+    return null;
   }
 }
 
@@ -446,6 +448,100 @@ async function recoverExpiredLeases() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  Local HTTP Print Gateway (Port 9180)
+// ══════════════════════════════════════════════════════════════════
+
+const HTTP_PORT = parseInt(process.env.BRIDGE_HTTP_PORT || "9180", 10);
+let httpServer = null;
+
+function startHttpServer() {
+  const server = http.createServer(async (req, res) => {
+    // Enable CORS for local POS access
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    if (req.method === "GET" && (req.url === "/" || req.url === "/health")) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          status: "ONLINE",
+          bridgeId: BRIDGE_ID,
+          restaurantId: RESTAURANT_ID,
+          version: VERSION,
+          uptimeSeconds: Math.floor(process.uptime()),
+          jobsDelivered,
+          mappedPrinters: printerMapping,
+        })
+      );
+      return;
+    }
+
+    if (req.method === "POST" && req.url === "/print") {
+      let body = "";
+      req.on("data", (chunk) => {
+        body += chunk;
+      });
+      req.on("end", async () => {
+        try {
+          const data = JSON.parse(body || "{}");
+          const payloadBase64 = data.payloadBase64;
+          const stationCode = (data.stationCode || data.printerName || "CASHIER").toUpperCase();
+          const target = getTargetPrinter(stationCode);
+
+          if (!payloadBase64) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: "Missing payloadBase64" }));
+            return;
+          }
+
+          const rawBuffer = Buffer.from(payloadBase64, "base64");
+          log(
+            "📥",
+            `HTTP print job received: "${data.title || "Untitled"}" → ${target.ip}:${target.port} (${rawBuffer.length} bytes)`
+          );
+
+          const result = await sendTcpRaw(target.ip, target.port, rawBuffer);
+          jobsDelivered++;
+          lastJobAt = new Date().toISOString();
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ success: true, delivered: true, ...result }));
+        } catch (err) {
+          log("❌", `HTTP print error: ${err.message}`);
+          res.writeHead(500, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+      return;
+    }
+
+    res.writeHead(404, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Not found" }));
+  });
+
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      log("⚠️", `HTTP port ${HTTP_PORT} already in use. Local HTTP gateway disabled; continuing cloud queue.`);
+    } else {
+      log("⚠️", `HTTP server error: ${err.message}`);
+    }
+  });
+
+  server.listen(HTTP_PORT, "0.0.0.0", () => {
+    log("🌐", `Local HTTP Print Gateway active at http://localhost:${HTTP_PORT}/print`);
+  });
+
+  return server;
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  Main Bridge Startup
 // ══════════════════════════════════════════════════════════════════
 
@@ -467,16 +563,19 @@ async function startBridge() {
   // 1. Authenticate to Firebase
   await authenticate();
 
-  // 2. Publish Initial Heartbeat
+  // 2. Start Local HTTP Gateway (:9180)
+  httpServer = startHttpServer();
+
+  // 3. Publish Initial Heartbeat
   await sendHeartbeat("ONLINE");
 
-  // 3. Start Heartbeat Timer (every 15s)
+  // 4. Start Heartbeat Timer (every 15s)
   heartbeatTimer = setInterval(() => sendHeartbeat("ONLINE"), HEARTBEAT_INTERVAL_MS);
 
-  // 4. Start Lease Recovery Timer (every 10s)
+  // 5. Start Lease Recovery Timer (every 10s)
   leaseRecoveryTimer = setInterval(recoverExpiredLeases, 10_000);
 
-  // 5. Real-time Subscription to PENDING print jobs
+  // 6. Real-time Subscription to PENDING print jobs
   const jobsQuery = query(
     collection(db, "print_jobs"),
     where("restaurantId", "==", RESTAURANT_ID),
@@ -514,6 +613,9 @@ async function gracefulShutdown(signal) {
 
   clearInterval(heartbeatTimer);
   clearInterval(leaseRecoveryTimer);
+  if (httpServer) {
+    try { httpServer.close(); } catch {}
+  }
 
   try {
     await sendHeartbeat("OFFLINE");
