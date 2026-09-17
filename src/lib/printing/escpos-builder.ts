@@ -74,8 +74,8 @@ export class EscPosBuilder {
 
   constructor(paperWidth: "80mm" | "58mm" = "80mm") {
     this.paperWidth = paperWidth;
-    // 80mm standard Font A safe printable column count is 42 chars; 58mm is 32 chars
-    this.maxColumns = paperWidth === "58mm" ? 32 : 42;
+    // 80mm standard Font A safe printable column count is 48 chars; 58mm is 32 chars
+    this.maxColumns = paperWidth === "58mm" ? 32 : 48;
     this.init();
   }
 
@@ -382,20 +382,90 @@ function formatDateTime(isoString: string): string {
 }
 
 /**
- * Formats a tabular item row for 80mm (42 columns) or 58mm (32 columns).
+ * Formats an item name for customer-facing bills and table checks.
+ * - Specifically for THALIS: shortens bread options (e.g. Chapati -> (Chp), Jwari Bhakri -> (JBhk))
+ *   and "Special" -> "Spl", keeping the line concise so numeric columns never wrap.
+ * - Otherwise (for regular items, soups, individual bread orders, starters):
+ *   prints as regular without shortening.
+ */
+export function formatItemNameForBill(
+  rawName: string,
+  breadOption?: string,
+  isThali?: boolean
+): string {
+  const cleanName = cleanThermalText(rawName || "Item");
+
+  // Detect if this item is a Thali
+  const isThaliItem = Boolean(
+    isThali ||
+    breadOption ||
+    /\bthali\b/i.test(cleanName)
+  );
+
+  // Non-thali items print as regular
+  if (!isThaliItem) {
+    return cleanName;
+  }
+
+  // Specifically for Thalis:
+  let breadShort = "";
+  if (breadOption) {
+    const bo = breadOption.toUpperCase();
+    if (bo.includes("CHAPATI")) {
+      breadShort = "(Chp)";
+    } else if (bo.includes("JWARI") || bo.includes("JOWAR")) {
+      breadShort = "(JBhk)";
+    } else if (bo.includes("BAJRI") || bo.includes("BAJRA")) {
+      breadShort = "(BBhk)";
+    } else if (bo.includes("ROTI")) {
+      breadShort = "(Roti)";
+    } else if (bo.includes("BHAKRI")) {
+      breadShort = "(Bhk)";
+    } else {
+      breadShort = `(${cleanThermalText(breadOption).substring(0, 5)})`;
+    }
+  }
+
+  let thaliName = cleanName;
+  // Shorten "Special" to "Spl"
+  thaliName = thaliName.replace(/\bSpecial\b/gi, "Spl");
+  thaliName = thaliName.replace(/\bSpl\.\b/gi, "Spl");
+
+  // If bread was embedded in item name, convert to short form
+  thaliName = thaliName.replace(/[\s\-–(\[]*(?:jowar|jwari)\s*bhakri[\s\-–)\]]*/gi, " (JBhk)");
+  thaliName = thaliName.replace(/[\s\-–(\[]*(?:bajra|bajri)\s*bhakri[\s\-–)\]]*/gi, " (BBhk)");
+  thaliName = thaliName.replace(/[\s\-–(\[]*bhakri[\s\-–)\]]*/gi, " (Bhk)");
+  thaliName = thaliName.replace(/[\s\-–(\[]*chapatis?[\s\-–)\]]*/gi, " (Chp)");
+  thaliName = thaliName.replace(/[\s\-–(\[]*roti[\s\-–)\]]*/gi, " (Roti)");
+
+  // Append breadShort if not already embedded
+  if (
+    breadShort &&
+    !thaliName.includes("(Chp)") &&
+    !thaliName.includes("(JBhk)") &&
+    !thaliName.includes("(BBhk)") &&
+    !thaliName.includes("(Bhk)") &&
+    !thaliName.includes("(Roti)")
+  ) {
+    thaliName = `${thaliName} ${breadShort}`;
+  }
+
+  return thaliName.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Formats a tabular item row for 80mm (48 columns) or 58mm (32 columns).
  * Handles long item names by wrapping the name on the second line (indented),
  * keeping the quantity, rate, and amount perfectly aligned in their columns.
  */
 function printFormattedItemRow(
   p: EscPosBuilder,
   is58mm: boolean,
-  sr: number | null,
-  name: string,
+  cleanName: string,
   qtyStr: string,
   rateStr: string,
   amtStr: string
 ) {
-  const cleanName = cleanThermalText(name);
   if (is58mm) {
     const itemWidth = 15;
     const qtyWidth = 3;
@@ -426,53 +496,34 @@ function printFormattedItemRow(
       ]);
     }
   } else {
-    // 80mm: 42 monospace columns total
-    const hasSr = sr !== null;
-    const srWidth = hasSr ? 2 : 0;
-    const itemWidth = hasSr ? 20 : 22;
-    const qtyWidth = 4;
-    const rateWidth = 7;
+    // 80mm: 48 columns (Item 28, Qty 3, Rate 8, Amt 9 = 48)
+    const itemWidth = 28;
+    const qtyWidth = 3;
+    const rateWidth = 8;
     const amtWidth = 9;
 
     if (cleanName.length <= itemWidth) {
-      const cols = [];
-      if (hasSr) {
-        cols.push({ text: String(sr), width: srWidth, align: "RIGHT" as AlignMode });
-      }
-      cols.push(
-        { text: cleanName, width: itemWidth, align: "LEFT" as AlignMode },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" as AlignMode },
-        { text: rateStr, width: rateWidth, align: "RIGHT" as AlignMode },
-        { text: amtStr, width: amtWidth, align: "RIGHT" as AlignMode }
-      );
-      p.tableRow(cols);
+      p.tableRow([
+        { text: cleanName, width: itemWidth, align: "LEFT" },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+        { text: rateStr, width: rateWidth, align: "RIGHT" },
+        { text: amtStr, width: amtWidth, align: "RIGHT" },
+      ]);
     } else {
       const line1 = cleanName.substring(0, itemWidth);
       const line2 = "  " + cleanName.substring(itemWidth).trim().substring(0, itemWidth - 2);
-
-      const cols1 = [];
-      if (hasSr) {
-        cols1.push({ text: String(sr), width: srWidth, align: "RIGHT" as AlignMode });
-      }
-      cols1.push(
-        { text: line1, width: itemWidth, align: "LEFT" as AlignMode },
-        { text: qtyStr, width: qtyWidth, align: "RIGHT" as AlignMode },
-        { text: rateStr, width: rateWidth, align: "RIGHT" as AlignMode },
-        { text: amtStr, width: amtWidth, align: "RIGHT" as AlignMode }
-      );
-      p.tableRow(cols1);
-
-      const cols2 = [];
-      if (hasSr) {
-        cols2.push({ text: "", width: srWidth, align: "RIGHT" as AlignMode });
-      }
-      cols2.push(
-        { text: line2, width: itemWidth, align: "LEFT" as AlignMode },
-        { text: "", width: qtyWidth, align: "RIGHT" as AlignMode },
-        { text: "", width: rateWidth, align: "RIGHT" as AlignMode },
-        { text: "", width: amtWidth, align: "RIGHT" as AlignMode }
-      );
-      p.tableRow(cols2);
+      p.tableRow([
+        { text: line1, width: itemWidth, align: "LEFT" },
+        { text: qtyStr, width: qtyWidth, align: "RIGHT" },
+        { text: rateStr, width: rateWidth, align: "RIGHT" },
+        { text: amtStr, width: amtWidth, align: "RIGHT" },
+      ]);
+      p.tableRow([
+        { text: line2, width: itemWidth, align: "LEFT" },
+        { text: "", width: qtyWidth, align: "RIGHT" },
+        { text: "", width: rateWidth, align: "RIGHT" },
+        { text: "", width: amtWidth, align: "RIGHT" },
+      ]);
     }
   }
 }
@@ -529,11 +580,10 @@ export function buildBillReceiptEscPos(
   p.twoColumns(`Bill: ${bill.billNumber}`, formatDateTime(bill.createdAt));
   p.twoColumns(`Table: ${bill.tableNumber} | ${bill.partyCode}`, bill.isTakeaway ? "Type: PARCEL" : "Dine-in");
 
-  p.doubleSeparator();
-
   // Table Column Headers:
-  // 80mm (42 cols): #(2) + Item(20) + Qty(4) + Rate(7) + Amt(9) = 42
+  // 80mm (48 cols): Item(28) + Qty(3) + Rate(8) + Amt(9) = 48
   // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
+  p.doubleSeparator();
   if (is58mm) {
     p.tableRow([
       { text: "Item", width: 15, align: "LEFT" },
@@ -543,20 +593,16 @@ export function buildBillReceiptEscPos(
     ], true);
   } else {
     p.tableRow([
-      { text: "#", width: 2, align: "RIGHT" },
-      { text: "Item", width: 20, align: "LEFT" },
-      { text: "Qty", width: 4, align: "RIGHT" },
-      { text: "Rate", width: 7, align: "RIGHT" },
+      { text: "Item", width: 28, align: "LEFT" },
+      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Rate", width: 8, align: "RIGHT" },
       { text: "Amt", width: 9, align: "RIGHT" },
     ], true);
   }
-  p.separator();
+  p.doubleSeparator();
 
-  let sr = 0;
   for (const item of bill.items) {
-    sr++;
-    const breadSuffix = item.breadOption ? ` [${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption}]` : "";
-    const name = cleanThermalText(item.menuItemName + breadSuffix);
+    const formattedName = formatItemNameForBill(item.menuItemName, item.breadOption, (item as any).isThali);
     const qty = String(item.quantity);
     const rate = item.unitPrice.toFixed(2);
     const amt = item.totalPrice.toFixed(2);
@@ -564,8 +610,7 @@ export function buildBillReceiptEscPos(
     printFormattedItemRow(
       p,
       is58mm,
-      sr,
-      name,
+      formattedName,
       qty,
       rate,
       amt
@@ -575,19 +620,19 @@ export function buildBillReceiptEscPos(
   p.separator();
 
   // Financial Totals (Right-aligned values, NO GST / CGST / SGST)
-  p.twoColumns("Subtotal:", `Rs. ${bill.subtotal.toFixed(2)}`, true);
+  p.twoColumns("Subtotal:", `Rs. ${bill.subtotal.toFixed(2)}`);
   if (bill.discountAmount > 0) {
-    p.twoColumns(`Discount${bill.discountReason ? ` (${cleanThermalText(bill.discountReason)})` : ""}:`, `-Rs. ${bill.discountAmount.toFixed(2)}`, true);
+    p.twoColumns(`Discount${bill.discountReason ? ` (${cleanThermalText(bill.discountReason)})` : ""}:`, `-Rs. ${bill.discountAmount.toFixed(2)}`);
   }
   if (bill.packagingCharges && bill.packagingCharges > 0) {
-    p.twoColumns("Packaging / Parcel Fee:", `Rs. ${bill.packagingCharges.toFixed(2)}`, true);
+    p.twoColumns("Packaging / Parcel Fee:", `Rs. ${bill.packagingCharges.toFixed(2)}`);
   }
   if (bill.roundOff !== 0) {
     p.twoColumns("Round Off:", `${bill.roundOff > 0 ? "+" : "-"}Rs. ${Math.abs(bill.roundOff).toFixed(2)}`);
   }
 
   p.doubleSeparator();
-  p.bold(true).size("DOUBLE_HEIGHT").twoColumns("GRAND TOTAL:", `Rs. ${bill.grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
+  p.bold(true).twoColumns("GRAND TOTAL:", `Rs. ${bill.grandTotal.toFixed(2)}`).bold(false);
   p.doubleSeparator();
 
   // Payment Breakdown
@@ -787,11 +832,10 @@ export function buildTableCheckEscPos(
   p.twoColumns(`Table: ${tableNum}`, `Party: ${partyCode}`, true);
   p.twoColumns(`Date : ${formatDateTime(new Date().toISOString())}`, `Guests: ${params.party?.guestCount || 2}`);
 
-  p.doubleSeparator();
-
   // Table Column Headers:
-  // 80mm (42 cols): Item(22) + Qty(4) + Rate(7) + Amt(9) = 42
+  // 80mm (48 cols): Item(28) + Qty(3) + Rate(8) + Amt(9) = 48
   // 58mm (32 cols): Item(15) + Qty(3) + Rate(6) + Amt(8) = 32
+  p.doubleSeparator();
   if (is58mm) {
     p.tableRow([
       { text: "Item", width: 15, align: "LEFT" },
@@ -801,21 +845,20 @@ export function buildTableCheckEscPos(
     ], true);
   } else {
     p.tableRow([
-      { text: "Item", width: 22, align: "LEFT" },
-      { text: "Qty", width: 4, align: "RIGHT" },
-      { text: "Rate", width: 7, align: "RIGHT" },
+      { text: "Item", width: 28, align: "LEFT" },
+      { text: "Qty", width: 3, align: "RIGHT" },
+      { text: "Rate", width: 8, align: "RIGHT" },
       { text: "Amt", width: 9, align: "RIGHT" },
     ], true);
   }
-  p.separator();
+  p.doubleSeparator();
 
   // Order Items in neat columns
   const items = params.items || [];
   for (const item of items) {
     if (item.isCancelled) continue;
     const qty = item.quantity || 1;
-    const breadSuffix = item.breadOption ? ` [${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption}]` : "";
-    const name = cleanThermalText((item.menuItemName || "Item") + breadSuffix);
+    const formattedName = formatItemNameForBill(item.menuItemName || "Item", item.breadOption, (item as any).isThali);
     const unitRate = typeof item.unitPrice === "number"
       ? item.unitPrice
       : (typeof item.totalPrice === "number" ? item.totalPrice / qty : 0);
@@ -824,8 +867,7 @@ export function buildTableCheckEscPos(
     printFormattedItemRow(
       p,
       is58mm,
-      null,
-      name,
+      formattedName,
       String(qty),
       unitRate.toFixed(2),
       amt.toFixed(2)
@@ -835,9 +877,9 @@ export function buildTableCheckEscPos(
   p.separator();
 
   // Financial Totals (Right-aligned values, NO GST / CGST / SGST)
-  p.twoColumns("Subtotal:", `Rs. ${subtotal.toFixed(2)}`, true);
+  p.twoColumns("Subtotal:", `Rs. ${subtotal.toFixed(2)}`);
   p.doubleSeparator();
-  p.bold(true).size("DOUBLE_HEIGHT").twoColumns("TOTAL ESTIMATE:", `Rs. ${grandTotal.toFixed(2)}`).size("NORMAL").bold(false);
+  p.bold(true).twoColumns("TOTAL ESTIMATE:", `Rs. ${grandTotal.toFixed(2)}`).bold(false);
   p.doubleSeparator();
 
   // Dynamic PhonePe QR Code (NO TERMINAL)

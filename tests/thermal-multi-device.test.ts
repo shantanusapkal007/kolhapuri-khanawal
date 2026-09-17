@@ -151,9 +151,9 @@ describe("Multi-Device Thermal Printer Connection System", () => {
       expect(hex.startsWith("1b40")).toBe(true);
     });
 
-    it("respects 80mm (42 safe columns) and 58mm (32 columns) width constraints", () => {
+    it("respects 80mm (48 columns) and 58mm (32 columns) width constraints", () => {
       const p80 = new EscPosBuilder("80mm");
-      expect(p80.maxColumns).toBe(42);
+      expect(p80.maxColumns).toBe(48);
 
       const p58 = new EscPosBuilder("58mm");
       expect(p58.maxColumns).toBe(32);
@@ -186,7 +186,7 @@ describe("Multi-Device Thermal Printer Connection System", () => {
       expect(hasRasterGraphic).toBe(true);
 
       const text = new TextDecoder().decode(bytes);
-      expect(text).toContain("Special Mutton Thali");
+      expect(text).toContain("Spl Mutton Thali");
       expect(text).toContain("BILL-2026-8888");
       expect(text).toContain("GRAND TOTAL:");
       expect(text).toContain("945.00");
