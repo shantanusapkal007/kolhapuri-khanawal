@@ -99,7 +99,7 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
     upiMerchantName: "Kolapuri khanawal",
   },
   billing: {
-    gstRatePercent: 5,
+    gstRatePercent: 0,
     packagingChargePerThali: 20,
     applyRoundOff: true,
     managerPin: "1234",
@@ -2160,7 +2160,9 @@ export class RestaurantStore {
 
     const taxRatesMap = new Map(this.taxRates.map((t) => [t.id, t]));
     const hasGstin = Boolean(this.settings.profile?.gstin && this.settings.profile.gstin.trim());
-    const gstRate = this.settings.billing?.gstRatePercent ?? 5;
+    const gstRate = this.settings.billing?.gstRatePercent ?? 0;
+    // Per restaurant policy: GST is removed from default bill calculation;
+    // grand total is strictly the final addition of all dishes for that table.
     const defaultTaxRate =
       hasGstin && gstRate > 0
         ? this.taxRates[0]

@@ -14,11 +14,11 @@ describe("Phase 4, 15 & 19: Cash & UPI Ledger Synchronization on Payment", () =>
 
     const party = store.createPartyAtTable(1, 2, "Payment Flow Party");
     store.placeOrder(party.id, [
-      { menuItemId: "menu-chicken-thali", quantity: 2 }, // 500 + 5% GST (25) = 525
+      { menuItemId: "menu-chicken-thali", quantity: 2 }, // 500, no GST = 500
     ]);
 
     const bill = store.generateBillForParty(party.id);
-    expect(bill.grandTotal).toBe(525);
+    expect(bill.grandTotal).toBe(500);
 
     // 1. Pay ₹400 in Cash
     store.payBill(bill.id, "CASH", 400);
@@ -28,21 +28,21 @@ describe("Phase 4, 15 & 19: Cash & UPI Ledger Synchronization on Payment", () =>
     expect(store.cashLedger[0].inflow).toBe(400);
     expect(store.cashLedger[0].balance).toBe(initialCash + 400);
 
-    // 2. Pay remaining ₹125 via UPI
-    store.payBill(bill.id, "UPI", 125, "UPI-TEST-123456");
+    // 2. Pay remaining ₹100 via UPI
+    store.payBill(bill.id, "UPI", 100, "UPI-TEST-123456");
 
     // Verify UPI ledger recorded inflow
     expect(store.upiLedger[0].entryType).toBe("SALE");
-    expect(store.upiLedger[0].inflow).toBe(125);
-    expect(store.upiLedger[0].balance).toBe(initialUpi + 125);
+    expect(store.upiLedger[0].inflow).toBe(100);
+    expect(store.upiLedger[0].balance).toBe(initialUpi + 100);
 
     // 3. Reconcile with Owner Summary
     const summary = store.getOwnerSummary();
-    expect(summary.todaysSales).toBe(525);
+    expect(summary.todaysSales).toBe(500);
     expect(summary.cashSales).toBe(400);
-    expect(summary.upiSales).toBe(125);
+    expect(summary.upiSales).toBe(100);
     expect(summary.cashInDrawer).toBe(initialCash + 400);
-    expect(summary.upiInBank).toBe(initialUpi + 125);
+    expect(summary.upiInBank).toBe(initialUpi + 100);
     expect(summary.chickenThalisSold).toBe(2);
     expect(summary.thalisSold).toBe(2);
   });

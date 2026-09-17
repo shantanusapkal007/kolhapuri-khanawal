@@ -421,8 +421,8 @@ export default function WaiterOrderClient({
       const partyOrders = store.orders.filter((o) => o.partyId === party.id);
       const partyItems = partyOrders.flatMap((o) => o.items);
       const subtotal = partyItems.reduce((s, i) => s + (i.totalPrice || 0), 0);
-      const taxEstimate = Number((subtotal * 0.05).toFixed(2));
-      const grandTotal = Math.round(subtotal + taxEstimate);
+      const taxEstimate = 0;
+      const grandTotal = Math.round(subtotal);
       printTableCheck({
         party,
         items: partyItems,

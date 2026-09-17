@@ -19,7 +19,7 @@ describe("Restaurant Settings & System Configuration Persistence", () => {
     expect(settings.profile.fssai).toBe("11026999000123");
     expect(settings.profile.upiId).toBe("Q338740118@ybl");
 
-    expect(settings.billing.gstRatePercent).toBe(5);
+    expect(settings.billing.gstRatePercent).toBe(0);
     expect(settings.billing.packagingChargePerThali).toBe(20);
     expect(settings.billing.applyRoundOff).toBe(true);
     expect(settings.billing.managerPin).toBe("1234");

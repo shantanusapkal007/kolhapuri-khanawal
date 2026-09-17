@@ -34,28 +34,28 @@ describe("Configurable Tax Engine & Multi-Tender Split Billing", () => {
     expect(taxCalc.effectiveTotal).toBe(50.0);
   });
 
-  it("should support Multi-Tender Split Payments (e.g. ₹400 Cash + ₹125 UPI)", () => {
+  it("should support Multi-Tender Split Payments (e.g. ₹400 Cash + ₹100 UPI)", () => {
     const party = store.createPartyAtTable(1, 2, "Split Payment Party");
     store.placeOrder(party.id, [
-      { menuItemId: "menu-chicken-thali", quantity: 2 }, // 250 * 2 = 500 + 5% tax (25) = 525
+      { menuItemId: "menu-chicken-thali", quantity: 2 }, // 250 * 2 = 500, no GST = 500
     ]);
 
     const bill = store.generateBillForParty(party.id);
-    expect(bill.grandTotal).toBe(525);
-    expect(bill.balanceDue).toBe(525);
+    expect(bill.grandTotal).toBe(500);
+    expect(bill.balanceDue).toBe(500);
 
     // 1. Pay ₹400 Cash
     const tender1 = store.payBill(bill.id, "CASH", 400.0);
     expect(tender1.isFullyPaid).toBe(false);
     expect(tender1.bill.status).toBe("PARTIALLY_PAID");
     expect(tender1.bill.paidAmount).toBe(400.0);
-    expect(tender1.bill.balanceDue).toBe(125.0);
+    expect(tender1.bill.balanceDue).toBe(100.0);
 
-    // 2. Settle remaining ₹125 via UPI
-    const tender2 = store.payBill(bill.id, "UPI", 125.0, "UPI-REF-888999");
+    // 2. Settle remaining ₹100 via UPI
+    const tender2 = store.payBill(bill.id, "UPI", 100.0, "UPI-REF-888999");
     expect(tender2.isFullyPaid).toBe(true);
     expect(tender2.bill.status).toBe("PAID");
-    expect(tender2.bill.paidAmount).toBe(525.0);
+    expect(tender2.bill.paidAmount).toBe(500.0);
     expect(tender2.bill.balanceDue).toBe(0.0);
     expect(tender2.bill.payments.length).toBe(2);
   });

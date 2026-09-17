@@ -871,9 +871,9 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   const taxEstimate =
     typeof params.taxEstimate === "number"
       ? params.taxEstimate
-      : (params.cgstAmount || 0) + (params.sgstAmount || 0) || subtotal * 0.05;
+      : (params.cgstAmount || 0) + (params.sgstAmount || 0) || 0;
   const grandTotal =
-    typeof params.grandTotal === "number" ? params.grandTotal : subtotal + taxEstimate;
+    typeof params.grandTotal === "number" ? params.grandTotal : subtotal;
   const rawItems = params.items || [];
   const paperWidth =
     typeof params.paperWidth === "string"

@@ -9,6 +9,8 @@ describe("Phase 13 & 14: GST Calculation on Discounted Bills (Sec 15(3) CGST Act
   });
 
   it("should calculate GST on the discounted taxable amount, not on full gross subtotal", () => {
+    store.settings.profile.gstin = "27AAAAA0000A1Z5";
+    store.settings.billing.gstRatePercent = 5;
     const party = store.createPartyAtTable(3, 2, "Discount GST Party");
     // Place order: 2 Chicken Thalis (2 x 250 = 500)
     store.placeOrder(party.id, [

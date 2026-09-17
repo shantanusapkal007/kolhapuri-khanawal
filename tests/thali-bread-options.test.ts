@@ -36,17 +36,17 @@ describe("Instant Bread Options for Thali & Main Course Orders", () => {
       expect(BREAD_OPTION_LABELS.BAJRI_BHAKRI.full).toContain("बाजरी भाकरी");
     });
 
-    it("should correctly classify Thalis and Main Courses for bread option requirement", () => {
-      // Thalis
+    it("should correctly classify Thalis for bread option requirement (excluding main courses)", () => {
+      // Thalis should require bread options
       expect(isThaliOrMainCourseItem({ name: "Special Chicken Thali", isThali: true })).toBe(true);
       expect(isThaliOrMainCourseItem({ name: "Kolhapuri Mutton Thali", categoryId: "cat-thalis" })).toBe(true);
       expect(isThaliOrMainCourseItem({ name: "Special Veg Thali", isThali: true })).toBe(true);
 
-      // Main Courses (Handi, Sukka, Masala, Rassa, Curry, Bhaji)
-      expect(isThaliOrMainCourseItem({ name: "Chicken Sukka", categoryId: "cat-chicken-main" })).toBe(true);
-      expect(isThaliOrMainCourseItem({ name: "Mutton Handi", categoryId: "cat-mutton-main" })).toBe(true);
-      expect(isThaliOrMainCourseItem({ name: "Tambada Rassa Fry", categoryId: "cat-rassa" })).toBe(true);
-      expect(isThaliOrMainCourseItem({ name: "Shev Bhaji Kolhapuri", categoryId: "cat-veg-main" })).toBe(true);
+      // Main Courses (Handi, Sukka, Masala, Rassa, Curry, Bhaji) should NOT have bread options
+      expect(isThaliOrMainCourseItem({ name: "Chicken Sukka", categoryId: "cat-chicken-main" })).toBe(false);
+      expect(isThaliOrMainCourseItem({ name: "Mutton Handi", categoryId: "cat-mutton-main" })).toBe(false);
+      expect(isThaliOrMainCourseItem({ name: "Tambada Rassa Fry", categoryId: "cat-rassa" })).toBe(false);
+      expect(isThaliOrMainCourseItem({ name: "Shev Bhaji Kolhapuri", categoryId: "cat-veg-main" })).toBe(false);
 
       // Non-Bread items should return false
       expect(isThaliOrMainCourseItem({ name: "Tomato Soup", categoryId: "cat-soup" })).toBe(false);

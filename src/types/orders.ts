@@ -122,34 +122,23 @@ export const BREAD_OPTION_LABELS: Record<BreadOption, { en: string; mr: string; 
   ROTI: { en: "Roti", mr: "रोटी", full: "रोटी (Roti)" },
 };
 
-export function isThaliOrMainCourseItem(item: { id?: string; categoryId?: string; name: string; isThali?: boolean }): boolean {
+export function isThaliItem(item: { id?: string; categoryId?: string; name: string; isThali?: boolean }): boolean {
   if (item.isThali) return true;
   const catId = (item.categoryId || "").toLowerCase();
-  if (catId.includes("thali") || catId.includes("main")) return true;
-  if (catId === "cat-seafood") return true;
+  if (catId.includes("thali")) return true;
   const name = item.name.toLowerCase();
-  if (
-    name.includes("thali") ||
-    name.includes("handi") ||
-    name.includes("sukka") ||
-    name.includes("masala") ||
-    name.includes("curry") ||
-    name.includes("rassa") ||
-    name.includes("fry") ||
-    name.includes("bhaji")
-  ) {
-    if (
-      catId.includes("soup") ||
-      catId.includes("roti") ||
-      catId.includes("beverage") ||
-      catId.includes("rice") ||
-      catId.includes("chinese")
-    ) {
-      return false;
-    }
-    return true;
-  }
+  if (name.includes("thali")) return true;
   return false;
+}
+
+/**
+ * Checks if an item should prompt for bread options (Jwari Bhakri, Bajri Bhakri, Chapati, Roti).
+ * Per restaurant policy: ONLY Thalis include bread options.
+ * Main course dishes (Handi, Sukka, Rassa, Curry, Masala, etc.) are a la carte,
+ * so breads are ordered as separate items and do NOT prompt for bread options.
+ */
+export function isThaliOrMainCourseItem(item: { id?: string; categoryId?: string; name: string; isThali?: boolean }): boolean {
+  return isThaliItem(item);
 }
 
 export interface OrderItem {

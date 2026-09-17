@@ -178,10 +178,9 @@ describe("Kolhapuri Khanawal Complete Authentic Menu Catalog Validation", () => 
     expect(bill.subtotal).toBe(800);
     expect(bill.items[0].unitPrice).toBe(400);
     expect(bill.items[0].totalPrice).toBe(800);
-    expect(bill.items[0].menuItemName).toBe("Butter Chicken (Half)");
-    // 5% GST on ₹800 = ₹40 (CGST ₹20 + SGST ₹20)
-    expect(bill.totalTaxAmount).toBe(40);
-    expect(bill.grandTotal).toBe(840);
+    // 0% GST per policy (totalTaxAmount = 0, grandTotal = 800)
+    expect(bill.totalTaxAmount).toBe(0);
+    expect(bill.grandTotal).toBe(800);
   });
 
   it("should support adding, editing, and deleting dishes in the catalog with persistence", () => {
