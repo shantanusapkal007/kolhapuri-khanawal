@@ -477,12 +477,20 @@ class PrinterConnectionManager {
     if (device.connectionType === "CLOUD_QUEUE") {
       try {
         const bridgeOnline = await new Promise<boolean>((resolve) => {
-          const unsub = subscribeToBridgeStatus((bridges) => {
-            unsub();
-            resolve(isBridgeOnline(bridges));
+          let settled = false;
+          let unsub: (() => void) | undefined;
+          const finish = (online: boolean) => {
+            if (settled) return;
+            settled = true;
+            unsub?.();
+            resolve(online);
+          };
+          unsub = subscribeToBridgeStatus((bridges) => {
+            // An empty update can be emitted while the mobile client is still
+            // completing Firebase sign-in. Wait for Firestore or the timeout.
+            if (bridges.length > 0) finish(isBridgeOnline(bridges));
           });
-          // Timeout after 3s if Firestore doesn't respond
-          setTimeout(() => resolve(false), 3000);
+          setTimeout(() => finish(false), 8000);
         });
         return {
           online: bridgeOnline,

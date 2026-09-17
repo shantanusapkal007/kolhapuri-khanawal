@@ -24,3 +24,6 @@ PRINTER_BEVERAGE_DESSERT=192.168.0.108:9100
 
 # TCP Socket Timeout (milliseconds)
 BRIDGE_TCP_TIMEOUT_MS=6000
+
+# Local health endpoint for diagnostics on the cashier PC
+BRIDGE_HTTP_PORT=9180

@@ -48,7 +48,7 @@ const BRIDGE_ONLINE_THRESHOLD_MS = 45_000; // Bridge considered offline after 45
 
 let db: Firestore | null = null;
 let auth: Auth | null = null;
-let authInitialized = false;
+let authPromise: Promise<void> | null = null;
 
 function getDb(): Firestore {
   if (!db) {
@@ -63,19 +63,24 @@ function getDb(): Firestore {
  * Silent — no login screen, no user interaction.
  */
 async function ensureAuth(): Promise<void> {
-  if (authInitialized) return;
+  if (auth?.currentUser) return;
+  if (authPromise) return authPromise;
   if (typeof window === "undefined") return; // SSR guard
 
-  try {
+  authPromise = (async () => {
     auth = getAuth(app);
     if (!auth.currentUser) {
       await signInAnonymously(auth);
     }
-    authInitialized = true;
+  })();
+
+  try {
+    await authPromise;
   } catch (err) {
     console.warn("[CloudPrintQueue] Anonymous auth failed:", err);
     // Continue without auth — Firestore rules may still allow if configured
-    authInitialized = true;
+    authPromise = null;
+    throw err;
   }
 }
 
@@ -388,32 +393,38 @@ export function subscribeToBridgeStatus(
   probeLocalBridge();
   const pollTimer = setInterval(probeLocalBridge, 3000);
 
-  // 2. Cloud Firestore Real-time listener
+  // 2. Cloud Firestore real-time listener. Authentication must finish first;
+  // without it, a fresh mobile PWA receives a permission error and shows offline.
   let unsubFirestore: Unsubscribe = () => {};
-  try {
-    const firestore = getDb();
-    const bridgesQuery = query(
-      collection(firestore, BRIDGES_COLLECTION),
-      where("restaurantId", "==", RESTAURANT_ID)
-    );
-    unsubFirestore = onSnapshot(
-      bridgesQuery,
-      (snapshot) => {
-        firestoreBridges = snapshot.docs.map((d) => ({
-          bridgeId: d.id,
-          ...d.data(),
-        })) as PrintBridgeHeartbeat[];
-        emitCombined();
-      },
-      (error) => {
-        // Ignore Firestore permission errors when local bridge is active
-        firestoreBridges = [];
-        emitCombined();
-      }
-    );
-  } catch (err) {
-    // Non-fatal
-  }
+  void ensureAuth()
+    .then(() => {
+      if (!isSubscribed) return;
+      const firestore = getDb();
+      const bridgesQuery = query(
+        collection(firestore, BRIDGES_COLLECTION),
+        where("restaurantId", "==", RESTAURANT_ID)
+      );
+      unsubFirestore = onSnapshot(
+        bridgesQuery,
+        (snapshot) => {
+          firestoreBridges = snapshot.docs.map((d) => ({
+            bridgeId: d.id,
+            ...d.data(),
+          })) as PrintBridgeHeartbeat[];
+          emitCombined();
+        },
+        (error) => {
+          console.error("[CloudPrintQueue] Bridge heartbeat subscription failed:", error);
+          firestoreBridges = [];
+          emitCombined();
+        }
+      );
+    })
+    .catch((error) => {
+      console.error("[CloudPrintQueue] Bridge status setup failed:", error);
+      firestoreBridges = [];
+      emitCombined();
+    });
 
   return () => {
     isSubscribed = false;
