@@ -27,3 +27,6 @@ BRIDGE_TCP_TIMEOUT_MS=6000
 
 # Local health endpoint for diagnostics on the cashier PC
 BRIDGE_HTTP_PORT=9180
+
+# Windows USB Printer (auto-fallback if TCP is unreachable or printer is USB-connected)
+WINDOWS_PRINTER=POS80 Printer

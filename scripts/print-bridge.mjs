@@ -18,6 +18,7 @@ import os from "node:os";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
 
 import { initializeApp, getApps } from "firebase/app";
 import {
@@ -218,15 +219,13 @@ async function sendHeartbeat(status = "ONLINE") {
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  Raw TCP Socket Delivery (ESC/POS to Thermal Printer)
+//  Printer Delivery: Dual Mode (Network TCP & Windows USB Spooler)
 // ══════════════════════════════════════════════════════════════════
 
 /**
  * Sends binary ESC/POS payload over raw TCP socket to printer IP:9100.
- * Distinguishes between connection failure (safe to retry) vs
- * mid-transmission write error (UNCERTAIN status).
  */
-function deliverToPrinter(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_MS) {
+function deliverViaTcp(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_MS) {
   return new Promise((resolve, reject) => {
     const { ip, port } = target;
     const socket = new net.Socket();
@@ -283,6 +282,121 @@ function deliverToPrinter(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_MS) {
       reject(err);
     });
   });
+}
+
+/**
+ * Sends raw ESC/POS binary bytes to Windows local/USB thermal printer via Win32 RAW Spooler API.
+ */
+function deliverViaWindowsSpooler(printerName, payloadBuffer) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== "win32") {
+      return reject(new Error("Windows Spooler is only supported on Windows"));
+    }
+    const tempFile = path.join(os.tmpdir(), `kk-print-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.bin`);
+    fs.writeFileSync(tempFile, payloadBuffer);
+
+    const script = `
+$code = @"
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+public class RawPrinterHelper {
+    [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Ansi)]
+    public class DOCINFOA {
+        [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+        [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+        [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+    }
+    [DllImport("winspool.Drv", EntryPoint="OpenPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);
+    [DllImport("winspool.Drv", EntryPoint="ClosePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool ClosePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", EntryPoint="StartDocPrinterA", SetLastError=true, CharSet=CharSet.Ansi, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool StartDocPrinter(IntPtr hPrinter, Int32 level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+    [DllImport("winspool.Drv", EntryPoint="EndDocPrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool EndDocPrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", EntryPoint="StartPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool StartPagePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", EntryPoint="EndPagePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool EndPagePrinter(IntPtr hPrinter);
+    [DllImport("winspool.Drv", EntryPoint="WritePrinter", SetLastError=true, ExactSpelling=true, CallingConvention=CallingConvention.StdCall)]
+    public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, Int32 dwCount, out Int32 dwWritten);
+
+    public static bool SendBytesToPrinter(string szPrinterName, byte[] bytes) {
+        IntPtr hPrinter = IntPtr.Zero;
+        DOCINFOA di = new DOCINFOA();
+        di.pDocName = "RAW_POS_JOB";
+        di.pDataType = "RAW";
+        if (OpenPrinter(szPrinterName.Normalize(), out hPrinter, IntPtr.Zero)) {
+            if (StartDocPrinter(hPrinter, 1, di)) {
+                if (StartPagePrinter(hPrinter)) {
+                    IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(bytes.Length);
+                    Marshal.Copy(bytes, 0, pUnmanagedBytes, bytes.Length);
+                    int dwWritten = 0;
+                    bool success = WritePrinter(hPrinter, pUnmanagedBytes, bytes.Length, out dwWritten);
+                    Marshal.FreeCoTaskMem(pUnmanagedBytes);
+                    EndPagePrinter(hPrinter);
+                    EndDocPrinter(hPrinter);
+                    ClosePrinter(hPrinter);
+                    return success;
+                }
+                EndDocPrinter(hPrinter);
+            }
+            ClosePrinter(hPrinter);
+        }
+        return false;
+    }
+}
+"@
+if (-not ([System.Management.Automation.PSTypeName]'RawPrinterHelper').Type) {
+    Add-Type -TypeDefinition $code -Language CSharp
+}
+$bytes = [System.IO.File]::ReadAllBytes('${tempFile.replace(/\\/g, "\\\\")}')
+$res = [RawPrinterHelper]::SendBytesToPrinter('${printerName}', $bytes)
+Write-Output "RESULT:$res"
+`;
+
+    execFile("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script], { timeout: 10000 }, (err, stdout) => {
+      try { fs.unlinkSync(tempFile); } catch {}
+      if (err) {
+        return reject(err);
+      }
+      if (stdout && stdout.includes("RESULT:True")) {
+        return resolve({
+          success: true,
+          bytesSent: payloadBuffer.length,
+          totalDuration: 100,
+          printerIp: `windows:${printerName}`,
+        });
+      }
+      reject(new Error(`Windows Spooler write to ${printerName} failed`));
+    });
+  });
+}
+
+/**
+ * Delivers ESC/POS binary bytes to target.
+ * Supports Network TCP (:9100) with automatic fallback to Windows USB printer ("POS80 Printer").
+ */
+async function deliverToPrinter(target, payloadBuffer, timeoutMs = TCP_TIMEOUT_MS) {
+  // First attempt: Network TCP socket (e.g., 192.168.0.108:9100)
+  try {
+    return await deliverViaTcp(target, payloadBuffer, timeoutMs);
+  } catch (tcpErr) {
+    // If TCP connection failed/timed out, try Windows USB printer fallback
+    const winPrinter = process.env.WINDOWS_PRINTER || "POS80 Printer";
+    if (process.platform === "win32" && winPrinter) {
+      log("🔀", `TCP to ${target.ip}:${target.port} failed (${tcpErr.message}). Trying Windows USB printer "${winPrinter}"...`);
+      try {
+        const winResult = await deliverViaWindowsSpooler(winPrinter, payloadBuffer);
+        log("✅", `Delivered via Windows USB printer "${winPrinter}"!`);
+        return winResult;
+      } catch (winErr) {
+        log("⚠️", `Windows USB fallback also failed: ${winErr.message}`);
+      }
+    }
+    throw tcpErr;
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
