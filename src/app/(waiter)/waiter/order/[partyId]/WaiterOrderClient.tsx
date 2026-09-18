@@ -473,13 +473,13 @@ export default function WaiterOrderClient({
   };
 
   return (
-    <div className="space-y-3 pb-32 max-w-5xl mx-auto">
-      {/* 1. Ultra-Clean Header */}
-      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-stone-200 shadow-xs flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <div className="space-y-3.5 pb-36 max-w-5xl mx-auto">
+      {/* 1. Luxury Header */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-3.5 sm:p-4 border border-stone-200/90 shadow-sm flex items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
           <Link
             href={party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter"}
-            className="p-2 sm:p-2.5 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200 active:scale-95 transition-all shrink-0"
+            className="p-2.5 sm:p-3 rounded-2xl bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200/80 active:scale-95 transition-all shrink-0 shadow-2xs cursor-pointer"
             title={party.isTakeaway || party.tableNumber === 0 ? "Back to Parcels" : "Back to Floor"}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -488,19 +488,19 @@ export default function WaiterOrderClient({
           <div className="min-w-0">
             {party.isTakeaway || party.tableNumber === 0 ? (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="bg-amber-600 text-white font-black text-xs px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                  <ShoppingBag className="w-3.5 h-3.5 text-amber-200" />
+                <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-xs border border-amber-300 font-tabular">
+                  <ShoppingBag className="w-3.5 h-3.5 text-stone-950" />
                   <span>{party.partyCode} (पार्सल)</span>
                 </span>
                 {party.customerName && (
-                  <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-[160px]">
+                  <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-xl border border-amber-200 truncate max-w-[160px]">
                     {party.customerName}
                   </span>
                 )}
               </div>
             ) : (
               <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="bg-red-600 text-white font-black text-xs px-2 py-0.5 rounded-md">
+                <span className="bg-stone-900 text-amber-300 font-black text-xs px-3 py-1 rounded-xl shadow-xs border border-stone-800 font-tabular">
                   Table {party.tableNumber}
                 </span>
                 <span className="text-xs font-bold text-stone-600 truncate">
@@ -508,7 +508,7 @@ export default function WaiterOrderClient({
                 </span>
               </div>
             )}
-            <span className="text-[11px] text-stone-400 font-semibold block truncate">
+            <span className="text-[11px] text-stone-400 font-semibold block truncate mt-0.5">
               Waiter: <strong className="text-stone-700">{party.assignedWaiterName.split(" ")[0]}</strong>
             </span>
           </div>
@@ -527,7 +527,7 @@ export default function WaiterOrderClient({
                 alert(err.message);
               }
             }}
-            className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-400/50"
+            className="px-3 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-stone-950 font-black text-xs rounded-2xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-300"
             title="Take a New Parcel Order (Will not occupy physical tables 1–12)"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-stone-950" />
@@ -535,11 +535,11 @@ export default function WaiterOrderClient({
           </button>
 
           {/* Running Bill Amount */}
-          <div className="text-right px-2.5 py-1 bg-stone-50 border border-stone-200 rounded-xl">
+          <div className="text-right px-3 py-1.5 bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl">
             <span className="text-[9px] uppercase font-black tracking-wider text-stone-400 block leading-none">
               Bill Total
             </span>
-            <span className="font-mono font-black text-sm sm:text-base text-stone-900 leading-tight">
+            <span className="font-tabular font-black text-sm sm:text-base text-stone-950 leading-tight">
               ₹{party.runningSubtotal}
             </span>
           </div>
@@ -549,7 +549,7 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowSettleModal(true)}
-              className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer ring-2 ring-emerald-400/20"
+              className="px-3 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-2xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-emerald-500 ring-2 ring-emerald-400/20"
               title={party.isTakeaway || party.tableNumber === 0 ? "Bill is Paid — Complete Parcel" : "Bill is Paid — Close Table"}
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
@@ -568,7 +568,7 @@ export default function WaiterOrderClient({
                   }
                 }
               }}
-              className="px-2 sm:px-2.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl border border-stone-300 active:scale-95 transition-all flex items-center gap-1 shrink-0 touch-manipulation cursor-pointer"
+              className="px-2.5 sm:px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-2xl border border-stone-300 active:scale-95 transition-all flex items-center gap-1 shrink-0 touch-manipulation cursor-pointer"
               title="Cancel & Free Table"
             >
               <X className="w-3.5 h-3.5 text-stone-500" />
@@ -580,7 +580,7 @@ export default function WaiterOrderClient({
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer"
+            className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs"
             title="प्रिंटर सेटिंग्ज (Printer Settings)"
           >
             <Printer className="w-4 h-4 text-amber-600" />
@@ -591,13 +591,13 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowMoreActions(!showMoreActions)}
-              className="p-2 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer"
+              className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
 
             {showMoreActions && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200 rounded-2xl shadow-xl p-1.5 z-30 text-xs space-y-1 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200/90 rounded-3xl shadow-xl p-2 z-30 text-xs space-y-1 animate-in fade-in zoom-in-95">
                 {party.runningSubtotal > 0 && (
                   <button
                     type="button"
@@ -605,7 +605,7 @@ export default function WaiterOrderClient({
                       setShowMoreActions(false);
                       setShowSettleModal(true);
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 font-black text-emerald-800 flex items-center gap-2 border border-emerald-200"
+                    className="w-full text-left px-3 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 font-black text-emerald-800 flex items-center gap-2 border border-emerald-200 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>{party.isTakeaway || party.tableNumber === 0 ? "Bill Paid — Complete Parcel" : "Bill Paid — Close Table"}</span>
@@ -626,7 +626,7 @@ export default function WaiterOrderClient({
                         alert(e.message);
                       }
                     }}
-                    className="w-full text-left px-3 py-2 rounded-xl hover:bg-amber-50 font-bold text-amber-900 flex items-center gap-2 border border-amber-200 bg-amber-50/60"
+                    className="w-full text-left px-3 py-2 rounded-2xl hover:bg-amber-50 font-bold text-amber-900 flex items-center gap-2 border border-amber-200 bg-amber-50/60 cursor-pointer"
                   >
                     <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
                     <span>Make Parcel (पार्सल करा)</span>
@@ -635,7 +635,7 @@ export default function WaiterOrderClient({
                 <button
                   type="button"
                   onClick={handlePrintLatestKot}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-stone-800 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-800 flex items-center gap-2 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5 text-amber-600" />
                   <span>Reprint KOT</span>
@@ -643,7 +643,7 @@ export default function WaiterOrderClient({
                 <button
                   type="button"
                   onClick={handleRequestBill}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-stone-800 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-800 flex items-center gap-2 cursor-pointer"
                 >
                   <Bell className="w-3.5 h-3.5 text-blue-600" />
                   <span>Request Bill</span>
@@ -651,7 +651,7 @@ export default function WaiterOrderClient({
                 <button
                   type="button"
                   onClick={handlePrintFinalBill}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-emerald-700 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-emerald-700 flex items-center gap-2 cursor-pointer"
                 >
                   <Receipt className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Print Final Bill</span>
@@ -662,7 +662,7 @@ export default function WaiterOrderClient({
                     setShowMoreActions(false);
                     setShowPrinterModal(true);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2 cursor-pointer"
                 >
                   <Sliders className="w-3.5 h-3.5 text-stone-500" />
                   <span>Printer Settings</span>
@@ -675,7 +675,7 @@ export default function WaiterOrderClient({
                     setTargetTableNumber(party.tableNumber === 12 ? 1 : party.tableNumber + 1);
                     setShowTransferModal(true);
                   }}
-                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2 cursor-pointer"
                 >
                   <ArrowRightLeft className="w-3.5 h-3.5 text-stone-500" />
                   <span>Move Table</span>
@@ -687,9 +687,9 @@ export default function WaiterOrderClient({
       </div>
 
       {/* Fast Table Settle Action Strip - Always unmissable when table is open */}
-      <div className="bg-gradient-to-r from-emerald-500/15 via-white to-emerald-500/10 border-2 border-emerald-400/80 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 shadow-xs">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
+      <div className="bg-gradient-to-r from-emerald-50/90 via-white to-emerald-50/70 border border-emerald-400/80 rounded-3xl p-3 sm:p-4 flex items-center justify-between gap-2.5 shadow-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-xs">
             <CheckCircle2 className="w-4 h-4 text-emerald-100" />
           </div>
           <div className="min-w-0">
@@ -697,21 +697,21 @@ export default function WaiterOrderClient({
               <span className="font-black text-xs sm:text-sm text-stone-900 truncate">
                 {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${party.tableNumber}`}
               </span>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200">
+              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                 ACTIVE
               </span>
             </div>
-            <span className="text-[11px] text-stone-500 font-bold block truncate">
-              Total: <strong className="text-emerald-700 font-mono font-black text-xs sm:text-sm">₹{party.runningSubtotal}</strong> • {party.guestCount} Guests
+            <span className="text-[11px] text-stone-500 font-bold block truncate mt-0.5">
+              Total: <strong className="text-emerald-700 font-tabular font-black text-xs sm:text-sm">₹{party.runningSubtotal}</strong> • {party.guestCount} Guests
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleRequestBill}
-            className="hidden xs:flex px-2.5 sm:px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl items-center gap-1 border border-stone-300 active:scale-95 transition-all cursor-pointer"
+            className="hidden xs:flex px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-2xl items-center gap-1.5 border border-stone-300/80 active:scale-95 transition-all cursor-pointer"
             title="Request / Print Pre-Bill Check"
           >
             <Receipt className="w-3.5 h-3.5 text-stone-600" />
@@ -720,7 +720,7 @@ export default function WaiterOrderClient({
           <button
             type="button"
             onClick={() => setShowSettleModal(true)}
-            className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs sm:text-sm rounded-xl flex items-center gap-1.5 shadow-md shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer border border-emerald-500"
+            className="px-3.5 sm:px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center gap-1.5 shadow-md shadow-emerald-700/25 active:scale-95 transition-all cursor-pointer border border-emerald-500"
             title="Bill is Paid — Settle & Close Table"
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
@@ -739,10 +739,10 @@ export default function WaiterOrderClient({
 
       {/* 2. Active Kitchen Items Pill (Collapsible) */}
       {previouslyOrderedItems.length > 0 && (
-        <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-2.5 sm:p-3 space-y-2">
+        <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-3xl p-3 sm:p-3.5 space-y-2.5 shadow-2xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-black text-emerald-950">
                 In Kitchen ({previouslyOrderedItems.length} items ordered)
               </span>
@@ -750,7 +750,7 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowActiveOrders(!showActiveOrders)}
-              className="text-[11px] font-black text-emerald-800 hover:text-emerald-950 flex items-center gap-1 bg-white border border-emerald-200 px-2 py-0.5 rounded-lg shadow-2xs"
+              className="text-[11px] font-black text-emerald-800 hover:text-emerald-950 flex items-center gap-1 bg-white border border-emerald-200 px-2.5 py-1 rounded-xl shadow-2xs cursor-pointer"
             >
               <span>{showActiveOrders ? "Hide" : "Show"}</span>
               {showActiveOrders ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -758,19 +758,19 @@ export default function WaiterOrderClient({
           </div>
 
           {showActiveOrders && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 border-t border-emerald-200/60 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200/60 text-xs">
               {previouslyOrderedItems.map((item, idx) => {
                 const menuItem = store.menuItems.find((m) => m.id === item.menuItemId);
                 return (
                   <div
                     key={idx}
-                    className="p-2 rounded-xl bg-white border border-emerald-200 flex items-center justify-between gap-1.5"
+                    className="p-2.5 rounded-2xl bg-white border border-emerald-200/90 flex items-center justify-between gap-2 shadow-2xs"
                   >
                     <div className="min-w-0 flex-1">
                       <span className="font-bold text-stone-900 truncate block">
                         {item.quantity}× {item.menuItemName}
                       </span>
-                      <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded">
+                      <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
                         {item.kotStatus}
                       </span>
                     </div>
@@ -778,7 +778,7 @@ export default function WaiterOrderClient({
                       <button
                         type="button"
                         onClick={() => handleAddToCart(menuItem, item.breadOption, item.variantName ? { name: item.variantName, price: item.unitPrice } : undefined)}
-                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-lg flex items-center gap-0.5 shadow-2xs active:scale-95 transition-all shrink-0"
+                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-xl flex items-center gap-1 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
                         title="Add this item again to current order"
                       >
                         <Plus className="w-3 h-3" />
@@ -794,21 +794,21 @@ export default function WaiterOrderClient({
       )}
 
       {/* 3. Search Bar & Horizontal Category Pills */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-stone-400" />
+          <Search className="w-4 h-4 absolute left-4 top-3.5 text-stone-400" />
           <input
             type="text"
             placeholder="Search dishes (उदा. चिकन थाळी, मटण, भाकरी, तांबडा रस्सा)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-stone-200 rounded-2xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-stone-900 font-bold focus:outline-none focus:ring-2 focus:ring-red-500 shadow-2xs"
+            className="w-full bg-white border border-stone-200/90 rounded-2xl pl-11 pr-10 py-3 text-xs sm:text-sm text-stone-900 font-bold focus:outline-none focus:ring-2 focus:ring-red-500 shadow-2xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 p-1"
+              className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -820,10 +820,10 @@ export default function WaiterOrderClient({
           <button
             type="button"
             onClick={() => setSelectedCategory("ALL")}
-            className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-all touch-manipulation active:scale-95 ${
+            className={`px-4 py-2.5 rounded-2xl font-black whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
               selectedCategory === "ALL"
-                ? "bg-red-600 text-white shadow-2xs font-black"
-                : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm border border-red-500/40"
+                : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
             }`}
           >
             All Dishes (सर्व)
@@ -833,10 +833,10 @@ export default function WaiterOrderClient({
               key={cat.id}
               type="button"
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3.5 py-2 rounded-xl font-bold whitespace-nowrap transition-all touch-manipulation active:scale-95 ${
+              className={`px-4 py-2.5 rounded-2xl font-bold whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
                 selectedCategory === cat.id
-                  ? "bg-red-600 text-white shadow-2xs font-black"
-                  : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                  ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm font-black border border-red-500/40"
+                  : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
               }`}
             >
               {cat.localName || cat.name}
@@ -846,7 +846,7 @@ export default function WaiterOrderClient({
       </div>
 
       {/* 4. Streamlined Menu Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {filteredItems.map((item) => {
           const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
           const isLow = item.stockStatus === "LOW_STOCK" || item.portionAvailability <= 5;
@@ -856,20 +856,20 @@ export default function WaiterOrderClient({
           return (
             <div
               key={item.id}
-              className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex flex-col justify-between ${
+              className={`p-3.5 sm:p-4 rounded-3xl border transition-all flex flex-col justify-between ${
                 inCartTotal > 0
-                  ? "bg-red-50/30 border-red-300 ring-2 ring-red-200/50"
+                  ? "bg-red-50/20 border-red-300 ring-2 ring-red-200/50 shadow-xs"
                   : isOut
                   ? "bg-stone-50/70 border-stone-200 opacity-60"
-                  : "bg-white border-stone-200 hover:border-stone-300 shadow-2xs"
+                  : "bg-white border-stone-200/90 hover:border-stone-300 shadow-2xs"
               }`}
             >
               <div>
                 {/* Title & Price Row */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0">
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5 min-w-0">
                     <span
-                      className={`w-3.5 h-3.5 border-2 rounded-xs flex items-center justify-center shrink-0 mt-0.5 ${
+                      className={`w-4 h-4 border-2 rounded-xs flex items-center justify-center shrink-0 mt-0.5 ${
                         item.isVeg ? "border-emerald-600" : "border-red-700"
                       }`}
                     >
@@ -880,14 +880,14 @@ export default function WaiterOrderClient({
                         {item.name}
                       </h3>
                       {item.localName && (
-                        <span className="text-xs font-bold text-amber-800 block truncate">
+                        <span className="text-xs font-bold text-amber-850 block truncate mt-0.5">
                           {item.localName}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <span className="font-mono font-black text-sm sm:text-base text-stone-900 shrink-0">
+                  <span className="font-tabular font-black text-base sm:text-lg text-stone-950 shrink-0">
                     ₹{item.sellingPrice}
                   </span>
                 </div>
@@ -896,7 +896,7 @@ export default function WaiterOrderClient({
                 {(isOut || isLow) && (
                   <div className="mt-1.5">
                     <span
-                      className={`text-[9px] font-black px-1.5 py-0.2 rounded-md ${
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
                         isOut ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-900"
                       }`}
                     >
@@ -907,34 +907,34 @@ export default function WaiterOrderClient({
 
                 {/* Instant 1-Tap Bread Selector with +/- Stepper for Thalis */}
                 {isThaliOrMain && (
-                  <div className="mt-2.5 pt-2 border-t border-stone-100">
-                    <span className="text-[10px] font-black uppercase text-amber-900 block mb-1.5">
+                  <div className="mt-3 pt-2.5 border-t border-stone-100">
+                    <span className="text-[10px] font-black uppercase text-amber-900 block mb-2 tracking-wider">
                       Choose Bread (भाकरी / चपाती पर्याय):
                     </span>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2">
                       {BREAD_OPTIONS.map((bread) => {
                         const count = getCartQuantityForItem(item.id, bread.id);
                         return (
                           <div
                             key={bread.id}
-                            className={`min-h-[44px] rounded-xl border transition-all ${
+                            className={`min-h-[44px] rounded-2xl border transition-all ${
                               count > 0
-                                ? "bg-amber-50 border-amber-400 ring-1 ring-amber-300/50"
-                                : "bg-stone-50 border-stone-200"
+                                ? "bg-amber-50/90 border-amber-400 ring-1 ring-amber-300/50"
+                                : "bg-stone-50/80 border-stone-200"
                             }`}
                           >
                             {count > 0 ? (
                               /* Stepper mode: - count + */
-                              <div className="flex items-center justify-between px-1.5 py-1 gap-1">
+                              <div className="flex items-center justify-between px-2 py-1 gap-1">
                                 <button
                                   type="button"
                                   onClick={() => handleCardDecrement(item, bread.id)}
-                                  className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs"
+                                  className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                                 >
                                   <Minus className="w-3.5 h-3.5" />
                                 </button>
                                 <div className="flex flex-col items-center min-w-0 flex-1">
-                                  <span className="font-mono font-black text-sm text-amber-800 leading-none">
+                                  <span className="font-tabular font-black text-sm text-amber-900 leading-none">
                                     {count}
                                   </span>
                                   <span className="text-[9px] font-bold text-amber-700 truncate leading-tight">
@@ -945,7 +945,7 @@ export default function WaiterOrderClient({
                                   type="button"
                                   disabled={isOut}
                                   onClick={() => handleAddToCart(item, bread.id)}
-                                  className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs"
+                                  className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                                 >
                                   <Plus className="w-3.5 h-3.5" />
                                 </button>
@@ -956,9 +956,9 @@ export default function WaiterOrderClient({
                                 type="button"
                                 disabled={isOut}
                                 onClick={() => handleAddToCart(item, bread.id)}
-                                className="w-full h-full min-h-[44px] px-2.5 py-2 rounded-xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/60 active:scale-95 touch-manipulation"
+                                className="w-full h-full min-h-[44px] px-3 py-2 rounded-2xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/70 active:scale-95 touch-manipulation cursor-pointer"
                               >
-                                <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs">
+                                <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs text-stone-800">
                                   <span className="text-sm">{bread.emoji}</span>
                                   <span className="truncate">{bread.localName}</span>
                                 </span>
@@ -975,28 +975,28 @@ export default function WaiterOrderClient({
 
               {/* Card Stepper for Non-Thalis / Standard Items */}
               {!isThaliOrMain && (
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-stone-100">
+                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
                   <span className="text-[11px] font-bold text-stone-400">
                     {inCartTotal > 0 ? `${inCartTotal} in draft` : "Tap to add"}
                   </span>
 
                   {inCartTotal > 0 ? (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-xl">
+                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-2xl">
                       <button
                         type="button"
                         onClick={() => handleCardDecrement(item)}
-                        className="w-8 h-8 rounded-lg bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs"
+                        className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="font-mono font-black text-sm text-red-700 px-1 min-w-5 text-center">
+                      <span className="font-tabular font-black text-sm text-red-700 px-1 min-w-5 text-center">
                         {inCartTotal}
                       </span>
                       <button
                         type="button"
                         disabled={isOut}
                         onClick={() => handleAddToCart(item)}
-                        className="w-8 h-8 rounded-lg bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs"
+                        className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -1006,10 +1006,10 @@ export default function WaiterOrderClient({
                       type="button"
                       disabled={isOut}
                       onClick={() => handleAddToCart(item)}
-                      className={`min-h-[38px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation ${
+                      className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation cursor-pointer ${
                         isOut
                           ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-                          : "bg-red-600 hover:bg-red-700 text-white"
+                          : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white"
                       }`}
                     >
                       <Plus className="w-3.5 h-3.5 text-amber-200" />
@@ -1025,22 +1025,22 @@ export default function WaiterOrderClient({
 
       {/* 5. Floating Bottom Bar (Clear, Prominent, Lightning-Fast KOT) */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 shadow-2xl p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
             {/* Cart Preview Button */}
             <button
               type="button"
               onClick={() => setIsCartSheetOpen(true)}
-              className="flex items-center gap-2.5 text-left p-1 rounded-xl active:scale-95 transition-all min-w-0 touch-manipulation"
+              className="flex items-center gap-3 text-left p-1 rounded-2xl active:scale-95 transition-all min-w-0 touch-manipulation cursor-pointer"
             >
-              <div className="w-11 h-11 rounded-xl bg-red-600 text-white flex items-center justify-center font-mono font-black text-sm shrink-0 shadow-md">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 text-white flex items-center justify-center font-tabular font-black text-sm shrink-0 shadow-lg border border-red-500/30">
                 {totalCartCount}
               </div>
               <div className="min-w-0">
-                <span className="text-xs sm:text-sm font-black text-stone-900 block leading-tight">
+                <span className="text-xs sm:text-sm font-black text-white font-tabular block leading-tight">
                   ₹{cartSubtotal}
                 </span>
-                <span className="text-[10px] text-stone-500 font-bold flex items-center gap-0.5">
+                <span className="text-[10px] text-amber-300 font-bold flex items-center gap-0.5">
                   <span>View Items</span>
                   <ChevronUp className="w-3 h-3" />
                 </span>
@@ -1051,7 +1051,7 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => { if (confirm("Clear all items from cart?")) setCart([]); }}
-              className="text-[11px] font-bold text-stone-400 hover:text-red-500 transition-colors px-2 py-1.5 shrink-0 touch-manipulation"
+              className="text-[11px] font-bold text-stone-400 hover:text-rose-400 transition-colors px-2 py-1.5 shrink-0 touch-manipulation cursor-pointer"
             >
               Clear All
             </button>
@@ -1061,7 +1061,7 @@ export default function WaiterOrderClient({
               type="button"
               disabled={isSending}
               onClick={handleSendKot}
-              className="flex-1 max-w-sm py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 active:scale-95 transition-all touch-manipulation"
+              className="flex-1 max-w-sm py-3.5 sm:py-4 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/30 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
             >
               <Send className="w-4 h-4 text-emerald-200" />
               <span>{isSending ? "Sending..." : `KOT पाठवा (${totalCartCount}) →`}</span>
@@ -1072,26 +1072,26 @@ export default function WaiterOrderClient({
 
       {/* 5b. Floating Bottom Bar when Cart is Empty & Party Has Running Total */}
       {totalCartCount === 0 && party.runningSubtotal > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200 shadow-2xl p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-stone-500">Bill Total:</span>
-              <span className="font-mono font-black text-base sm:text-lg text-emerald-700">₹{party.runningSubtotal}</span>
+              <span className="text-xs font-bold text-stone-400">Bill Total:</span>
+              <span className="font-tabular font-black text-base sm:text-lg text-emerald-400">₹{party.runningSubtotal}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleRequestBill}
-                className="px-3 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl flex items-center gap-1.5 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                className="px-3 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold text-xs rounded-2xl flex items-center gap-1.5 active:scale-95 transition-all touch-manipulation cursor-pointer border border-stone-700"
                 title="Print Pre-Bill / Table Check"
               >
-                <Receipt className="w-3.5 h-3.5 text-stone-500" />
+                <Receipt className="w-3.5 h-3.5 text-stone-400" />
                 <span className="hidden xs:inline">Check</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowSettleModal(true)}
-                className="py-3 px-4 sm:px-5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                className="py-3 px-4 sm:px-5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                 <span>
@@ -1107,15 +1107,15 @@ export default function WaiterOrderClient({
 
       {/* 6. Expandable Cart Sheet Modal */}
       {isCartSheetOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
-          <div className="bg-white text-stone-900 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl border border-stone-200 space-y-3.5 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-200">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white text-stone-900 rounded-t-3xl sm:rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-200">
             {/* Sheet Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
                 <h3 className="font-black text-sm sm:text-base text-stone-900">
                   Order Summary ({totalCartCount} Items)
                 </h3>
-                <span className="text-xs font-mono font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
+                <span className="text-xs font-tabular font-black text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
                   ₹{cartSubtotal}
                 </span>
               </div>
@@ -1123,14 +1123,14 @@ export default function WaiterOrderClient({
                 <button
                   type="button"
                   onClick={() => setCart([])}
-                  className="text-stone-400 hover:text-red-600 text-[11px] font-bold"
+                  className="text-stone-400 hover:text-rose-600 text-xs font-bold cursor-pointer"
                 >
-                  Clear
+                  Clear All
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsCartSheetOpen(false)}
-                  className="text-stone-400 hover:text-stone-700 p-1"
+                  className="text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1138,29 +1138,29 @@ export default function WaiterOrderClient({
             </div>
 
             {/* Items List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
+            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 no-scrollbar text-xs">
               {cart.map((c, idx) => (
                 <div
                   key={idx}
-                  className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/80 flex items-center justify-between gap-2"
+                  className="p-3 rounded-2xl bg-stone-50/90 border border-stone-200/90 flex items-center justify-between gap-2.5 shadow-2xs"
                 >
                   <div className="min-w-0 flex-1">
-                    <span className="font-black text-stone-900 block truncate text-xs">
+                    <span className="font-black text-stone-900 block truncate text-xs sm:text-sm">
                       {c.menuItem.name} {c.variantName ? `(${c.variantName})` : ""}
                     </span>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] text-stone-500 font-mono">
+                      <span className="text-[11px] text-stone-500 font-tabular">
                         ₹{c.unitPrice} × {c.quantity}
                       </span>
-                      <span className="text-[11px] font-mono font-black text-stone-800">
+                      <span className="text-[11px] font-tabular font-black text-stone-900">
                         = ₹{c.unitPrice * c.quantity}
                       </span>
                     </div>
 
                     {/* Bread Option Switcher in Cart */}
                     {c.breadOption && (
-                      <div className="flex items-center gap-1 mt-1 flex-wrap">
-                        <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-1.5 py-0.2 rounded">
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-2 py-0.5 rounded-md shadow-2xs">
                           {BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption}
                         </span>
                         {BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
@@ -1168,7 +1168,7 @@ export default function WaiterOrderClient({
                             key={b.id}
                             type="button"
                             onClick={() => handleChangeCartItemBread(idx, b.id)}
-                            className="text-[9px] font-bold text-stone-600 bg-white border border-stone-200 px-1 py-0.2 rounded"
+                            className="text-[9px] font-bold text-stone-600 bg-white border border-stone-200 px-1.5 py-0.5 rounded-md hover:bg-stone-50 cursor-pointer"
                           >
                             {b.shortCode}
                           </button>
@@ -1178,22 +1178,22 @@ export default function WaiterOrderClient({
                   </div>
 
                   {/* Quantity Stepper + Trash */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-xl">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-xl shadow-2xs">
                       <button
                         type="button"
                         onClick={() => handleUpdateCartQuantity(idx, -1)}
-                        className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 font-bold active:scale-90 cursor-pointer"
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="font-mono font-black text-xs px-1 min-w-4 text-center">
+                      <span className="font-tabular font-black text-xs px-1 min-w-4 text-center">
                         {c.quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleUpdateCartQuantity(idx, 1)}
-                        className="w-6 h-6 flex items-center justify-center rounded text-stone-600 font-bold active:scale-90"
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 font-bold active:scale-90 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" />
                       </button>
@@ -1205,7 +1205,7 @@ export default function WaiterOrderClient({
                         updated.splice(idx, 1);
                         setCart(updated);
                       }}
-                      className="w-6 h-6 flex items-center justify-center rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 active:scale-90 transition-all"
+                      className="w-7 h-7 flex items-center justify-center rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
                       title="Remove item"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1221,7 +1221,7 @@ export default function WaiterOrderClient({
                 type="button"
                 disabled={isSending}
                 onClick={handleSendKot}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation"
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
               >
                 <Send className="w-4 h-4 text-emerald-200" />
                 <span>{isSending ? "Sending..." : `Send KOT to Kitchen (₹${cartSubtotal})`}</span>
@@ -1239,17 +1239,17 @@ export default function WaiterOrderClient({
 
       {/* 8. Manager Stock Override Modal */}
       {showOverrideModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
             <div className="flex items-center gap-2 text-amber-600">
               <AlertTriangle className="w-5 h-5" />
               <h3 className="font-black text-sm">Manager Stock Override Required</h3>
             </div>
-            <p className="text-xs text-stone-600">
+            <p className="text-xs text-stone-600 leading-relaxed">
               Selected portions exceed live recorded inventory. Enter Manager PIN (1234) to authorize sending KOT.
             </p>
             {overrideError && (
-              <div className="p-2.5 bg-red-50 text-red-700 rounded-xl text-xs font-bold">
+              <div className="p-2.5 bg-rose-50 text-rose-700 rounded-xl text-xs font-bold border border-rose-200">
                 {overrideError}
               </div>
             )}
@@ -1260,19 +1260,19 @@ export default function WaiterOrderClient({
                 placeholder="Enter Manager PIN (1234)"
                 value={overridePin}
                 onChange={(e) => setOverridePin(e.target.value)}
-                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-mono font-bold"
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold focus:outline-none focus:ring-2 focus:ring-red-500"
               />
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowOverrideModal(false)}
-                  className="px-3 py-2 text-xs font-bold text-stone-500"
+                  className="px-3.5 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black"
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
                 >
                   Authorize & Send
                 </button>
@@ -1284,17 +1284,17 @@ export default function WaiterOrderClient({
 
       {/* 9. Move Table Modal */}
       {showTransferModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
             <h3 className="font-black text-sm text-stone-900">
               Move Party to Another Table
             </h3>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-stone-500">Target Table</label>
               <select
                 value={targetTableNumber}
                 onChange={(e) => setTargetTableNumber(Number(e.target.value))}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-2.5 text-xs font-bold"
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs font-bold"
               >
                 {store.tables
                   .filter((t) => t.tableNumber !== party.tableNumber)
@@ -1305,11 +1305,11 @@ export default function WaiterOrderClient({
                   ))}
               </select>
             </div>
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setShowTransferModal(false)}
-                className="px-3 py-2 text-xs font-bold text-stone-500"
+                className="px-3.5 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 cursor-pointer"
               >
                 Cancel
               </button>
@@ -1325,7 +1325,7 @@ export default function WaiterOrderClient({
                     alert(e.message);
                   }
                 }}
-                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-black"
+                className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
               >
                 Confirm Move
               </button>
@@ -1336,12 +1336,12 @@ export default function WaiterOrderClient({
 
       {/* 10. Quick Settle & Close Table Modal (बिल भरले — टेबल बंद करा) */}
       {showSettleModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <div className="flex items-center gap-2">
-                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-lg ${
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-xs ${
                   party.isTakeaway || party.tableNumber === 0 ? "bg-amber-600" : "bg-red-600"
                 }`}>
                   {party.isTakeaway || party.tableNumber === 0 ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}
@@ -1360,15 +1360,15 @@ export default function WaiterOrderClient({
             </div>
 
             {/* Bill Summary */}
-            <div className="bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl p-3.5 text-center space-y-1">
-              <div className="text-xs text-stone-500 font-semibold">
+            <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFE6] border border-[#E7E2DA] rounded-2xl p-4 text-center space-y-1 shadow-2xs">
+              <div className="text-xs text-stone-600 font-semibold">
                 Party {party.partyCode}
                 {party.customerName ? ` • ${party.customerName}` : ""}
               </div>
-              <div className="text-3xl font-mono font-black text-emerald-700">
+              <div className="text-3xl sm:text-4xl font-tabular font-black text-emerald-700 tracking-tight">
                 ₹{party.runningSubtotal}
               </div>
-              <div className="text-[11px] text-stone-400 font-medium">
+              <div className="text-[11px] text-stone-500 font-medium">
                 {party.isTakeaway || party.tableNumber === 0
                   ? "Mark parcel as paid and ready for takeaway"
                   : `Mark settled and close Table ${party.tableNumber}`}
@@ -1380,11 +1380,11 @@ export default function WaiterOrderClient({
               <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
                 Payment Mode (पैसे कसे मिळाले?):
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSettleMethod("CASH")}
-                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
                     settleMethod === "CASH"
                       ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
                       : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
@@ -1396,7 +1396,7 @@ export default function WaiterOrderClient({
                 <button
                   type="button"
                   onClick={() => setSettleMethod("UPI")}
-                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
                     settleMethod === "UPI"
                       ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
                       : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
@@ -1409,14 +1409,14 @@ export default function WaiterOrderClient({
             </div>
 
             {/* Print Receipt Toggle */}
-            <label className="flex items-center gap-2 text-xs font-bold text-stone-600 cursor-pointer select-none bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+            <label className="flex items-center gap-2.5 text-xs font-bold text-stone-700 cursor-pointer select-none bg-stone-50 p-3 rounded-2xl border border-stone-200">
               <input
                 type="checkbox"
                 checked={autoPrintOnSettle}
                 onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
               />
-              <Printer className="w-4 h-4 text-stone-500" />
+              <Printer className="w-4 h-4 text-stone-600" />
               <span>Print Customer Bill Receipt (पावती छापा)</span>
             </label>
 
@@ -1426,7 +1426,7 @@ export default function WaiterOrderClient({
                 type="button"
                 disabled={isSettling}
                 onClick={() => handleQuickSettle(settleMethod)}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                 <span>

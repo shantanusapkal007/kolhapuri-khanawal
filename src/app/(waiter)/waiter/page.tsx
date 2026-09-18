@@ -332,53 +332,57 @@ export default function WaiterFloorPage() {
   });
 
   return (
-    <div className="space-y-2.5 sm:space-y-4 pb-6">
+    <div className="space-y-3 sm:space-y-4 pb-8">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 z-50 bg-stone-900 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-sm font-semibold animate-bounce backdrop-blur-md">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          {toastMessage}
+        <div className="fixed bottom-5 right-5 z-50 bg-stone-950/95 text-amber-300 border border-amber-400/50 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs sm:text-sm font-bold animate-in fade-in slide-in-from-bottom-3 duration-200 backdrop-blur-xl ring-1 ring-black/20">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Luxury Hero Header - Shown on tablet/desktop */}
-      <div className="hidden sm:flex luxury-card rounded-2xl p-4 border border-[#E7E2DA] items-center justify-between gap-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-800 text-white flex items-center justify-center shadow-md shadow-red-600/20 border border-red-500/30 shrink-0">
-            <Utensils className="w-6 h-6 text-amber-100" />
+      {/* Luxury Floor Command Center — Tablet & Desktop */}
+      <div className="hidden sm:flex luxury-card rounded-3xl p-4 sm:p-5 border border-stone-200/90 items-center justify-between gap-4 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white shadow-xl relative overflow-hidden">
+        {/* Subtle decorative gold sheen */}
+        <div className="absolute top-0 right-0 w-80 h-full bg-radial from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+
+        <div className="flex items-center gap-4 relative z-10">
+          <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 text-white flex items-center justify-center shadow-lg shadow-red-900/40 border border-red-400/30 shrink-0 ring-2 ring-amber-500/30">
+            <Utensils className="w-6 h-6 text-amber-200" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-black text-stone-900 tracking-tight">
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-black tracking-tight text-white font-sans">
                 Dining Floor & 12 Tables
               </h1>
-              <span className="bg-stone-900 text-amber-300 text-xs font-black px-2.5 py-0.5 rounded-full border border-stone-700">
-                12 Tables
+              <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs border border-amber-300">
+                १२ टेबल मजला
               </span>
             </div>
-            <div className="flex items-center gap-2.5 text-xs text-stone-500 font-medium mt-1 flex-wrap">
-              <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {availableCount} Available
+            <div className="flex items-center gap-2 text-xs font-semibold mt-1.5 flex-wrap">
+              <span className="flex items-center gap-1.5 text-emerald-300 font-bold bg-emerald-950/80 px-2.5 py-1 rounded-xl border border-emerald-500/30 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                {availableCount} Free
               </span>
-              <span className="flex items-center gap-1 text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+              <span className="flex items-center gap-1.5 text-rose-300 font-bold bg-rose-950/80 px-2.5 py-1 rounded-xl border border-rose-500/30 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
                 {occupiedCount + sharedCount} Occupied
               </span>
-              <span className="flex items-center gap-1 text-stone-700 font-bold bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+              <span className="flex items-center gap-1.5 text-stone-300 font-bold bg-stone-800/90 px-2.5 py-1 rounded-xl border border-stone-700 shadow-2xs">
                 👥 {totalActiveGuests} Diners
               </span>
-              <span className="flex items-center gap-1 text-amber-900 font-black bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-300 font-mono">
+              <span className="flex items-center gap-1.5 text-amber-200 font-black bg-amber-950/80 px-3 py-1 rounded-xl border border-amber-500/40 shadow-2xs font-tabular tracking-wide">
                 💰 Floor: ₹{totalFloorSales}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 relative z-10">
           <button
             type="button"
             onClick={() => handleTakeParcel()}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-800 text-stone-950 text-xs font-black px-4 py-2.5 rounded-xl shadow-md shadow-amber-600/25 active:scale-95 transition-all shrink-0 cursor-pointer border border-amber-400/50"
+            className="flex items-center gap-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-stone-950 text-xs font-black px-4 py-2.5 rounded-2xl shadow-lg shadow-amber-500/25 active:scale-95 transition-all shrink-0 cursor-pointer border border-amber-300"
             title="1-Tap New Parcel Order (Will not occupy physical tables 1–12)"
           >
             <ShoppingBag className="w-4 h-4 text-stone-950" />
@@ -387,15 +391,15 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-800 text-xs font-bold px-3.5 py-2.5 rounded-xl border border-stone-300 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-2 bg-stone-800/90 hover:bg-stone-750 text-stone-200 text-xs font-bold px-3.5 py-2.5 rounded-2xl border border-stone-700 shadow-sm active:scale-95 transition-all shrink-0 cursor-pointer"
             title="Configure waiter thermal printer"
           >
-            <Printer className="w-4 h-4 text-amber-600" />
+            <Printer className="w-4 h-4 text-amber-400" />
             <span>प्रिंटर सेटिंग्ज</span>
           </button>
           <button
             onClick={() => handleOpenAddParty(1)}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white text-xs font-black px-4 py-2.5 rounded-xl shadow-md shadow-red-700/20 active:scale-95 transition-all shrink-0 cursor-pointer"
+            className="flex items-center gap-2 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-lg shadow-red-900/40 active:scale-95 transition-all shrink-0 cursor-pointer border border-red-500/40 ring-1 ring-amber-400/20"
           >
             <Plus className="w-4 h-4 text-amber-200" />
             <span>+ Seat Table (बसवा)</span>
@@ -404,13 +408,13 @@ export default function WaiterFloorPage() {
       </div>
 
       {/* Mobile Fast Action Strip (sm:hidden) */}
-      <div className="flex sm:hidden items-center justify-between gap-2 bg-gradient-to-r from-stone-900 via-stone-800 to-stone-900 text-white p-2.5 rounded-2xl shadow-sm border border-stone-800">
+      <div className="flex sm:hidden items-center justify-between gap-2 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-2.5 rounded-2xl shadow-md border border-stone-800/90">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs font-black text-amber-300">12 Tables</span>
-          <span className="bg-emerald-600/90 text-[10px] font-bold px-1.5 py-0.2 rounded-full text-white">
+          <span className="text-xs font-black text-amber-400">12 Tables</span>
+          <span className="bg-emerald-600/90 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white">
             {availableCount} Free
           </span>
-          <span className="bg-stone-800 text-[10px] font-mono font-bold px-1.5 py-0.2 rounded text-amber-200 border border-stone-700">
+          <span className="bg-stone-800 text-[10px] font-tabular font-bold px-1.5 py-0.5 rounded-md text-amber-200 border border-stone-700">
             ₹{totalFloorSales}
           </span>
         </div>
@@ -418,7 +422,7 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleTakeParcel()}
-            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 border border-amber-400/50 cursor-pointer"
+            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-amber-300 cursor-pointer"
             title="1-Tap Take Parcel"
           >
             <ShoppingBag className="w-3 h-3 text-stone-950" />
@@ -427,15 +431,15 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="px-2 py-1.5 bg-stone-800 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="px-2 py-1.5 bg-stone-800/90 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
-            <Printer className="w-3 h-3 text-amber-300" />
+            <Printer className="w-3 h-3 text-amber-400" />
             <span>प्रिंटर</span>
           </button>
           <button
             type="button"
             onClick={() => handleOpenAddParty(1)}
-            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1"
+            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40"
           >
             <Plus className="w-3 h-3 text-amber-200" />
             <span>+ Seat</span>
@@ -443,73 +447,73 @@ export default function WaiterFloorPage() {
         </div>
       </div>
 
-      {/* Fast Filter Bar */}
+      {/* Modern Floor Filter Bar */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
         <button
           onClick={() => setFloorFilter("ALL")}
-          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "ALL"
-              ? "bg-stone-900 text-amber-200 border-stone-900 shadow-xs"
-              : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
+              ? "bg-stone-900 text-amber-300 border-stone-900 shadow-md ring-1 ring-amber-400/30"
+              : "bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50 shadow-2xs"
           }`}
         >
           <span>All Tables</span>
-          <span className="bg-stone-800 text-stone-300 text-[10px] px-1.5 py-0.2 rounded-full font-mono">12</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "ALL" ? "bg-stone-800 text-amber-300" : "bg-stone-100 text-stone-600"}`}>12</span>
         </button>
         <button
           onClick={() => setFloorFilter("AVAILABLE")}
-          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "AVAILABLE"
-              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-              : "bg-white text-emerald-800 border-[#E7E2DA] hover:bg-emerald-50/50"
+              ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-1 ring-emerald-400/40"
+              : "bg-white text-emerald-800 border-stone-200/90 hover:bg-emerald-50/50 shadow-2xs"
           }`}
         >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>Free</span>
-          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${floorFilter === "AVAILABLE" ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-800"}`}>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "AVAILABLE" ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-800"}`}>
             {availableCount}
           </span>
         </button>
         <button
           onClick={() => setFloorFilter("OCCUPIED")}
-          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "OCCUPIED"
-              ? "bg-red-600 text-white border-red-600 shadow-xs"
-              : "bg-white text-red-800 border-[#E7E2DA] hover:bg-red-50/50"
+              ? "bg-red-700 text-white border-red-700 shadow-md ring-1 ring-red-400/40"
+              : "bg-white text-red-900 border-stone-200/90 hover:bg-red-50/50 shadow-2xs"
           }`}
         >
           <span>Occupied</span>
-          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${floorFilter === "OCCUPIED" ? "bg-red-700 text-white" : "bg-red-100 text-red-800"}`}>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "OCCUPIED" ? "bg-red-800 text-white" : "bg-red-100 text-red-800"}`}>
             {occupiedCount + sharedCount}
           </span>
         </button>
         {billRequestedCount > 0 && (
           <button
             onClick={() => setFloorFilter("BILL_REQUESTED")}
-            className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border animate-bill-radar touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border animate-bill-radar touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
               floorFilter === "BILL_REQUESTED"
                 ? "bg-amber-500 text-stone-950 border-amber-500 shadow-md"
                 : "bg-amber-50 text-amber-900 border-amber-400 hover:bg-amber-100"
             }`}
           >
             <span>Bill Ready 🔥</span>
-            <span className="bg-amber-200 text-stone-900 text-[10px] px-1.5 py-0.2 rounded-full font-mono font-black">
+            <span className="bg-amber-200 text-stone-950 text-[10px] px-1.5 py-0.2 rounded-full font-tabular font-black">
               {billRequestedCount}
             </span>
           </button>
         )}
         <button
           onClick={() => setFloorFilter("PARCELS")}
-          className={`px-3 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 ${
+          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "PARCELS"
-              ? "bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-400/30"
-              : "bg-white text-amber-900 border-[#E7E2DA] hover:bg-amber-50/50"
+              ? "bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-400/40"
+              : "bg-white text-amber-900 border-stone-200/90 hover:bg-amber-50/50 shadow-2xs"
           }`}
         >
           <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
           <span>Parcels (पार्सल)</span>
           {activeParcels.length > 0 && (
-            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${floorFilter === "PARCELS" ? "bg-amber-700 text-white" : "bg-amber-100 text-amber-800"}`}>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular font-bold ${floorFilter === "PARCELS" ? "bg-amber-700 text-white" : "bg-amber-100 text-amber-800"}`}>
               {activeParcels.length}
             </span>
           )}
@@ -518,10 +522,10 @@ export default function WaiterFloorPage() {
 
       {/* Active Parcels Strip (Always visible if parcels exist OR when PARCELS filter selected) */}
       {(activeParcels.length > 0 || floorFilter === "PARCELS") && (
-        <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/60 to-amber-50/90 border border-amber-300/80 rounded-2xl p-3 sm:p-3.5 space-y-2.5 shadow-xs">
+        <div className="bg-gradient-to-r from-amber-50/95 via-orange-50/70 to-amber-50/95 border border-amber-300/80 rounded-3xl p-3.5 sm:p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-black shadow-sm">
                 <ShoppingBag className="w-4 h-4" />
               </div>
               <div>
@@ -529,14 +533,14 @@ export default function WaiterFloorPage() {
                   Running Parcels (चालू पार्सल: {activeParcels.length})
                 </h3>
                 <span className="text-[10px] text-amber-800 font-semibold">
-                  {activeParcels.length === 0 ? "No active parcel orders right now" : "Ready / in-preparation takeaway orders"}
+                  {activeParcels.length === 0 ? "No active parcel orders right now" : "Ready & in-preparation takeaway orders"}
                 </span>
               </div>
             </div>
             <button
               type="button"
               onClick={() => handleTakeParcel()}
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer border border-amber-500"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>+ Take Parcel</span>
@@ -548,32 +552,32 @@ export default function WaiterFloorPage() {
               {activeParcels.map((parcel) => (
                 <div
                   key={parcel.id}
-                  className="bg-white rounded-xl p-3 border border-amber-200 shadow-xs flex flex-col justify-between gap-2.5 hover:border-amber-400 transition-colors"
+                  className="bg-white rounded-2xl p-3.5 border border-amber-200/90 shadow-sm flex flex-col justify-between gap-3 hover:border-amber-400 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className="bg-amber-100 text-amber-950 font-black text-[11px] px-2 py-0.5 rounded-md border border-amber-300 inline-block">
+                      <span className="bg-amber-100 text-amber-950 font-black text-[11px] px-2.5 py-0.5 rounded-lg border border-amber-300 inline-block">
                         🛍️ {parcel.partyCode}
                       </span>
-                      <p className="text-xs font-bold text-stone-800 mt-1 truncate max-w-[180px]">
+                      <p className="text-xs font-bold text-stone-900 mt-1 truncate max-w-[180px]">
                         {parcel.customerName || "Takeaway Guest"}
                         {parcel.customerPhone ? ` • ${parcel.customerPhone}` : ""}
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="font-mono font-black text-base sm:text-lg text-stone-900 block leading-tight">
+                      <span className="font-tabular font-black text-base sm:text-lg text-stone-950 block leading-tight">
                         ₹{parcel.runningSubtotal}
                       </span>
-                      <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                      <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                         {parcel.status}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 pt-1.5 border-t border-stone-100">
+                  <div className="flex items-center gap-1.5 pt-2 border-t border-stone-100">
                     <Link
                       href={`/waiter/order/${parcel.id}?isTakeaway=true`}
-                      className="flex-1 py-2 px-2 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs rounded-xl text-center flex items-center justify-center gap-1 active:scale-95 transition-all"
+                      className="flex-1 py-2 px-2.5 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs rounded-xl text-center flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5 text-amber-300" />
                       <span>Order</span>
@@ -584,7 +588,7 @@ export default function WaiterFloorPage() {
                         setSettlePartyTarget(parcel);
                         setSettleMethod("CASH");
                       }}
-                      className="py-2 px-3 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer"
+                      className="py-2 px-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer border border-emerald-500"
                       title="Bill is Paid — Complete Parcel"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
@@ -595,7 +599,7 @@ export default function WaiterFloorPage() {
               ))}
             </div>
           ) : (
-            <div className="py-4 text-center text-xs text-amber-800 font-semibold bg-white/60 rounded-xl border border-dashed border-amber-200">
+            <div className="py-4 text-center text-xs text-amber-800 font-semibold bg-white/70 rounded-2xl border border-dashed border-amber-200">
               Tap &quot;+ Take Parcel&quot; above to start a takeaway order without assigning a dining table.
             </div>
           )}
@@ -603,7 +607,7 @@ export default function WaiterFloorPage() {
       )}
 
       {/* 12 Physical Tables Grid: Exactly 3 Tables per Line on Mobile, Responsive & Touch-Friendly */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 max-w-2xl sm:max-w-4xl mx-auto w-full pb-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3.5 max-w-2xl sm:max-w-4xl mx-auto w-full pb-6">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
             (p) => (p.tableId === table.id || p.tableNumber === table.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
@@ -639,14 +643,14 @@ export default function WaiterFloorPage() {
           return (
             <div
               key={table.id}
-              className={`min-h-[136px] sm:min-h-[175px] w-full rounded-2xl border transition-all flex flex-col justify-between p-2 sm:p-3 relative overflow-hidden touch-manipulation select-none touch-press ${
+              className={`min-h-[148px] sm:min-h-[185px] w-full rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between p-2.5 sm:p-3.5 relative overflow-hidden touch-manipulation select-none touch-press ${
                 hasBillRequested
-                  ? "border-amber-400 bg-gradient-to-b from-amber-50/90 via-white to-amber-50/50 shadow-md ring-2 ring-amber-400/80 animate-bill-radar"
+                  ? "border-amber-400 bg-gradient-to-b from-amber-50/95 via-white to-amber-50/60 shadow-lg ring-2 ring-amber-400/80 animate-bill-radar"
                   : isShared
-                  ? "border-purple-300 bg-gradient-to-b from-purple-50/40 via-white to-stone-50/40 shadow-xs hover:shadow-md ring-1 ring-purple-300/40"
+                  ? "border-purple-300/90 bg-gradient-to-b from-purple-50/40 via-white to-stone-50/40 shadow-xs hover:shadow-md ring-1 ring-purple-300/50"
                   : isOccupied
-                  ? "border-stone-300 bg-gradient-to-b from-red-50/20 via-white to-stone-50/40 shadow-xs hover:shadow-md hover:border-red-300"
-                  : "border-emerald-200/90 bg-gradient-to-b from-emerald-50/25 via-white to-white hover:border-emerald-400 shadow-xs hover:shadow-sm"
+                  ? "border-stone-300/90 bg-gradient-to-b from-red-50/20 via-white to-[#FAF7F2] shadow-xs hover:shadow-md hover:border-red-300"
+                  : "border-emerald-200/90 bg-gradient-to-b from-emerald-50/30 via-white to-[#F9FCFA] hover:border-emerald-400 shadow-xs hover:shadow-sm"
               }`}
             >
               {/* Top Row: Table Badge & Status */}
@@ -662,10 +666,10 @@ export default function WaiterFloorPage() {
                     title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table"}
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center shadow-xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation ${
                       hasBillRequested
-                        ? "bg-amber-500 text-stone-950 ring-1 ring-amber-400"
+                        ? "bg-amber-500 text-stone-950 ring-2 ring-amber-300 font-tabular"
                         : isOccupied
-                        ? "bg-stone-900 text-amber-300 border border-stone-800"
-                        : "bg-emerald-600 text-white shadow-emerald-600/20"
+                        ? "bg-stone-900 text-amber-300 border border-stone-800 font-tabular"
+                        : "bg-emerald-600 text-white shadow-emerald-600/20 font-tabular"
                     }`}
                   >
                     T{table.tableNumber}
@@ -684,7 +688,7 @@ export default function WaiterFloorPage() {
                       setSettlePartyTarget(primaryParty);
                       setSettleMethod("CASH");
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation"
+                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation border border-amber-400"
                     title="Bill Requested — Quick Settle"
                   >
                     Bill Paid 🔥
@@ -696,7 +700,7 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       setActiveTableForDetail(table);
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation"
+                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation font-tabular"
                   >
                     {tableParties.length}P•{totalGuests}G
                   </button>
@@ -726,19 +730,19 @@ export default function WaiterFloorPage() {
               {isOccupied ? (
                 <div
                   onClick={() => isShared ? setActiveTableForDetail(table) : router.push(`/waiter/order/${primaryParty.id}`)}
-                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-1 px-0.5 touch-manipulation"
+                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-1.5 px-0.5 touch-manipulation"
                 >
                   <span className="text-[10px] sm:text-xs font-bold text-stone-600 truncate max-w-full leading-tight">
                     {isShared
                       ? `${tableParties.length} Shared Parties`
                       : primaryParty.customerName || primaryParty.partyCode}
                   </span>
-                  <span className="text-sm sm:text-lg md:text-xl font-black text-stone-950 font-mono leading-tight mt-0.5 tracking-tight">
+                  <span className="text-base sm:text-lg md:text-xl font-black text-stone-950 font-tabular leading-tight mt-0.5 tracking-tight">
                     ₹{totalSubtotal}
                   </span>
                   <div className="flex items-center gap-1 mt-0.5">
                     {totalItemsCount > 0 && (
-                      <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 border border-stone-200">
+                      <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded-md bg-stone-100 text-stone-700 border border-stone-200 font-tabular">
                         {totalItemsCount} items
                       </span>
                     )}
@@ -750,9 +754,9 @@ export default function WaiterFloorPage() {
               ) : (
                 <div
                   onClick={() => handleOpenAddParty(table.tableNumber)}
-                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-1.5 touch-manipulation"
+                  className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-2 touch-manipulation"
                 >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 group-hover:bg-emerald-100 transition-colors">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 group-hover:bg-emerald-100 transition-colors shadow-2xs">
                     <Plus className="w-4 h-4 text-emerald-600" />
                   </div>
                   <span className="text-[10px] sm:text-[11px] text-emerald-700 font-black leading-tight mt-1">Tap to seat</span>
@@ -762,8 +766,8 @@ export default function WaiterFloorPage() {
               {/* Bottom Row: 1-Tap Touch-Friendly Actions */}
               {isOccupied ? (
                 isShared ? (
-                  <div className="pt-1.5 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1 w-full">
+                  <div className="pt-2 border-t border-stone-100 shrink-0">
+                    <div className="grid grid-cols-2 gap-1.5 w-full">
                       <button
                         type="button"
                         onClick={() => setActiveTableForDetail(table)}
@@ -787,11 +791,11 @@ export default function WaiterFloorPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="pt-1.5 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1 w-full">
+                  <div className="pt-2 border-t border-stone-100 shrink-0">
+                    <div className="grid grid-cols-2 gap-1.5 w-full">
                       <Link
                         href={`/waiter/order/${primaryParty.id}`}
-                        className="w-full py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
+                        className="w-full py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
                       >
                         <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
                         <span className="truncate">Order</span>
@@ -813,11 +817,11 @@ export default function WaiterFloorPage() {
                   </div>
                 )
               ) : (
-                <div className="pt-1.5 border-t border-stone-100 shrink-0">
+                <div className="pt-2 border-t border-stone-100 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
-                    className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation"
+                    className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-emerald-500/30"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
                     <Plus className="w-3.5 h-3.5 shrink-0" />
@@ -832,16 +836,16 @@ export default function WaiterFloorPage() {
 
       {/* MODAL: TABLE DETAIL & MULTI-PARTY MANAGEMENT */}
       {activeTableForDetail && (
-        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs max-h-[90vh] flex flex-col">
-            <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-black text-sm sm:text-base">
-                <span className="w-8 h-8 rounded-xl bg-amber-400 text-stone-950 flex items-center justify-center text-sm font-black">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden text-xs max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-4 sm:p-5 flex items-center justify-between border-b border-stone-800">
+              <div className="flex items-center gap-3 font-black text-sm sm:text-base">
+                <span className="w-9 h-9 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center text-sm font-black font-tabular shadow-sm">
                   T{activeTableForDetail.tableNumber}
                 </span>
                 <div>
-                  <h2 className="leading-tight">{activeTableForDetail.name}</h2>
-                  <span className="text-[10px] text-amber-200 font-normal">
+                  <h2 className="leading-tight text-white">{activeTableForDetail.name}</h2>
+                  <span className="text-[11px] text-amber-300 font-medium">
                     Capacity: {activeTableForDetail.maxCapacity} Seats • Unified Dining Room
                   </span>
                 </div>
@@ -849,13 +853,13 @@ export default function WaiterFloorPage() {
               <button
                 type="button"
                 onClick={() => setActiveTableForDetail(null)}
-                className="text-stone-300 hover:text-white p-1 rounded-lg text-sm"
+                className="text-stone-400 hover:text-white p-1.5 rounded-xl hover:bg-stone-800 transition-colors text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto space-y-3 flex-1">
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3.5 flex-1">
               {(() => {
                 const parties = store.parties.filter(
                   (p) => (p.tableId === activeTableForDetail.id || p.tableNumber === activeTableForDetail.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
@@ -863,15 +867,15 @@ export default function WaiterFloorPage() {
 
                 if (parties.length === 0) {
                   return (
-                    <div className="text-center py-6 space-y-2">
-                      <p className="text-stone-500 font-medium">No active parties on this table.</p>
+                    <div className="text-center py-8 space-y-3">
+                      <p className="text-stone-500 font-medium">No active parties seated on this table.</p>
                       <button
                         onClick={() => {
                           const tblNum = activeTableForDetail.tableNumber;
                           setActiveTableForDetail(null);
                           handleOpenAddParty(tblNum);
                         }}
-                        className="px-4 py-2 bg-red-600 text-white font-black rounded-xl"
+                        className="px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white font-black rounded-2xl shadow-md cursor-pointer"
                       >
                         + Seat New Party
                       </button>
@@ -882,18 +886,18 @@ export default function WaiterFloorPage() {
                 return parties.map((party) => (
                   <div
                     key={party.id}
-                    className="p-3 rounded-xl border border-[#E7E2DA] bg-[#FAF8F5] space-y-2"
+                    className="p-3.5 rounded-2xl border border-stone-200/90 bg-[#FAF8F5] space-y-2.5 shadow-2xs"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="bg-stone-900 text-amber-200 font-black px-2 py-0.5 rounded text-xs">
+                        <span className="bg-stone-900 text-amber-300 font-black px-2.5 py-0.5 rounded-lg text-xs font-tabular">
                           {party.partyCode}
                         </span>
                         <span className="font-bold text-stone-800">
                           {party.guestCount} Guests • Waiter: {party.assignedWaiterName}
                         </span>
                       </div>
-                      <span className="font-mono font-black text-stone-900 text-sm">
+                      <span className="font-tabular font-black text-stone-950 text-sm sm:text-base">
                         ₹{party.runningSubtotal}
                       </span>
                     </div>
@@ -912,7 +916,7 @@ export default function WaiterFloorPage() {
                       const orderedItems = partyOrders.flatMap((o) => o.items);
                       if (orderedItems.length === 0) return null;
                       return (
-                        <div className="bg-white rounded-lg border border-stone-200 p-2 space-y-1">
+                        <div className="bg-white rounded-xl border border-stone-200/90 p-2.5 space-y-1.5 shadow-2xs">
                           <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Ordered Items</span>
                           <div className="divide-y divide-stone-100">
                             {orderedItems.map((item, idx) => (
@@ -920,7 +924,7 @@ export default function WaiterFloorPage() {
                                 <span className="font-bold text-stone-800 truncate">
                                   {item.quantity}× {item.menuItemName}
                                 </span>
-                                <span className="font-mono font-black text-stone-700 shrink-0 ml-2">
+                                <span className="font-tabular font-black text-stone-700 shrink-0 ml-2">
                                   ₹{item.totalPrice}
                                 </span>
                               </div>
@@ -954,7 +958,7 @@ export default function WaiterFloorPage() {
                       <Link
                         href={`/waiter/order/${party.id}`}
                         onClick={() => setActiveTableForDetail(null)}
-                        className="py-2.5 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl text-center flex items-center justify-center gap-1 shadow-xs"
+                        className="py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white font-black rounded-xl text-center flex items-center justify-center gap-1 shadow-xs border border-red-500/40"
                       >
                         <Utensils className="w-3.5 h-3.5 text-amber-200" />
                         <span>+ Order</span>
@@ -965,7 +969,7 @@ export default function WaiterFloorPage() {
                           setSettlePartyTarget(party);
                           setSettleMethod("CASH");
                         }}
-                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs border border-emerald-500"
+                        className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl flex items-center justify-center gap-1 shadow-xs border border-emerald-500 cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
                         <span>Bill Paid</span>
@@ -973,7 +977,7 @@ export default function WaiterFloorPage() {
                       <button
                         type="button"
                         onClick={() => handleRequestBill(party.id)}
-                        className="py-2.5 bg-stone-800 hover:bg-stone-900 text-amber-200 font-black rounded-xl flex items-center justify-center gap-1 shadow-xs"
+                        className="py-2.5 bg-stone-900 hover:bg-stone-800 text-amber-300 font-black rounded-xl flex items-center justify-center gap-1 shadow-xs border border-stone-800 cursor-pointer"
                       >
                         <Receipt className="w-3.5 h-3.5 text-amber-300" />
                         <span>Req Bill</span>
@@ -983,7 +987,7 @@ export default function WaiterFloorPage() {
                       <button
                         type="button"
                         onClick={() => handlePrintKotForParty(party.id)}
-                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all cursor-pointer"
                       >
                         <ChefHat className="w-3.5 h-3.5 text-red-600" />
                         <span>KOT</span>
@@ -996,7 +1000,7 @@ export default function WaiterFloorPage() {
                           setActiveTableForDetail(null);
                           setActiveModal("TRANSFER");
                         }}
-                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all cursor-pointer"
                       >
                         <ArrowRightLeft className="w-3.5 h-3.5 text-blue-600" />
                         <span>Move</span>
@@ -1004,7 +1008,7 @@ export default function WaiterFloorPage() {
                       <button
                         type="button"
                         onClick={() => handlePrintFinalBill(party.id)}
-                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all"
+                        className="py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold rounded-xl flex items-center justify-center gap-1 touch-manipulation active:scale-95 transition-all cursor-pointer"
                       >
                         <Printer className="w-3.5 h-3.5 text-stone-700" />
                         <span>Print</span>
@@ -1027,9 +1031,9 @@ export default function WaiterFloorPage() {
                               }
                             }
                           }}
-                          className="w-full py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg flex items-center justify-center gap-1 border border-rose-200 text-[10px] active:scale-95 transition-all"
+                          className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center justify-center gap-1 border border-rose-200 text-[11px] active:scale-95 transition-all cursor-pointer"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                           <span>Cancel / Vacate Empty Party</span>
                         </button>
                       </div>
@@ -1039,7 +1043,7 @@ export default function WaiterFloorPage() {
               })()}
 
               {/* Add Shared Party button in modal if capacity permits */}
-              <div className="pt-2 border-t border-stone-200 flex items-center justify-between">
+              <div className="pt-2.5 border-t border-stone-200 flex items-center justify-between">
                 <span className="text-[11px] text-stone-500 font-medium">
                   {activeTableForDetail.totalActiveGuests} of {activeTableForDetail.maxCapacity} seats occupied
                 </span>
@@ -1050,7 +1054,7 @@ export default function WaiterFloorPage() {
                     setActiveTableForDetail(null);
                     handleOpenAddParty(tblNum);
                   }}
-                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-black rounded-lg border border-red-200 text-xs flex items-center gap-1"
+                  className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-black rounded-xl border border-red-200 text-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>+ Add Shared Party</span>
@@ -1063,12 +1067,12 @@ export default function WaiterFloorPage() {
 
       {/* MODAL: QUICK SETTLE & CLOSE TABLE (बिल भरले — टेबल बंद करा) */}
       {settlePartyTarget && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white text-stone-900 rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <div className="flex items-center gap-2">
-                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-lg ${
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <span className={`text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-xs ${
                   settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
                     ? "bg-amber-600"
                     : "bg-red-600"
@@ -1084,22 +1088,22 @@ export default function WaiterFloorPage() {
               <button
                 type="button"
                 onClick={() => setSettlePartyTarget(null)}
-                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                className="text-stone-400 hover:text-stone-700 p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Bill Summary */}
-            <div className="bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl p-3.5 text-center space-y-1">
-              <div className="text-xs text-stone-500 font-semibold">
+            <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFE6] border border-[#E7E2DA] rounded-2xl p-4 text-center space-y-1 shadow-2xs">
+              <div className="text-xs text-stone-600 font-semibold">
                 Party {settlePartyTarget.partyCode}
                 {settlePartyTarget.customerName ? ` • ${settlePartyTarget.customerName}` : ""}
               </div>
-              <div className="text-3xl font-mono font-black text-emerald-700">
+              <div className="text-3xl sm:text-4xl font-tabular font-black text-emerald-700 tracking-tight">
                 ₹{settlePartyTarget.runningSubtotal}
               </div>
-              <div className="text-[11px] text-stone-400 font-medium">
+              <div className="text-[11px] text-stone-500 font-medium">
                 {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
                   ? "Mark parcel as paid and ready for takeaway"
                   : `Full payment to close & free Table ${settlePartyTarget.tableNumber}`}
@@ -1111,11 +1115,11 @@ export default function WaiterFloorPage() {
               <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
                 Payment Mode (पैसे कसे मिळाले?):
               </span>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setSettleMethod("CASH")}
-                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
                     settleMethod === "CASH"
                       ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
                       : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
@@ -1127,7 +1131,7 @@ export default function WaiterFloorPage() {
                 <button
                   type="button"
                   onClick={() => setSettleMethod("UPI")}
-                  className={`py-3 px-2 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
                     settleMethod === "UPI"
                       ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
                       : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
@@ -1140,14 +1144,14 @@ export default function WaiterFloorPage() {
             </div>
 
             {/* Print Receipt Toggle */}
-            <label className="flex items-center gap-2 text-xs font-bold text-stone-600 cursor-pointer select-none bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+            <label className="flex items-center gap-2.5 text-xs font-bold text-stone-700 cursor-pointer select-none bg-stone-50 p-3 rounded-2xl border border-stone-200">
               <input
                 type="checkbox"
                 checked={autoPrintOnSettle}
                 onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
                 className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
               />
-              <Printer className="w-4 h-4 text-stone-500" />
+              <Printer className="w-4 h-4 text-stone-600" />
               <span>Print Customer Bill Receipt (पावती छापा)</span>
             </label>
 
@@ -1156,7 +1160,7 @@ export default function WaiterFloorPage() {
               <button
                 type="button"
                 onClick={() => handleQuickSettleParty(settlePartyTarget.id, settleMethod)}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer"
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                 <span>

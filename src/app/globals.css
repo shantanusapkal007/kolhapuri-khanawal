@@ -241,6 +241,38 @@ input:focus, select:focus, textarea:focus {
   transform: scale(0.96);
 }
 
+/* Tabular numbers for financial alignment */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Luxury Glow Accents */
+.gold-glow {
+  box-shadow: 0 0 22px -3px rgba(199, 114, 22, 0.38), 0 0 10px -1px rgba(199, 114, 22, 0.22);
+}
+
+.emerald-glow {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.38), 0 0 8px -1px rgba(16, 185, 129, 0.2);
+}
+
+.crimson-glow {
+  box-shadow: 0 0 22px -3px rgba(141, 29, 36, 0.38), 0 0 10px -1px rgba(141, 29, 36, 0.22);
+}
+
+/* Luxury Dining Table Card */
+.luxury-table-card {
+  background: linear-gradient(165deg, #FFFFFF 0%, #FDFBF8 55%, #F7F3EB 100%);
+  border: 1px solid rgba(222, 213, 202, 0.88);
+  box-shadow: 0 4px 18px -4px rgba(50, 35, 27, 0.08), 0 1px 0 rgba(255, 255, 255, 0.95) inset;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-table-card:hover {
+  border-color: rgba(199, 114, 22, 0.45);
+  box-shadow: 0 10px 28px -6px rgba(50, 35, 27, 0.14), 0 1px 0 rgba(255, 255, 255, 1) inset;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
