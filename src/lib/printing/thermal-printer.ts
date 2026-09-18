@@ -872,7 +872,7 @@ export function generateBillReceiptHtml(
 
   <!-- Footer -->
   <div class="footer-msg">
-    <div class="bold">धन्यवाद! पुन्हा भेट द्या!</div>
+    <div class="bold">धन्यवाद! पुन्हा नक्की या!</div>
     <div>Thank you for dining with us!</div>
     <div class="tiny" style="padding-top:3px;">${hasGst ? "This is a computer-generated tax invoice." : "This is a computer-generated bill receipt."}</div>
     <div class="tiny">Printed: ${printTime}</div>
