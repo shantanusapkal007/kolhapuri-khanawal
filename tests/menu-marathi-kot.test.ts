@@ -3,6 +3,7 @@ import { RestaurantStore } from "@/lib/store/restaurant-store";
 import { initialKhanawalCategories, initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
 import { generateKotHtml, getKotItemMarathiName } from "@/lib/printing/thermal-printer";
 import { buildKotEscPos, MARATHI_HEADER_RASTER_B64 } from "@/lib/printing/escpos-builder";
+import { rasterizeDevanagariInPayload } from "../scripts/print-bridge.mjs";
 
 describe("Marathi First Menu & KOT Printing Verification", () => {
   let store: RestaurantStore;
@@ -149,6 +150,39 @@ describe("Marathi First Menu & KOT Printing Verification", () => {
       expect(text).toContain("TABLE 6");
       expect(text).toContain("Kitchen Copy");
       expect(text).toContain(vegThali.localName || "थाळी");
+    });
+
+    it("rasterizeDevanagariInPayload transforms raw Devanagari UTF-8 lines into GS v 0 raster graphics to prevent hardware mojibake", async () => {
+      const party = store.createPartyAtTable(1, 1, "Rahul Shinde");
+      const dalKhichadi =
+        store.menuItems.find((m) => m.name.toLowerCase().includes("khichadi") || m.localName?.includes("खिचडी")) ||
+        store.menuItems[0];
+
+      const { kot } = store.placeOrder(party.id, [{ menuItemId: dalKhichadi.id, quantity: 1 }]);
+      const rawBytes = buildKotEscPos(kot, undefined, false, "80mm");
+
+      const transformed = await rasterizeDevanagariInPayload(Buffer.from(rawBytes), "80mm");
+      expect(transformed).toBeInstanceOf(Buffer);
+      expect(transformed.length).toBeGreaterThan(rawBytes.length);
+
+      // Verify that transformed payload contains ESC/POS GS v 0 raster commands
+      let rasterCount = 0;
+      for (let i = 0; i < transformed.length - 2; i++) {
+        if (transformed[i] === 0x1d && transformed[i + 1] === 0x76 && transformed[i + 2] === 0x30) {
+          rasterCount++;
+        }
+      }
+      expect(rasterCount).toBeGreaterThanOrEqual(2); // Header raster + Dish name raster
+
+      // Verify that no raw UTF-8 Devanagari bytes remain that would cause ROM font mojibake on hardware
+      let hasRawUtf8Devanagari = false;
+      for (let i = 0; i < transformed.length - 2; i++) {
+        if (transformed[i] === 0xe0 && (transformed[i + 1] === 0xa4 || transformed[i + 1] === 0xa5)) {
+          hasRawUtf8Devanagari = true;
+          break;
+        }
+      }
+      expect(hasRawUtf8Devanagari).toBe(false);
     });
   });
 });

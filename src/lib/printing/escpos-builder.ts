@@ -354,12 +354,123 @@ export class EscPosBuilder {
   }
 
   /**
+   * Append raw byte array directly
+   */
+  rawBytes(bytes: Uint8Array | number[]): this {
+    if (!bytes) return this;
+    for (let i = 0; i < bytes.length; i++) {
+      this.buffer.push(bytes[i]);
+    }
+    return this;
+  }
+
+  /**
+   * Appends a line of text that contains authentic Marathi Devanagari script.
+   * In browser environments, rasterizes the text into a crisp 1-bit monochrome ESC/POS bitmap (GS v 0)
+   * so hardware thermal receipt printers render authentic Devanagari characters instead of ASCII mojibake.
+   * In non-DOM / test environments, falls back to standard text line.
+   */
+  devanagariLine(
+    text: string,
+    options?: { heightDots?: number; fontSize?: number }
+  ): this {
+    if (!text || text.trim().length === 0) return this;
+    const widthDots = this.paperWidth === "58mm" ? 384 : 576;
+    const heightDots = options?.heightDots || (this.paperWidth === "58mm" ? 34 : 38);
+    const fontSize = options?.fontSize || (this.paperWidth === "58mm" ? 22 : 24);
+
+    const raster = renderCanvasDevanagariRaster(text, widthDots, heightDots, fontSize);
+    if (raster) {
+      this.rawBytes(raster);
+      this.line("");
+    } else {
+      this.bold(true).line(text).bold(false);
+    }
+    return this;
+  }
+
+  /**
    * Get as Hex encoded string
    */
   toHex(): string {
     return Array.from(this.toBytes())
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
+  }
+}
+
+/**
+ * Renders authentic Marathi Devanagari text into a 1-bit monochrome ESC/POS GS v 0 raster bitmap.
+ * Runs synchronously in browser environments with HTML5 Canvas 2D context.
+ * Returns null in headless/server environments where document/Canvas is not available.
+ */
+export function renderCanvasDevanagariRaster(
+  text: string,
+  widthDots: number = 576,
+  heightDots: number = 38,
+  fontSize: number = 24
+): Uint8Array | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = widthDots;
+    canvas.height = heightDots;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+
+    // Fill white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, widthDots, heightDots);
+
+    // Font stack prioritizing Devanagari typography
+    ctx.fillStyle = "#000000";
+    ctx.font = `bold ${fontSize}px 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', 'Mukta', 'Arial Unicode MS', sans-serif`;
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 2, Math.round(heightDots / 2));
+
+    const imgData = ctx.getImageData(0, 0, widthDots, heightDots);
+    const pixels = imgData.data;
+    const bytesPerLine = Math.ceil(widthDots / 8);
+    const bitmap = new Uint8Array(bytesPerLine * heightDots);
+
+    for (let y = 0; y < heightDots; y++) {
+      for (let x = 0; x < widthDots; x++) {
+        const idx = (y * widthDots + x) * 4;
+        const r = pixels[idx];
+        const g = pixels[idx + 1];
+        const b = pixels[idx + 2];
+        const a = pixels[idx + 3];
+
+        // Dark pixel threshold (black burn on thermal paper)
+        if (a > 128 && (r + g + b) / 3 < 160) {
+          const byteIdx = y * bytesPerLine + Math.floor(x / 8);
+          const bitOffset = 7 - (x % 8);
+          bitmap[byteIdx] |= (1 << bitOffset);
+        }
+      }
+    }
+
+    const xL = bytesPerLine & 0xff;
+    const xH = (bytesPerLine >> 8) & 0xff;
+    const yL = heightDots & 0xff;
+    const yH = (heightDots >> 8) & 0xff;
+
+    const result = new Uint8Array(8 + bitmap.length);
+    result[0] = 0x1d; // GS
+    result[1] = 0x76; // v
+    result[2] = 0x30; // 0
+    result[3] = 0x00; // m (normal)
+    result[4] = xL;
+    result[5] = xH;
+    result[6] = yL;
+    result[7] = yH;
+    result.set(bitmap, 8);
+
+    return result;
+  } catch {
+    return null;
   }
 }
 
@@ -878,12 +989,9 @@ export function buildKotEscPos(
       (item as any).menuItemEnglishName ||
       (item.menuItemName && item.menuItemName.trim() !== marathiName.trim() ? item.menuItemName : "");
 
-    // 1. Primary Dish Name: Large Bold Double-Height in Authentic Marathi Devanagari
-    p.bold(true)
-      .size("DOUBLE_HEIGHT")
-      .line(`${item.quantity}x ${cleanThermalText(marathiName)}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`)
-      .size("NORMAL")
-      .bold(false);
+    // 1. Primary Dish Name: Authentic Marathi Devanagari (Rasterized on hardware printers)
+    const dishLine = `${item.quantity}x ${cleanThermalText(marathiName)}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`;
+    p.devanagariLine(dishLine, { fontSize: 26, heightDots: 38 });
 
     // 2. English Subtitle: Bilingual kitchen verification
     if (
@@ -899,7 +1007,7 @@ export function buildKotEscPos(
       const breadObj = BREAD_OPTION_LABELS[item.breadOption as BreadOption];
       const breadLabelMr = breadObj?.mr || item.breadOption;
       const breadLabelEn = breadObj?.en || item.breadOption;
-      p.bold(true).line(`  * भाकरी / Bread: [${breadLabelMr}] (${breadLabelEn})`).bold(false);
+      p.devanagariLine(`  * भाकरी / Bread: [${breadLabelMr}] (${breadLabelEn})`, { fontSize: 20, heightDots: 30 });
     }
 
     // 4. Spice Level in Marathi + English
@@ -912,7 +1020,7 @@ export function buildKotEscPos(
         THECHA_EXTRA_SPICY: "ठेचा / खूप तिखट",
       };
       const spiceMr = spiceMrMap[item.spiceLevel] || item.spiceLevel;
-      p.line(`  * तिखट (Spice): ${spiceMr} (${item.spiceLevel.replace(/_/g, " ")})`);
+      p.devanagariLine(`  * तिखट (Spice): ${spiceMr} (${item.spiceLevel.replace(/_/g, " ")})`, { fontSize: 20, heightDots: 30 });
     }
 
     // 5. Cooking Notes
@@ -963,7 +1071,7 @@ export function buildCancelledKotEscPos(
   p.bold(true).line("Items to Cancel (रद्द पदार्थ):").bold(false);
   for (const item of kot.items) {
     const marathiName = getKotItemMarathiName(item);
-    p.line(`  [CANCELLED / रद्द] ${item.quantity}x ${cleanThermalText(marathiName)}`);
+    p.devanagariLine(`  [CANCELLED / रद्द] ${item.quantity}x ${cleanThermalText(marathiName)}`, { fontSize: 22, heightDots: 34 });
   }
 
   p.doubleSeparator();

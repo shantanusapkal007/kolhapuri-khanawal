@@ -19,6 +19,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
+import sharp from "sharp";
 
 import { initializeApp, getApps } from "firebase/app";
 import {
@@ -157,6 +158,117 @@ const activeJobs = new Set(); // in-memory set to prevent double claiming in sam
 function log(emoji, message, extra = "") {
   const time = new Date().toLocaleTimeString("en-IN", { hour12: false });
   console.log(`[${time}] ${emoji} ${message} ${extra}`.trim());
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Marathi Devanagari ESC/POS Rasterization Engine (GS v 0)
+//  Eliminates hardware ROM font mojibake by rendering authentic
+//  Devanagari typography into high-density 1-bit thermal bitmaps.
+// ══════════════════════════════════════════════════════════════════
+
+async function renderTextToEscPosRaster(text, options = {}) {
+  const widthDots = options.widthDots || 576; // 576 dots for 80mm, 384 for 58mm
+  const heightDots = options.heightDots || 38;
+  const fontSize = options.fontSize || 24;
+  const fontWeight = options.fontWeight || "bold";
+  const paddingLeft = options.paddingLeft || 2;
+
+  // Escape XML/SVG special characters
+  const escapedText = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+  const svg = `<svg width="${widthDots}" height="${heightDots}" viewBox="0 0 ${widthDots} ${heightDots}" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100%" height="100%" fill="white"/>
+    <text x="${paddingLeft}" y="${Math.round(heightDots * 0.72)}" font-family="'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', 'Mukta', 'Arial Unicode MS', sans-serif" font-size="${fontSize}" font-weight="${fontWeight}" fill="black">${escapedText}</text>
+  </svg>`;
+
+  const { data, info } = await sharp(Buffer.from(svg))
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const bytesPerLine = Math.ceil(widthDots / 8);
+  const bitmapBytes = Buffer.alloc(bytesPerLine * heightDots, 0);
+
+  for (let y = 0; y < heightDots; y++) {
+    for (let x = 0; x < widthDots; x++) {
+      const pixelIdx = (y * widthDots + x) * info.channels;
+      const r = data[pixelIdx];
+      const g = data[pixelIdx + 1];
+      const b = data[pixelIdx + 2];
+      const a = info.channels === 4 ? data[pixelIdx + 3] : 255;
+
+      if (a > 128 && (r + g + b) / 3 < 160) {
+        const byteIdx = y * bytesPerLine + Math.floor(x / 8);
+        const bitOffset = 7 - (x % 8);
+        bitmapBytes[byteIdx] |= (1 << bitOffset);
+      }
+    }
+  }
+
+  const xL = bytesPerLine & 0xff;
+  const xH = (bytesPerLine >> 8) & 0xff;
+  const yL = heightDots & 0xff;
+  const yH = (heightDots >> 8) & 0xff;
+
+  const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+  return Buffer.concat([header, bitmapBytes, Buffer.from([0x0a])]);
+}
+
+function containsDevanagari(str) {
+  return /[\u0900-\u097F]/.test(str);
+}
+
+export async function rasterizeDevanagariInPayload(buffer, paperWidth = "80mm") {
+  let hasDevanagari = false;
+  for (let i = 0; i < buffer.length - 2; i++) {
+    if (buffer[i] === 0xe0 && (buffer[i + 1] === 0xa4 || buffer[i + 1] === 0xa5)) {
+      hasDevanagari = true;
+      break;
+    }
+  }
+  if (!hasDevanagari) return buffer;
+
+  const widthDots = paperWidth === "58mm" ? 384 : 576;
+  const chunks = [];
+  let pos = 0;
+
+  while (pos < buffer.length) {
+    let nextLf = buffer.indexOf(0x0a, pos);
+    if (nextLf === -1) nextLf = buffer.length;
+
+    const lineSlice = buffer.subarray(pos, nextLf);
+    const lineStr = lineSlice.toString("utf-8");
+
+    if (containsDevanagari(lineStr)) {
+      // Clean leading/trailing ESC/POS formatting commands from text string
+      const cleanLine = lineStr
+        .replace(/[\x1b\x1d][\x20-\x7e\x00-\x1f]{1,4}/g, "")
+        .replace(/[\x00-\x1F\x7F]/g, "")
+        .trim();
+
+      if (cleanLine.length > 0) {
+        const isDishHeader = /^\d+x\s/.test(cleanLine);
+        const raster = await renderTextToEscPosRaster(cleanLine, {
+          widthDots,
+          fontSize: isDishHeader ? 26 : 22,
+          heightDots: isDishHeader ? 38 : 32,
+          fontWeight: isDishHeader ? "bold" : "normal",
+        });
+        chunks.push(raster);
+      }
+    } else {
+      const endPos = nextLf < buffer.length ? nextLf + 1 : nextLf;
+      chunks.push(buffer.subarray(pos, endPos));
+    }
+
+    pos = nextLf + 1;
+  }
+
+  return Buffer.concat(chunks);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -490,7 +602,14 @@ async function processJob(jobId) {
   // 3. Resolve target printer IP & port
   const target = printerMapping[jobData.stationCode] || printerMapping["CASHIER"] || printerMapping["DEFAULT"];
 
-  // 4. Send to physical printer
+  // 4. Transform any raw UTF-8 Devanagari lines to high-resolution GS v 0 raster bitmaps
+  try {
+    payloadBuffer = await rasterizeDevanagariInPayload(payloadBuffer, jobData.paperWidth || "80mm");
+  } catch (rasterErr) {
+    log("⚠️", `Devanagari rasterization error: ${rasterErr.message}`);
+  }
+
+  // 5. Send to physical printer
   try {
     const result = await deliverToPrinter(target, payloadBuffer);
 
@@ -626,7 +745,7 @@ function startHttpServer() {
           const data = JSON.parse(body || "{}");
           const payloadBase64 = data.payloadBase64;
           const stationCode = (data.stationCode || data.printerName || "CASHIER").toUpperCase();
-          const target = getTargetPrinter(stationCode);
+          const target = printerMapping[stationCode] || printerMapping["CASHIER"] || printerMapping["DEFAULT"];
 
           if (!payloadBase64) {
             res.writeHead(400, { "Content-Type": "application/json" });
@@ -640,7 +759,14 @@ function startHttpServer() {
             `HTTP print job received: "${data.title || "Untitled"}" → ${target.ip}:${target.port} (${rawBuffer.length} bytes)`
           );
 
-          const result = await sendTcpRaw(target.ip, target.port, rawBuffer);
+          let finalBuffer = rawBuffer;
+          try {
+            finalBuffer = await rasterizeDevanagariInPayload(rawBuffer, data.paperWidth || "80mm");
+          } catch (rasterErr) {
+            log("⚠️", `Devanagari rasterization error: ${rasterErr.message}`);
+          }
+
+          const result = await deliverToPrinter(target, finalBuffer);
           jobsDelivered++;
           lastJobAt = new Date().toISOString();
 
@@ -761,10 +887,15 @@ async function gracefulShutdown(signal) {
 }
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+// Launch only when executed directly as main script
+const isMain = process.argv[1] && (
+  fileURLToPath(import.meta.url) === path.resolve(process.argv[1]) ||
+  process.argv[1].endsWith("print-bridge.mjs")
+);
 
-// Launch
-startBridge().catch((err) => {
-  console.error("\n❌ Fatal error in print bridge:", err);
-  process.exit(1);
-});
+if (isMain) {
+  startBridge().catch((err) => {
+    console.error("\n❌ Fatal error in print bridge:", err);
+    process.exit(1);
+  });
+}
