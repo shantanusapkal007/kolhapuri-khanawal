@@ -4,6 +4,8 @@ import {
   BreadOption,
   BREAD_OPTIONS,
   BREAD_OPTION_LABELS,
+  DEFAULT_BREAD_PORTIONS,
+  formatBreadNotes,
   isThaliOrMainCourseItem,
 } from "@/types/orders";
 import { generateKotHtml, generateBillReceiptHtml, generateTableCheckHtml } from "@/lib/printing/thermal-printer";
@@ -234,6 +236,85 @@ describe("Instant Bread Options for Thali & Main Course Orders", () => {
         cashierName: "Priya",
       });
       expect(tableCheckHtml).toContain("बाजरी भाकरी");
+    });
+  });
+
+  describe("5. Separation of Thali Quantity and Bread/Roti Counts (No Double Billing for Rotis)", () => {
+    it("should define standard default bread portions (2 for Roti/Chapati, 1 for Bhakri)", () => {
+      expect(DEFAULT_BREAD_PORTIONS.ROTI).toBe(2);
+      expect(DEFAULT_BREAD_PORTIONS.CHAPATI).toBe(2);
+      expect(DEFAULT_BREAD_PORTIONS.JWARI_BHAKRI).toBe(1);
+      expect(DEFAULT_BREAD_PORTIONS.BAJRI_BHAKRI).toBe(1);
+    });
+
+    it("should format bread notes cleanly for single or mixed bread options", () => {
+      expect(formatBreadNotes({ ROTI: 2 })).toBe("2x रोटी");
+      expect(formatBreadNotes({ CHAPATI: 2 })).toBe("2x चपाती");
+      expect(formatBreadNotes({ JWARI_BHAKRI: 1 })).toBe("1x ज्वारी भाकरी");
+      expect(formatBreadNotes({ JWARI_BHAKRI: 1, ROTI: 1 })).toBe("1x ज्वारी भाकरी, 1x रोटी");
+      expect(formatBreadNotes({ ROTI: 0 })).toBe("");
+      expect(formatBreadNotes(undefined)).toBe("");
+    });
+
+    it("should order 1 Thali with 2 Rotis charging ONLY for 1 Thali (no double billing)", () => {
+      const party = store.createPartyAtTable(8, 2, "Kulkarni");
+      const chickenThali = store.menuItems.find((m) => m.name.toLowerCase().includes("chicken thali")) || store.menuItems[0];
+      const singleThaliPrice = chickenThali.sellingPrice;
+
+      // Customer orders 1 Thali with 2 Rotis
+      const { order, kot } = store.placeOrder(party.id, [
+        {
+          menuItemId: chickenThali.id,
+          quantity: 1, // EXACTLY 1 THALI!
+          breadOption: "ROTI",
+          notes: formatBreadNotes({ ROTI: 2 }), // 2x रोटी
+        },
+      ]);
+
+      // Verify Order Item
+      expect(order.items.length).toBe(1);
+      expect(order.items[0].quantity).toBe(1);
+      expect(order.items[0].unitPrice).toBe(singleThaliPrice);
+      expect(order.items[0].totalPrice).toBe(singleThaliPrice);
+      expect(order.items[0].breadOption).toBe("ROTI");
+      expect(order.items[0].notes).toBe("2x रोटी");
+      expect(order.subtotal).toBe(singleThaliPrice); // Subtotal is for 1 Thali, NOT 2 Thalis!
+
+      // Verify KOT Copy
+      expect(kot.items[0].quantity).toBe(1);
+      expect(kot.items[0].breadOption).toBe("ROTI");
+      expect(kot.items[0].notes).toBe("2x रोटी");
+
+      // Verify Bill Generation
+      const bill = store.generateBillForParty(party.id);
+      expect(bill.items.length).toBe(1);
+      expect(bill.items[0].quantity).toBe(1);
+      expect(bill.items[0].unitPrice).toBe(singleThaliPrice);
+      expect(bill.subtotal).toBe(singleThaliPrice);
+      expect(bill.grandTotal).toBe(singleThaliPrice); // Pure dish sum without GST
+    });
+
+    it("should bill for 2 Thalis ONLY when the Thali quantity is explicitly 2", () => {
+      const party = store.createPartyAtTable(9, 2, "Jadhav");
+      const vegThali = store.menuItems.find((m) => m.name.toLowerCase().includes("veg thali")) || store.menuItems[0];
+      const singlePrice = vegThali.sellingPrice;
+
+      // 2 Thalis ordered, each having 2 Rotis (total 4 Rotis)
+      const { order } = store.placeOrder(party.id, [
+        {
+          menuItemId: vegThali.id,
+          quantity: 2, // 2 Thalis
+          breadOption: "ROTI",
+          notes: formatBreadNotes({ ROTI: 4 }), // 4x रोटी
+        },
+      ]);
+
+      expect(order.items[0].quantity).toBe(2);
+      expect(order.items[0].totalPrice).toBe(singlePrice * 2);
+      expect(order.items[0].notes).toBe("4x रोटी");
+
+      const bill = store.generateBillForParty(party.id);
+      expect(bill.subtotal).toBe(singlePrice * 2);
     });
   });
 });

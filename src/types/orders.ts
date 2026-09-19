@@ -122,6 +122,25 @@ export const BREAD_OPTION_LABELS: Record<BreadOption, { en: string; mr: string; 
   ROTI: { en: "Roti", mr: "रोटी", full: "रोटी (Roti)" },
 };
 
+export const DEFAULT_BREAD_PORTIONS: Record<BreadOption, number> = {
+  ROTI: 2,
+  CHAPATI: 2,
+  JWARI_BHAKRI: 1,
+  BAJRI_BHAKRI: 1,
+};
+
+export function formatBreadNotes(breadCounts?: Partial<Record<BreadOption, number>>): string {
+  if (!breadCounts) return "";
+  const parts: string[] = [];
+  for (const [breadId, count] of Object.entries(breadCounts)) {
+    if (count && count > 0) {
+      const label = BREAD_OPTION_LABELS[breadId as BreadOption]?.mr || breadId;
+      parts.push(`${count}x ${label}`);
+    }
+  }
+  return parts.join(", ");
+}
+
 export function isThaliItem(item: { id?: string; categoryId?: string; name: string; isThali?: boolean }): boolean {
   if (item.isThali) return true;
   const catId = (item.categoryId || "").toLowerCase();

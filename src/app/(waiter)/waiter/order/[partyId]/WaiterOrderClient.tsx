@@ -34,6 +34,8 @@ import {
   BreadOption,
   BREAD_OPTIONS,
   BREAD_OPTION_LABELS,
+  DEFAULT_BREAD_PORTIONS,
+  formatBreadNotes,
   isThaliOrMainCourseItem,
 } from "@/types/orders";
 import { outboxManager } from "@/lib/offline/outbox";
@@ -48,6 +50,7 @@ interface CartItem {
   unitPrice: number;
   quantity: number;
   breadOption?: BreadOption;
+  breadCounts?: Partial<Record<BreadOption, number>>;
   notes?: string;
 }
 
@@ -155,6 +158,165 @@ export default function WaiterOrderClient({
       .reduce((sum, c) => sum + c.quantity, 0);
   };
 
+  const getBreadCountForItem = (itemId: string, breadId: BreadOption): number => {
+    return cart
+      .filter((c) => c.menuItem.id === itemId)
+      .reduce((sum, c) => {
+        if (c.breadCounts && c.breadCounts[breadId] !== undefined) {
+          return sum + (c.breadCounts[breadId] || 0);
+        }
+        if (c.breadOption === breadId) {
+          return sum + (DEFAULT_BREAD_PORTIONS[breadId] || 1) * c.quantity;
+        }
+        return sum;
+      }, 0);
+  };
+
+  const getBreadSummaryForItem = (itemId: string): string => {
+    const thaliItems = cart.filter((c) => c.menuItem.id === itemId);
+    if (thaliItems.length === 0) return "";
+    const notes = thaliItems
+      .map((c) => c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : ""))
+      .filter(Boolean);
+    return notes.join(" | ");
+  };
+
+  const handleBreadCountChange = (
+    item: MenuItem,
+    breadId: BreadOption,
+    delta: number
+  ) => {
+    const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
+    if (isOut && delta > 0) {
+      triggerHaptic("warning");
+      const confirmAdd = confirm(
+        `"${item.name}" has 0 portions left. Add under Manager PIN override?`
+      );
+      if (!confirmAdd) return;
+    }
+
+    triggerHaptic("tap");
+    setErrorMessage(null);
+
+    const existingIndex = cart.findIndex((c) => c.menuItem.id === item.id);
+
+    if (existingIndex === -1) {
+      if (delta <= 0) return;
+      const initialPortion = DEFAULT_BREAD_PORTIONS[breadId] || 2;
+      const counts: Partial<Record<BreadOption, number>> = { [breadId]: initialPortion };
+      const notes = formatBreadNotes(counts);
+      setCart([
+        ...cart,
+        {
+          menuItem: item,
+          unitPrice: item.sellingPrice,
+          quantity: 1, // 1 Thali!
+          breadOption: breadId,
+          breadCounts: counts,
+          notes,
+        },
+      ]);
+      return;
+    }
+
+    const updated = [...cart];
+    const target = { ...updated[existingIndex] };
+    const counts = { ...(target.breadCounts || {}) };
+
+    if (Object.keys(counts).length === 0 && target.breadOption) {
+      counts[target.breadOption] = (DEFAULT_BREAD_PORTIONS[target.breadOption] || 1) * target.quantity;
+    }
+
+    const currentCount = counts[breadId] || 0;
+    const newCount = Math.max(0, currentCount + delta);
+
+    if (newCount > 0) {
+      counts[breadId] = newCount;
+    } else {
+      delete counts[breadId];
+    }
+
+    let primaryBread: BreadOption = breadId;
+    let maxCount = 0;
+    for (const [bId, count] of Object.entries(counts)) {
+      if (count && count > maxCount) {
+        maxCount = count;
+        primaryBread = bId as BreadOption;
+      }
+    }
+
+    target.breadCounts = counts;
+    target.breadOption = primaryBread;
+    target.notes = formatBreadNotes(counts);
+
+    updated[existingIndex] = target;
+    setCart(updated);
+  };
+
+  const handleThaliQuantityChange = (
+    item: MenuItem,
+    delta: number
+  ) => {
+    const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
+    if (isOut && delta > 0) {
+      triggerHaptic("warning");
+      const confirmAdd = confirm(
+        `"${item.name}" has 0 portions left. Add under Manager PIN override?`
+      );
+      if (!confirmAdd) return;
+    }
+
+    triggerHaptic("tap");
+    setErrorMessage(null);
+
+    const existingIndex = cart.findIndex((c) => c.menuItem.id === item.id);
+
+    if (existingIndex === -1) {
+      if (delta <= 0) return;
+      const defaultBread: BreadOption = "ROTI";
+      const portion = DEFAULT_BREAD_PORTIONS[defaultBread] || 2;
+      const counts: Partial<Record<BreadOption, number>> = { [defaultBread]: portion };
+      setCart([
+        ...cart,
+        {
+          menuItem: item,
+          unitPrice: item.sellingPrice,
+          quantity: 1,
+          breadOption: defaultBread,
+          breadCounts: counts,
+          notes: formatBreadNotes(counts),
+        },
+      ]);
+      return;
+    }
+
+    const updated = [...cart];
+    const target = { ...updated[existingIndex] };
+    const newQty = target.quantity + delta;
+
+    if (newQty <= 0) {
+      updated.splice(existingIndex, 1);
+      setCart(updated);
+      return;
+    }
+
+    const oldQty = target.quantity;
+    const counts = { ...(target.breadCounts || {}) };
+    for (const [bId, count] of Object.entries(counts)) {
+      if (count) {
+        const perThali = Math.round(count / oldQty) || (DEFAULT_BREAD_PORTIONS[bId as BreadOption] || 1);
+        counts[bId as BreadOption] = perThali * newQty;
+      }
+    }
+
+    target.quantity = newQty;
+    target.breadCounts = counts;
+    target.notes = formatBreadNotes(counts);
+
+    updated[existingIndex] = target;
+    setCart(updated);
+  };
+
   const handleAddToCart = (
     item: MenuItem,
     explicitBread?: BreadOption,
@@ -172,18 +334,23 @@ export default function WaiterOrderClient({
     triggerHaptic("tap");
     setErrorMessage(null);
 
+    const isThali = isThaliOrMainCourseItem(item);
+    if (isThali) {
+      if (explicitBread) {
+        handleBreadCountChange(item, explicitBread, 1);
+      } else {
+        handleThaliQuantityChange(item, 1);
+      }
+      return;
+    }
+
     const variantName = variant ? variant.name : undefined;
     const unitPrice = variant ? variant.price : item.sellingPrice;
-    const needsBread = isThaliOrMainCourseItem(item);
-    const breadToUse: BreadOption | undefined = needsBread
-      ? explicitBread || "JWARI_BHAKRI"
-      : undefined;
 
     const existingIndex = cart.findIndex(
       (c) =>
         c.menuItem.id === item.id &&
-        c.variantName === variantName &&
-        c.breadOption === breadToUse
+        c.variantName === variantName
     );
 
     if (existingIndex > -1) {
@@ -198,7 +365,6 @@ export default function WaiterOrderClient({
           variantName,
           unitPrice,
           quantity: 1,
-          breadOption: breadToUse,
         },
       ]);
     }
@@ -210,10 +376,19 @@ export default function WaiterOrderClient({
     variantName?: string
   ) => {
     triggerHaptic("tap");
+    const isThali = isThaliOrMainCourseItem(item);
+    if (isThali) {
+      if (explicitBread) {
+        handleBreadCountChange(item, explicitBread, -1);
+      } else {
+        handleThaliQuantityChange(item, -1);
+      }
+      return;
+    }
+
     const existingIndex = cart.findIndex(
       (c) =>
         c.menuItem.id === item.id &&
-        (explicitBread === undefined || c.breadOption === explicitBread) &&
         (variantName === undefined || c.variantName === variantName)
     );
 
@@ -231,32 +406,45 @@ export default function WaiterOrderClient({
   const handleUpdateCartQuantity = (index: number, delta: number) => {
     triggerHaptic("tap");
     const updated = [...cart];
-    updated[index].quantity += delta;
-    if (updated[index].quantity <= 0) {
+    const target = { ...updated[index] };
+    const newQty = target.quantity + delta;
+
+    if (newQty <= 0) {
       updated.splice(index, 1);
+      setCart(updated);
+      return;
     }
+
+    if (target.breadCounts && Object.keys(target.breadCounts).length > 0) {
+      const oldQty = target.quantity;
+      const counts = { ...target.breadCounts };
+      for (const [bId, count] of Object.entries(counts)) {
+        if (count) {
+          const perThali = Math.round(count / oldQty) || (DEFAULT_BREAD_PORTIONS[bId as BreadOption] || 1);
+          counts[bId as BreadOption] = perThali * newQty;
+        }
+      }
+      target.breadCounts = counts;
+      target.notes = formatBreadNotes(counts);
+    }
+
+    target.quantity = newQty;
+    updated[index] = target;
     setCart(updated);
   };
 
   const handleChangeCartItemBread = (index: number, newBread: BreadOption) => {
     const current = cart[index];
-    const existingIndex = cart.findIndex(
-      (c, idx) =>
-        idx !== index &&
-        c.menuItem.id === current.menuItem.id &&
-        c.variantName === current.variantName &&
-        c.breadOption === newBread
-    );
-    if (existingIndex > -1) {
-      const updated = [...cart];
-      updated[existingIndex].quantity += current.quantity;
-      updated.splice(index, 1);
-      setCart(updated);
-    } else {
-      const updated = [...cart];
-      updated[index] = { ...current, breadOption: newBread };
-      setCart(updated);
-    }
+    const updated = [...cart];
+    const portion = (DEFAULT_BREAD_PORTIONS[newBread] || 1) * current.quantity;
+    const newCounts: Partial<Record<BreadOption, number>> = { [newBread]: portion };
+    updated[index] = {
+      ...current,
+      breadOption: newBread,
+      breadCounts: newCounts,
+      notes: formatBreadNotes(newCounts),
+    };
+    setCart(updated);
   };
 
   const totalCartCount = cart.reduce((sum, it) => sum + it.quantity, 0);
@@ -277,7 +465,7 @@ export default function WaiterOrderClient({
               menuItemId: c.menuItem.id,
               quantity: c.quantity,
               breadOption: c.breadOption,
-              notes: c.notes,
+              notes: c.notes || formatBreadNotes(c.breadCounts),
               variantName: c.variantName,
               unitPrice: c.unitPrice,
             })),
@@ -292,7 +480,7 @@ export default function WaiterOrderClient({
           menuItemId: c.menuItem.id,
           quantity: c.quantity,
           breadOption: c.breadOption,
-          notes: c.notes,
+          notes: c.notes || formatBreadNotes(c.breadCounts),
           variantName: c.variantName,
           unitPrice: c.unitPrice,
         })),
@@ -898,37 +1086,96 @@ export default function WaiterOrderClient({
                   </div>
                 )}
 
-                {/* Instant 1-Tap Bread Selector with +/- Stepper for Thalis */}
+                {/* Thali Quantity Row (थाळी संख्या) */}
                 {isThaliOrMain && (
-                  <div className="mt-3 pt-2.5 border-t border-stone-100">
-                    <span className="text-[10px] font-black uppercase text-amber-900 block mb-2 tracking-wider">
-                      Choose Bread (भाकरी / चपाती पर्याय):
-                    </span>
+                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-black text-stone-900 truncate">
+                        थाळी (Thali Qty):
+                      </span>
+                      {inCartTotal > 0 && (
+                        <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0 font-tabular">
+                          ₹{item.sellingPrice * inCartTotal}
+                        </span>
+                      )}
+                    </div>
+
+                    {inCartTotal > 0 ? (
+                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-2xl shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleThaliQuantityChange(item, -1)}
+                          className="w-8 h-8 rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          title="कमी करा (Decrease Thali)"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <span className="font-tabular font-black text-sm text-stone-900 px-1 min-w-5 text-center">
+                          {inCartTotal}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isOut}
+                          onClick={() => handleThaliQuantityChange(item, 1)}
+                          className="w-8 h-8 rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          title="वाढवा (Increase Thali)"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isOut}
+                        onClick={() => handleThaliQuantityChange(item, 1)}
+                        className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white font-black text-xs flex items-center gap-1 hover:bg-stone-800 active:scale-95 touch-manipulation cursor-pointer shadow-2xs shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>थाळी जोडा (Add)</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Instant Bread Selector with +/- Stepper for Rotis / Bhakris in Thali */}
+                {isThaliOrMain && (
+                  <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                        भाकरी / चपाती / रोटी (Breads):
+                      </span>
+                      {getBreadSummaryForItem(item.id) && (
+                        <span className="text-[10px] font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-[160px]">
+                          {getBreadSummaryForItem(item.id)}
+                        </span>
+                      )}
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                       {BREAD_OPTIONS.map((bread) => {
-                        const count = getCartQuantityForItem(item.id, bread.id);
+                        const breadCount = getBreadCountForItem(item.id, bread.id);
                         return (
                           <div
                             key={bread.id}
                             className={`min-h-[44px] rounded-2xl border transition-all ${
-                              count > 0
+                              breadCount > 0
                                 ? "bg-amber-50/90 border-amber-400 ring-1 ring-amber-300/50"
                                 : "bg-stone-50/80 border-stone-200"
                             }`}
                           >
-                            {count > 0 ? (
-                              /* Stepper mode: - count + */
+                            {breadCount > 0 ? (
+                              /* Stepper mode: - breadCount + */
                               <div className="flex items-center justify-between px-2 py-1 gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => handleCardDecrement(item, bread.id)}
+                                  onClick={() => handleBreadCountChange(item, bread.id, -1)}
                                   className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                                  title={`कमी करा (${bread.name})`}
                                 >
                                   <Minus className="w-3.5 h-3.5" />
                                 </button>
                                 <div className="flex flex-col items-center min-w-0 flex-1">
                                   <span className="font-tabular font-black text-sm text-amber-900 leading-none">
-                                    {count}
+                                    {breadCount}
                                   </span>
                                   <span className="text-[9px] font-bold text-amber-700 truncate leading-tight">
                                     {bread.shortCode}
@@ -936,26 +1183,26 @@ export default function WaiterOrderClient({
                                 </div>
                                 <button
                                   type="button"
-                                  disabled={isOut}
-                                  onClick={() => handleAddToCart(item, bread.id)}
+                                  onClick={() => handleBreadCountChange(item, bread.id, 1)}
                                   className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                                  title={`वाढवा (${bread.name})`}
                                 >
                                   <Plus className="w-3.5 h-3.5" />
                                 </button>
                               </div>
                             ) : (
-                              /* Add mode: single tap to add */
+                              /* Add mode: single tap to set bread for this thali */
                               <button
                                 type="button"
                                 disabled={isOut}
-                                onClick={() => handleAddToCart(item, bread.id)}
+                                onClick={() => handleBreadCountChange(item, bread.id, 1)}
                                 className="w-full h-full min-h-[44px] px-3 py-2 rounded-2xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/70 active:scale-95 touch-manipulation cursor-pointer"
                               >
                                 <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs text-stone-800">
                                   <span className="text-sm">{bread.emoji}</span>
                                   <span className="truncate">{bread.localName}</span>
                                 </span>
-                                <Plus className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                                <Plus className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                               </button>
                             )}
                           </div>
@@ -1143,7 +1390,7 @@ export default function WaiterOrderClient({
                     </span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] text-stone-500 font-tabular">
-                        ₹{c.unitPrice} × {c.quantity}
+                        ₹{c.unitPrice} × {c.quantity} {isThaliOrMainCourseItem(c.menuItem) ? "थाळी" : ""}
                       </span>
                       <span className="text-[11px] font-tabular font-black text-stone-900">
                         = ₹{c.unitPrice * c.quantity}
@@ -1151,10 +1398,10 @@ export default function WaiterOrderClient({
                     </div>
 
                     {/* Bread Option Switcher in Cart */}
-                    {c.breadOption && (
+                    {(c.breadOption || c.notes) && (
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-2 py-0.5 rounded-md shadow-2xs">
-                          {BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption}
+                          {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
                         </span>
                         {BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
                           <button
