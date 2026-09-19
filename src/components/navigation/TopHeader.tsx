@@ -101,7 +101,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
       return { title: "Order Entry & KOT", marathi: "ऑर्डर व केओटी", subtitle: "Seat tagging, modifiers & 1-tap kitchen send", icon: Utensils };
     }
     if (pathname.startsWith("/waiter")) {
-      return { title: "Floor & 12 Dining Tables", marathi: "मजला व टेबल", subtitle: "12 tables, shared parties & live occupancy", icon: Utensils };
+      return { title: "Floor & 12 Dining Tables", shortTitle: "Dining Tables", marathi: "मजला व टेबल", subtitle: "12 tables, shared parties & live occupancy", icon: Utensils };
     }
     if (pathname.startsWith("/kitchen")) {
       return { title: "Kitchen Display System", marathi: "स्वयंपाकघर KDS", subtitle: "Station routing (Thali, Bhakri, Sukka, Solkadhi)", icon: ChefHat };
@@ -184,8 +184,9 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-sm sm:text-base lg:text-lg font-black text-stone-900 leading-tight tracking-tight truncate max-w-[130px] xs:max-w-[170px] sm:max-w-none">
-                {pageMeta.title}
+              <h1 className="text-sm sm:text-base lg:text-lg font-black text-stone-900 leading-tight tracking-tight truncate">
+                <span className="sm:hidden">{(pageMeta as any).shortTitle || pageMeta.title}</span>
+                <span className="hidden sm:inline">{pageMeta.title}</span>
               </h1>
               {pageMeta.marathi && (
                 <span className="hidden md:inline-block text-[10px] font-bold text-amber-900/80 bg-amber-50/80 px-2 py-0.5 rounded-full border border-amber-200/60">

@@ -439,10 +439,10 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleOpenAddParty(1)}
-            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40"
+            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40 cursor-pointer"
           >
             <Plus className="w-3 h-3 text-amber-200" />
-            <span>+ Seat</span>
+            <span>Seat</span>
           </button>
         </div>
       </div>
@@ -451,18 +451,19 @@ export default function WaiterFloorPage() {
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar text-xs">
         <button
           onClick={() => setFloorFilter("ALL")}
-          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
+          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "ALL"
               ? "bg-stone-900 text-amber-300 border-stone-900 shadow-md ring-1 ring-amber-400/30"
               : "bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50 shadow-2xs"
           }`}
         >
-          <span>All Tables</span>
+          <span className="xs:hidden">All</span>
+          <span className="hidden xs:inline">All Tables</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "ALL" ? "bg-stone-800 text-amber-300" : "bg-stone-100 text-stone-600"}`}>12</span>
         </button>
         <button
           onClick={() => setFloorFilter("AVAILABLE")}
-          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
+          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "AVAILABLE"
               ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-1 ring-emerald-400/40"
               : "bg-white text-emerald-800 border-stone-200/90 hover:bg-emerald-50/50 shadow-2xs"
@@ -476,13 +477,14 @@ export default function WaiterFloorPage() {
         </button>
         <button
           onClick={() => setFloorFilter("OCCUPIED")}
-          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
+          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "OCCUPIED"
               ? "bg-red-700 text-white border-red-700 shadow-md ring-1 ring-red-400/40"
               : "bg-white text-red-900 border-stone-200/90 hover:bg-red-50/50 shadow-2xs"
           }`}
         >
-          <span>Occupied</span>
+          <span className="xs:hidden">Occ</span>
+          <span className="hidden xs:inline">Occupied</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "OCCUPIED" ? "bg-red-800 text-white" : "bg-red-100 text-red-800"}`}>
             {occupiedCount + sharedCount}
           </span>
@@ -490,28 +492,30 @@ export default function WaiterFloorPage() {
         {billRequestedCount > 0 && (
           <button
             onClick={() => setFloorFilter("BILL_REQUESTED")}
-            className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border animate-bill-radar touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
               floorFilter === "BILL_REQUESTED"
-                ? "bg-amber-500 text-stone-950 border-amber-500 shadow-md"
-                : "bg-amber-50 text-amber-900 border-amber-400 hover:bg-amber-100"
+                ? "bg-amber-500 text-stone-950 border-amber-500 shadow-md ring-2 ring-amber-300 animate-pulse"
+                : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100/70 shadow-2xs"
             }`}
           >
-            <span>Bill Ready 🔥</span>
-            <span className="bg-amber-200 text-stone-950 text-[10px] px-1.5 py-0.2 rounded-full font-tabular font-black">
+            <span className="xs:hidden">Bill 🔥</span>
+            <span className="hidden xs:inline">Bill Ready 🔥</span>
+            <span className="bg-amber-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-tabular font-black">
               {billRequestedCount}
             </span>
           </button>
         )}
         <button
           onClick={() => setFloorFilter("PARCELS")}
-          className={`px-3.5 py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
+          className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1.5 cursor-pointer ${
             floorFilter === "PARCELS"
               ? "bg-amber-600 text-white border-amber-600 shadow-md ring-2 ring-amber-400/40"
               : "bg-white text-amber-900 border-stone-200/90 hover:bg-amber-50/50 shadow-2xs"
           }`}
         >
           <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
-          <span>Parcels (पार्सल)</span>
+          <span className="xs:hidden">Parcels</span>
+          <span className="hidden xs:inline">Parcels (पार्सल)</span>
           {activeParcels.length > 0 && (
             <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular font-bold ${floorFilter === "PARCELS" ? "bg-amber-700 text-white" : "bg-amber-100 text-amber-800"}`}>
               {activeParcels.length}
@@ -679,7 +683,7 @@ export default function WaiterFloorPage() {
                   </span>
                 </div>
 
-                {/* Status Pill / Paid Quick Action in top right */}
+                {/* Status Pill in top right */}
                 {hasBillRequested ? (
                   <button
                     type="button"
@@ -688,10 +692,10 @@ export default function WaiterFloorPage() {
                       setSettlePartyTarget(primaryParty);
                       setSettleMethod("CASH");
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation border border-amber-400"
+                    className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation border border-amber-400 shrink-0"
                     title="Bill Requested — Quick Settle"
                   >
-                    Bill Paid 🔥
+                    Bill 🔥
                   </button>
                 ) : isShared ? (
                   <button
@@ -700,26 +704,17 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       setActiveTableForDetail(table);
                     }}
-                    className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation font-tabular"
+                    className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation font-tabular shrink-0"
                   >
                     {tableParties.length}P•{totalGuests}G
                   </button>
                 ) : isOccupied ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSettlePartyTarget(primaryParty);
-                      setSettleMethod("CASH");
-                    }}
-                    title="Bill is Paid — Close Table"
-                    className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer touch-manipulation border border-emerald-400 shrink-0"
-                  >
-                    <CheckCircle2 className="w-3 h-3 text-emerald-200 shrink-0" />
-                    <span>Paid</span>
-                  </button>
+                  <span className="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1 font-tabular shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    {totalGuests}G
+                  </span>
                 ) : (
-                  <span className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                  <span className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Free
                   </span>
@@ -763,17 +758,18 @@ export default function WaiterFloorPage() {
                 </div>
               )}
 
-              {/* Bottom Row: 1-Tap Touch-Friendly Actions */}
+              {/* Bottom Row: 1-Tap Touch-Friendly Actions with Short Forms to Never Ellipsis */}
               {isOccupied ? (
                 isShared ? (
                   <div className="pt-2 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1.5 w-full">
+                    <div className="grid grid-cols-2 gap-1 w-full">
                       <button
                         type="button"
                         onClick={() => setActiveTableForDetail(table)}
-                        className="w-full py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation"
+                        className="w-full py-2 px-0.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation"
                       >
-                        {tableParties.length} Parties →
+                        <span className="xs:hidden">{tableParties.length}P →</span>
+                        <span className="hidden xs:inline">{tableParties.length} Parties →</span>
                       </button>
                       <button
                         type="button"
@@ -783,22 +779,24 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                        className="w-full py-2 px-0.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                        <span className="truncate">Bill Paid</span>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-200 shrink-0" />
+                        <span className="xs:hidden">Paid</span>
+                        <span className="hidden xs:inline">Paid</span>
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="pt-2 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1.5 w-full">
+                    <div className="grid grid-cols-2 gap-1 w-full">
                       <Link
                         href={`/waiter/order/${primaryParty.id}`}
-                        className="w-full py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
+                        className="w-full py-2 px-0.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation border border-red-500/30"
                       >
-                        <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
-                        <span className="truncate">Order</span>
+                        <Plus className="w-3 h-3 text-amber-200 shrink-0" />
+                        <span className="xs:hidden">Ord</span>
+                        <span className="hidden xs:inline">Order</span>
                       </Link>
                       <button
                         type="button"
@@ -808,10 +806,15 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                        className={`w-full py-2 px-0.5 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation cursor-pointer border ${
+                          hasBillRequested
+                            ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 ring-1 ring-amber-300 animate-pulse font-black"
+                            : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-emerald-500/40"
+                        }`}
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                        <span className="truncate">Bill Paid</span>
+                        <CheckCircle2 className={`w-3 h-3 shrink-0 ${hasBillRequested ? "text-stone-950" : "text-emerald-200"}`} />
+                        <span className="xs:hidden">{hasBillRequested ? "Paid 🔥" : "Paid"}</span>
+                        <span className="hidden xs:inline">{hasBillRequested ? "Bill Paid 🔥" : "Paid"}</span>
                       </button>
                     </div>
                   </div>
@@ -825,7 +828,7 @@ export default function WaiterFloorPage() {
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
                     <Plus className="w-3.5 h-3.5 shrink-0" />
-                    <span>+ Seat (2)</span>
+                    <span>Seat (2)</span>
                   </button>
                 </div>
               )}

@@ -474,12 +474,13 @@ export default function WaiterOrderClient({
 
   return (
     <div className="space-y-3.5 pb-36 max-w-5xl mx-auto">
-      {/* 1. Luxury Header */}
-      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-3.5 sm:p-4 border border-stone-200/90 shadow-sm flex items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+      {/* 1. Luxury Header - Responsive & Non-Collapsing */}
+      <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-3 sm:p-4 border border-stone-200/90 shadow-sm flex items-center justify-between gap-2">
+        {/* Left: Back Arrow & Table / Parcel Identity */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <Link
             href={party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter"}
-            className="p-2.5 sm:p-3 rounded-2xl bg-stone-50 hover:bg-stone-100 text-stone-700 border border-stone-200/80 active:scale-95 transition-all shrink-0 shadow-2xs cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200/80 active:scale-95 transition-all shrink-0 shadow-2xs cursor-pointer touch-manipulation"
             title={party.isTakeaway || party.tableNumber === 0 ? "Back to Parcels" : "Back to Floor"}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -487,36 +488,43 @@ export default function WaiterOrderClient({
 
           <div className="min-w-0">
             {party.isTakeaway || party.tableNumber === 0 ? (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-xs border border-amber-300 font-tabular">
-                  <ShoppingBag className="w-3.5 h-3.5 text-stone-950" />
-                  <span>{party.partyCode} (पार्सल)</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 font-black text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 shadow-xs border border-amber-300 font-tabular shrink-0">
+                  <ShoppingBag className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+                  <span>{party.partyCode}</span>
                 </span>
                 {party.customerName && (
-                  <span className="text-xs font-bold text-amber-900 bg-amber-50 px-2.5 py-0.5 rounded-xl border border-amber-200 truncate max-w-[160px]">
+                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-xl border border-amber-200 truncate max-w-[100px] xs:max-w-[140px]">
                     {party.customerName}
                   </span>
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="bg-stone-900 text-amber-300 font-black text-xs px-3 py-1 rounded-xl shadow-xs border border-stone-800 font-tabular">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="bg-stone-950 text-amber-300 font-black text-xs sm:text-sm px-2.5 py-1 rounded-xl shadow-xs border border-stone-800 font-tabular shrink-0">
                   Table {party.tableNumber}
                 </span>
-                <span className="text-xs font-bold text-stone-600 truncate">
-                  {party.guestCount} Guests
+                <span className="text-[11px] font-bold text-stone-500 truncate">
+                  {party.guestCount}G • {party.assignedWaiterName.split(" ")[0]}
                 </span>
               </div>
             )}
-            <span className="text-[11px] text-stone-400 font-semibold block truncate mt-0.5">
-              Waiter: <strong className="text-stone-700">{party.assignedWaiterName.split(" ")[0]}</strong>
-            </span>
           </div>
         </div>
 
-        {/* Right Header Status & Action Buttons */}
-        <div className="flex items-center gap-2 shrink-0">
-          {/* 1-Tap Take Parcel Button while placing orders */}
+        {/* Right: Bill Total & Compact Action Controls */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Running Bill Amount Tile */}
+          <div className="text-right px-2.5 sm:px-3 py-1 sm:py-1.5 bg-stone-950 text-amber-300 border border-stone-800 rounded-xl sm:rounded-2xl font-tabular shadow-2xs shrink-0">
+            <span className="text-[8px] sm:text-[9px] uppercase font-bold text-stone-400 block leading-none">
+              Bill
+            </span>
+            <span className="font-black text-xs sm:text-sm md:text-base text-amber-300 leading-tight">
+              ₹{party.runningSubtotal}
+            </span>
+          </div>
+
+          {/* Desktop Only: 1-Tap Take Parcel Button */}
           <button
             type="button"
             onClick={() => {
@@ -527,60 +535,18 @@ export default function WaiterOrderClient({
                 alert(err.message);
               }
             }}
-            className="px-3 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-stone-950 font-black text-xs rounded-2xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-300"
+            className="hidden md:flex px-3 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-stone-950 font-black text-xs rounded-2xl shadow-xs active:scale-95 transition-all items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-300"
             title="Take a New Parcel Order (Will not occupy physical tables 1–12)"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-stone-950" />
-            <span className="hidden xs:inline">Take Parcel</span>
+            <span>Take Parcel</span>
           </button>
-
-          {/* Running Bill Amount */}
-          <div className="text-right px-3 py-1.5 bg-[#FAF8F5] border border-[#E7E2DA] rounded-2xl">
-            <span className="text-[9px] uppercase font-black tracking-wider text-stone-400 block leading-none">
-              Bill Total
-            </span>
-            <span className="font-tabular font-black text-sm sm:text-base text-stone-950 leading-tight">
-              ₹{party.runningSubtotal}
-            </span>
-          </div>
-
-          {/* Direct Bill Paid Button - ALWAYS clearly visible with text on mobile and desktop */}
-          {party.runningSubtotal > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowSettleModal(true)}
-              className="px-3 sm:px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-2xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-emerald-500 ring-2 ring-emerald-400/20"
-              title={party.isTakeaway || party.tableNumber === 0 ? "Bill is Paid — Complete Parcel" : "Bill is Paid — Close Table"}
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Bill Paid</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm("No orders placed yet. Cancel and vacate this table/order?")) {
-                  try {
-                    store.voidOrCancelParty(party.id, "Empty party cancelled");
-                    router.push(party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter");
-                  } catch (e: any) {
-                    alert(e.message);
-                  }
-                }
-              }}
-              className="px-2.5 sm:px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-2xl border border-stone-300 active:scale-95 transition-all flex items-center gap-1 shrink-0 touch-manipulation cursor-pointer"
-              title="Cancel & Free Table"
-            >
-              <X className="w-3.5 h-3.5 text-stone-500" />
-              <span className="hidden xs:inline">Cancel Table</span>
-            </button>
-          )}
 
           {/* Quick Printer Settings Button */}
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs"
+            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
             title="प्रिंटर सेटिंग्ज (Printer Settings)"
           >
             <Printer className="w-4 h-4 text-amber-600" />
@@ -591,24 +557,51 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowMoreActions(!showMoreActions)}
-              className="p-2.5 rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs"
+              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
+              title="More Actions"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
 
             {showMoreActions && (
-              <div className="absolute right-0 mt-2 w-56 bg-white border border-stone-200/90 rounded-3xl shadow-xl p-2 z-30 text-xs space-y-1 animate-in fade-in zoom-in-95">
-                {party.runningSubtotal > 0 && (
+              <div className="absolute right-0 mt-2 w-60 bg-white border border-stone-200/90 rounded-3xl shadow-2xl p-2 z-40 text-xs space-y-1 animate-in fade-in zoom-in-95">
+                {/* 1-Tap Take New Parcel inside dropdown */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreActions(false);
+                    try {
+                      const newParcel = store.createTakeawayParty();
+                      router.push(`/waiter/order/${newParcel.id}?isTakeaway=true`);
+                    } catch (err: any) {
+                      alert(err.message);
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-amber-50 font-black text-amber-950 flex items-center gap-2 border border-amber-200 bg-amber-50/70 cursor-pointer"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
+                  <span>🛍️ Take New Parcel (नवीन पार्सल)</span>
+                </button>
+
+                {/* Cancel & Free Table if empty */}
+                {party.runningSubtotal === 0 && (
                   <button
                     type="button"
                     onClick={() => {
                       setShowMoreActions(false);
-                      setShowSettleModal(true);
+                      if (confirm("No orders placed yet. Cancel and vacate this table/order?")) {
+                        try {
+                          store.voidOrCancelParty(party.id, "Empty party cancelled");
+                          router.push(party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter");
+                        } catch (e: any) {
+                          alert(e.message);
+                        }
+                      }
                     }}
-                    className="w-full text-left px-3 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 font-black text-emerald-800 flex items-center gap-2 border border-emerald-200 cursor-pointer"
+                    className="w-full text-left px-3 py-2 rounded-2xl hover:bg-red-50 font-black text-red-700 flex items-center gap-2 border border-red-200 bg-red-50/50 cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>{party.isTakeaway || party.tableNumber === 0 ? "Bill Paid — Complete Parcel" : "Bill Paid — Close Table"}</span>
+                    <X className="w-3.5 h-3.5 text-red-600" />
+                    <span>✕ Cancel & Free Table (टेबल रद्द)</span>
                   </button>
                 )}
 
