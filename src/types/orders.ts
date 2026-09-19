@@ -217,6 +217,7 @@ export interface KotItem {
   menuItemId: string;
   menuItemName: string;
   menuItemLocalName?: string; // e.g. "कोल्हापुरी स्पेशल चिकन थाळी"
+  menuItemEnglishName?: string; // e.g. "Special Chicken Thali"
   variantName?: string; // e.g. "Half", "Full"
   quantity: number;
   seatNumber?: number;

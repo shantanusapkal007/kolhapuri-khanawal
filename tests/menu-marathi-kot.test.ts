@@ -50,9 +50,12 @@ describe("Marathi First Menu & KOT Printing Verification", () => {
       expect(order.items[0].menuItemLocalName).toContain("बटर चिकन");
       expect(order.items[0].menuItemLocalName).toContain("हाफ");
 
-      // KOT item has authentic Marathi name with Marathi variant
+      // KOT item has authentic Marathi name as primary menuItemName
+      expect(kot.items[0].menuItemName).toContain("बटर चिकन");
+      expect(kot.items[0].menuItemName).toContain("हाफ");
       expect(kot.items[0].menuItemLocalName).toContain("बटर चिकन");
       expect(kot.items[0].menuItemLocalName).toContain("हाफ");
+      expect(kot.items[0].menuItemEnglishName).toBe("Butter Chicken (Half)");
     });
   });
 
@@ -145,6 +148,7 @@ describe("Marathi First Menu & KOT Printing Verification", () => {
       expect(text).toContain("*** K O T ***");
       expect(text).toContain("TABLE 6");
       expect(text).toContain("Kitchen Copy");
+      expect(text).toContain(vegThali.localName || "थाळी");
     });
   });
 });

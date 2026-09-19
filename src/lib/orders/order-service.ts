@@ -18,6 +18,7 @@ import { DiningParty } from "@/types/tables";
 import { Ingredient, Recipe, StockReservation, StockTransaction } from "@/types/inventory";
 import { checkStockAvailability, createReservations } from "@/lib/inventory/stock-reservation";
 import { executeStockMovement } from "@/lib/inventory/ledger";
+import { getKotItemMarathiName } from "@/lib/printing/escpos-builder";
 
 export interface PlaceOrderItemInput {
   menuItem: MenuItem;
@@ -106,7 +107,9 @@ export function placeOrderAndGenerateKot(
     const itemTotal = itemPrice * it.quantity;
     subtotal += itemTotal;
 
-    const localName = it.menuItem.localName || it.menuItem.name;
+    const rawLocalName = it.menuItem.localName || it.menuItem.name;
+    const baseLocalName = rawLocalName.replace(/\s*\([^)]*\)/g, "").trim();
+    const baseEnglishName = it.menuItem.name.replace(/\s*\([^)]*\)/g, "").trim();
     const variantNameMr =
       it.variantName === "Half"
         ? "हाफ"
@@ -119,12 +122,10 @@ export function placeOrderAndGenerateKot(
       orderId,
       partyId: party.id,
       menuItemId: it.menuItem.id,
-      menuItemName: it.variantName ? `${it.menuItem.name} (${it.variantName})` : it.menuItem.name,
-      menuItemLocalName: localName
-        ? it.variantName
-          ? `${localName} (${variantNameMr})`
-          : localName
-        : undefined,
+      menuItemName: it.variantName ? `${baseEnglishName} (${it.variantName})` : it.menuItem.name,
+      menuItemLocalName: it.variantName
+        ? `${baseLocalName} (${variantNameMr})`
+        : rawLocalName,
       variantName: it.variantName,
       quantity: it.quantity,
       unitPrice: itemPrice,
@@ -158,21 +159,33 @@ export function placeOrderAndGenerateKot(
 
   // 4. Build KOT
   const primaryStation = items[0]?.menuItem.stationCode || "MAIN_KITCHEN";
-  const kotItems: KotItem[] = orderItems.map((oi) => ({
-    id: `kot-item-${oi.id}`,
-    kotId,
-    orderItemId: oi.id,
-    menuItemId: oi.menuItemId,
-    menuItemName: oi.menuItemName,
-    menuItemLocalName: oi.menuItemLocalName,
-    variantName: oi.variantName,
-    quantity: oi.quantity,
-    seatNumber: oi.seatNumber,
-    spiceLevel: oi.spiceLevel,
-    breadOption: oi.breadOption,
-    notes: oi.notes,
-    status: "NEW",
-  }));
+  const kotItems: KotItem[] = orderItems.map((oi) => {
+    const marathiDishName =
+      oi.menuItemLocalName ||
+      getKotItemMarathiName({
+        menuItemId: oi.menuItemId,
+        menuItemName: oi.menuItemName,
+        variantName: oi.variantName,
+      }) ||
+      oi.menuItemName;
+
+    return {
+      id: `kot-item-${oi.id}`,
+      kotId,
+      orderItemId: oi.id,
+      menuItemId: oi.menuItemId,
+      menuItemName: marathiDishName, // Must be in authentic Marathi Devanagari!
+      menuItemLocalName: marathiDishName,
+      menuItemEnglishName: oi.menuItemName, // English dish name
+      variantName: oi.variantName,
+      quantity: oi.quantity,
+      seatNumber: oi.seatNumber,
+      spiceLevel: oi.spiceLevel,
+      breadOption: oi.breadOption,
+      notes: oi.notes,
+      status: "NEW",
+    };
+  });
 
   const kot: Kot = {
     id: kotId,

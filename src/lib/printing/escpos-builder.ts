@@ -21,6 +21,7 @@ import {
   RESTAURANT_UPI_MERCHANT_NAME,
   RESTAURANT_UPI_TERMINAL,
 } from "./restaurant-profile";
+import { initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
 
 export const ESC = 0x1b;
 export const FS = 0x1c;
@@ -35,14 +36,13 @@ export interface ColumnDefinition {
 }
 
 /**
- * Sanitizes any text string for 100% reliable single-byte ESC/POS thermal printing.
+ * Sanitizes any text string for reliable ESC/POS thermal printing.
  * Converts Unicode symbols to clean ASCII:
  * - '₹' -> 'Rs.'
  * - '—' or '–' -> '-'
  * - '•' or '·' -> '*'
  * - Smart quotes -> standard quotes
- * - Strips all non-ASCII punctuation, Devanagari, and emoji
- * to eliminate hardware ROM font mojibake (e.g. 'añðaRÜaAtañÜaM#', 'rè|', 'rço', 'rU1', 'Гçö')
+ * - Preserves authentic Marathi Devanagari script (0x0900 - 0x097F)
  */
 export function cleanThermalText(str: string): string {
   if (!str) return "";
@@ -54,13 +54,11 @@ export function cleanThermalText(str: string): string {
     .replace(/[\u201C\u201D\u201E\u201F"]/g, '"')
     .replace(/[\u2026]/g, "...")
     .replace(/[⚡🥡✅⚠️❌📦🔔🍽️🖨️🔥👍👎]/g, "")
-    // Remove Devanagari Unicode characters (0x0900 - 0x097F)
-    .replace(/[\u0900-\u097F]/g, "")
     // Clean empty parentheses or brackets left behind like () or [] or (- )
     .replace(/\(\s*[- ]*\s*\)/g, "")
     .replace(/\[\s*[- ]*\s*\]/g, "")
-    // Remove characters outside printable ASCII range (32-126) + newline (10)
-    .replace(/[^\x20-\x7E\n]/g, "")
+    // Preserve printable ASCII and Devanagari Unicode characters (0x0900 - 0x097F)
+    .replace(/[^\x20-\x7E\n\u0900-\u097F]/g, "")
     // Collapse multiple consecutive spaces
     .replace(/ +/g, " ")
     .trim();
@@ -227,8 +225,8 @@ export class EscPosBuilder {
       .replace(/[\u201C\u201D\u201E\u201F"]/g, '"')
       .replace(/[\u2026]/g, "...")
       .replace(/[⚡🥡✅⚠️❌📦🔔🍽️🖨️🔥👍👎]/g, "")
-      .replace(/[\u0900-\u097F]/g, "")
-      .replace(/[^\x20-\x7E\n\r\t]/g, "");
+      // Preserve Devanagari script (0x0900 - 0x097F) for authentic Marathi text
+      .replace(/[^\x20-\x7E\n\r\t\u0900-\u097F]/g, "");
 
     const encoder = new TextEncoder();
     const bytes = encoder.encode(cleaned);
@@ -389,6 +387,118 @@ function formatDateTime(isoString: string): string {
   } catch {
     return isoString;
   }
+}
+
+// Cached dictionary lookup for menu items Marathi Devanagari names
+let menuItemsMapCache: Map<string, string> | null = null;
+
+export function getMenuItemMarathiNameMap(): Map<string, string> {
+  if (!menuItemsMapCache) {
+    menuItemsMapCache = new Map();
+    for (const item of initialKhanawalMenuItems) {
+      if (item.localName) {
+        menuItemsMapCache.set(item.id.toLowerCase(), item.localName);
+        menuItemsMapCache.set(item.name.toLowerCase().trim(), item.localName);
+        if (item.code) {
+          menuItemsMapCache.set(item.code.toLowerCase().trim(), item.localName);
+        }
+      }
+    }
+  }
+  return menuItemsMapCache;
+}
+
+/**
+ * Resolves authentic Marathi Devanagari dish name for KOT printing and KDS display
+ */
+export function getKotItemMarathiName(item: {
+  menuItemId?: string;
+  menuItemName: string;
+  menuItemLocalName?: string;
+  variantName?: string;
+}): string {
+  // 1. Explicit localName on item
+  if (item.menuItemLocalName && item.menuItemLocalName.trim().length > 0) {
+    return item.menuItemLocalName.trim();
+  }
+
+  // 2. Already contains Marathi Devanagari script
+  if (/[\u0900-\u097F]/.test(item.menuItemName)) {
+    return item.menuItemName.trim();
+  }
+
+  const formatKotVariantMr = (v?: string) => {
+    if (!v) return "";
+    const clean = v.toLowerCase().trim();
+    if (clean === "half") return "हाफ";
+    if (clean === "full") return "फुल";
+    return v;
+  };
+
+  const vTag = item.variantName ? ` (${formatKotVariantMr(item.variantName)})` : "";
+
+  // 3. Look up by ID or name in menu catalog
+  const map = getMenuItemMarathiNameMap();
+  if (item.menuItemId) {
+    const byId = map.get(item.menuItemId.toLowerCase());
+    if (byId) {
+      return `${byId}${vTag}`;
+    }
+  }
+
+  const cleanName = item.menuItemName.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
+  const byName = map.get(cleanName);
+  if (byName) {
+    return `${byName}${vTag}`;
+  }
+
+  // 4. Common authentic Kolhapuri dishes dictionary fallback
+  const commonDict: Record<string, string> = {
+    "special mutton thali": "स्पेशल मटण थाळी",
+    "mutton thali": "मटण थाळी",
+    "special chicken thali": "स्पेशल चिकन थाळी",
+    "chicken thali": "चिकन थाळी",
+    "chicken curry": "चिकन करी",
+    "mutton curry": "मटण करी",
+    "veg thali": "शाकाहारी थाळी",
+    "special veg thali": "स्पेशल व्हेज थाळी",
+    "kolhapuri veg thali": "कोल्हापुरी व्हेज थाळी",
+    "mutton sukka": "मटण सुक्का",
+    "chicken sukka": "चिकन सुक्का",
+    "tambda rassa": "तांबडा रस्सा",
+    "pandhra rassa": "पांढरा रस्सा",
+    "jowar bhakri": "ज्वारीची भाकरी",
+    "jwari bhakri": "ज्वारीची भाकरी",
+    "bajri bhakri": "बाजरीची भाकरी",
+    "chapati": "चपाती",
+    "roti": "रोटी",
+    "tandoori roti": "तंदूर रोटी",
+    "butter roti": "बटर रोटी",
+    "egg thali": "अंडी थाळी",
+    "fish thali": "मासे / फिश थाळी",
+    "surmai thali": "सुरमई थाळी",
+    "pomfret thali": "पापलेट थाळी",
+    "solkadhi": "सोलकढी",
+    "indrayani rice": "इंद्रायणी भात",
+    "jeera rice": "जिरा राईस",
+    "steamed rice": "साधा भात",
+    "dal khichdi": "डाळ खिचडी",
+    "cream of tomato soup": "टोमॅटो सूप",
+    "veg manchow soup": "व्हेज मंचाऊ सूप",
+    "veg hot & sour soup": "व्हेज हॉट अँड सॉर सूप",
+    "veg clear soup": "व्हेज क्लिअर सूप",
+    "chicken manchow soup": "चिकन मंचाऊ सूप",
+    "chicken hot & sour soup": "चिकन हॉट अँड सॉर सूप",
+    "chicken clear soup": "चिकन क्लिअर सूप",
+    "mutton soup / paya soup": "मटण पाया सूप",
+  };
+
+  if (commonDict[cleanName]) {
+    const mr = commonDict[cleanName];
+    return `${mr}${vTag}`;
+  }
+
+  return item.menuItemName;
 }
 
 /**
@@ -763,18 +873,51 @@ export function buildKotEscPos(
     : kot.items;
 
   for (const item of items) {
-    const itemName = cleanThermalText(item.menuItemName);
-    p.bold(true).size("DOUBLE_HEIGHT").line(`${item.quantity}x ${itemName}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`).size("NORMAL").bold(false);
+    const marathiName = getKotItemMarathiName(item);
+    const englishName =
+      (item as any).menuItemEnglishName ||
+      (item.menuItemName && item.menuItemName.trim() !== marathiName.trim() ? item.menuItemName : "");
+
+    // 1. Primary Dish Name: Large Bold Double-Height in Authentic Marathi Devanagari
+    p.bold(true)
+      .size("DOUBLE_HEIGHT")
+      .line(`${item.quantity}x ${cleanThermalText(marathiName)}${item.seatNumber ? ` [S${item.seatNumber}]` : ""}`)
+      .size("NORMAL")
+      .bold(false);
+
+    // 2. English Subtitle: Bilingual kitchen verification
+    if (
+      englishName &&
+      cleanThermalText(englishName).trim().length > 0 &&
+      cleanThermalText(englishName).trim() !== cleanThermalText(marathiName).trim()
+    ) {
+      p.line(`  (${cleanThermalText(englishName)})`);
+    }
+
+    // 3. Bread Option in Marathi + English
     if (item.breadOption) {
       const breadObj = BREAD_OPTION_LABELS[item.breadOption as BreadOption];
-      const breadLabel = breadObj?.en || item.breadOption;
-      p.bold(true).line(`  * Bread: [${breadLabel}]`).bold(false);
+      const breadLabelMr = breadObj?.mr || item.breadOption;
+      const breadLabelEn = breadObj?.en || item.breadOption;
+      p.bold(true).line(`  * भाकरी / Bread: [${breadLabelMr}] (${breadLabelEn})`).bold(false);
     }
+
+    // 4. Spice Level in Marathi + English
     if (item.spiceLevel && item.spiceLevel !== "MEDIUM") {
-      p.line(`  * Spice: ${item.spiceLevel.replace(/_/g, " ")}`);
+      const spiceMrMap: Record<string, string> = {
+        MILD: "कमी तिखट",
+        SPICY: "तिखट",
+        VERY_SPICY: "जास्त तिखट",
+        EXTRA_SPICY: "झणझणीत तिखट",
+        THECHA_EXTRA_SPICY: "ठेचा / खूप तिखट",
+      };
+      const spiceMr = spiceMrMap[item.spiceLevel] || item.spiceLevel;
+      p.line(`  * तिखट (Spice): ${spiceMr} (${item.spiceLevel.replace(/_/g, " ")})`);
     }
+
+    // 5. Cooking Notes
     if (item.notes) {
-      p.line(`  * Note: ${cleanThermalText(item.notes)}`);
+      p.line(`  * टीप (Note): ${cleanThermalText(item.notes)}`);
     }
     p.separator(".");
   }
@@ -817,9 +960,10 @@ export function buildCancelledKotEscPos(
   p.twoColumns(`Waiter: ${cleanThermalText(kot.waiterName)}`, `Cancelled By: ${cleanThermalText(cancelledBy)}`);
   p.doubleSeparator();
 
-  p.bold(true).line("Items to Cancel:").bold(false);
+  p.bold(true).line("Items to Cancel (रद्द पदार्थ):").bold(false);
   for (const item of kot.items) {
-    p.line(`  [CANCELLED] ${item.quantity}x ${cleanThermalText(item.menuItemName)}`);
+    const marathiName = getKotItemMarathiName(item);
+    p.line(`  [CANCELLED / रद्द] ${item.quantity}x ${cleanThermalText(marathiName)}`);
   }
 
   p.doubleSeparator();

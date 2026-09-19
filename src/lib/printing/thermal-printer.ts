@@ -17,11 +17,11 @@ import { Kot, OrderItem, BreadOption, BREAD_OPTION_LABELS } from "@/types/orders
 import { DiningParty } from "@/types/tables";
 import { WaiterCredential } from "@/types/domain";
 import { DEFAULT_PRINTER_DEVICES, globalPrinterManager } from "./printer-connection-manager";
-import { EscPosBuilder, buildCashUpiReconciliationEscPos, type CashUpiReconciliationEscPosParams } from "./escpos-builder";
+import { EscPosBuilder, buildCashUpiReconciliationEscPos, type CashUpiReconciliationEscPosParams, getKotItemMarathiName, getMenuItemMarathiNameMap } from "./escpos-builder";
 import { enqueuePrintJob } from "./cloud-print-queue";
 import { initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
 
-export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder, buildCashUpiReconciliationEscPos };
+export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder, buildCashUpiReconciliationEscPos, getKotItemMarathiName, getMenuItemMarathiNameMap };
 export type { CashUpiReconciliationEscPosParams };
 
 export async function printCashUpiReconciliationSlip(
@@ -416,109 +416,7 @@ function formatDateTime(isoString: string): string {
   return `${formatDate(isoString)} ${formatTime(isoString)}`;
 }
 
-// Cached dictionary lookup for menu items Marathi Devanagari names
-let menuItemsMapCache: Map<string, string> | null = null;
 
-function getMenuItemMarathiNameMap(): Map<string, string> {
-  if (!menuItemsMapCache) {
-    menuItemsMapCache = new Map();
-    for (const item of initialKhanawalMenuItems) {
-      if (item.localName) {
-        menuItemsMapCache.set(item.id.toLowerCase(), item.localName);
-        menuItemsMapCache.set(item.name.toLowerCase().trim(), item.localName);
-        if (item.code) {
-          menuItemsMapCache.set(item.code.toLowerCase().trim(), item.localName);
-        }
-      }
-    }
-  }
-  return menuItemsMapCache;
-}
-
-/**
- * Resolves authentic Marathi Devanagari dish name for KOT printing and KDS display
- */
-export function getKotItemMarathiName(item: {
-  menuItemId?: string;
-  menuItemName: string;
-  menuItemLocalName?: string;
-  variantName?: string;
-}): string {
-  // 1. Explicit localName on item
-  if (item.menuItemLocalName && item.menuItemLocalName.trim().length > 0) {
-    return item.menuItemLocalName.trim();
-  }
-
-  // 2. Already contains Marathi Devanagari script
-  if (/[\u0900-\u097F]/.test(item.menuItemName)) {
-    return item.menuItemName.trim();
-  }
-
-  const formatKotVariantMr = (v?: string) => {
-    if (!v) return "";
-    const clean = v.toLowerCase().trim();
-    if (clean === "half") return "हाफ";
-    if (clean === "full") return "फुल";
-    return v;
-  };
-
-  const vTag = item.variantName ? ` (${formatKotVariantMr(item.variantName)})` : "";
-
-  // 3. Look up by ID or name in menu catalog
-  const map = getMenuItemMarathiNameMap();
-  if (item.menuItemId) {
-    const byId = map.get(item.menuItemId.toLowerCase());
-    if (byId) {
-      return `${byId}${vTag}`;
-    }
-  }
-
-  const cleanName = item.menuItemName.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
-  const byName = map.get(cleanName);
-  if (byName) {
-    return `${byName}${vTag}`;
-  }
-
-  // 4. Common authentic Kolhapuri dishes dictionary fallback
-  const commonDict: Record<string, string> = {
-    "special mutton thali": "स्पेशल मटण थाळी",
-    "mutton thali": "मटण थाळी",
-    "special chicken thali": "स्पेशल चिकन थाळी",
-    "chicken thali": "चिकन थाळी",
-    "chicken curry": "चिकन करी",
-    "mutton curry": "मटण करी",
-    "veg thali": "शाकाहारी थाळी",
-    "special veg thali": "स्पेशल व्हेज थाळी",
-    "kolhapuri veg thali": "कोल्हापुरी व्हेज थाळी",
-    "mutton sukka": "मटण सुक्का",
-    "chicken sukka": "चिकन सुक्का",
-    "tambda rassa": "तांबडा रस्सा",
-    "pandhra rassa": "पांढरा रस्सा",
-    "jowar bhakri": "ज्वारीची भाकरी",
-    "jwari bhakri": "ज्वारीची भाकरी",
-    "bajri bhakri": "बाजरीची भाकरी",
-    "chapati": "चपाती",
-    "roti": "रोटी",
-    "tandoori roti": "तंदूर रोटी",
-    "butter roti": "बटर रोटी",
-    "egg thali": "अंडी थाळी",
-    "fish thali": "मासे / फिश थाळी",
-    "surmai thali": "सुरमई थाळी",
-    "pomfret thali": "पापलेट थाळी",
-    "solkadhi": "सोलकढी",
-    "indrayani rice": "इंद्रायणी भात",
-    "jeera rice": "जिरा राईस",
-    "steamed rice": "साधा भात",
-    "dal khichdi": "डाळ खिचडी",
-  };
-
-  if (commonDict[cleanName]) {
-    const mr = commonDict[cleanName];
-    return `${mr}${vTag}`;
-  }
-
-  return item.menuItemName;
-}
 
 /**
  * Triggers an ESC/POS Cash Drawer Kick simulation pulse
@@ -1295,7 +1193,9 @@ export function generateKotHtml(
   let itemsHtml = "";
   for (const item of itemsToRender) {
     const marathiName = getKotItemMarathiName(item);
-    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
+    const englishName =
+      (item as any).menuItemEnglishName ||
+      (item.menuItemName && item.menuItemName.trim() !== marathiName.trim() ? item.menuItemName : "");
 
     const breadTag = item.breadOption
       ? `<div class="kot-bread">🍞 भाकरी / पोळी: ${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption} (${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption})</div>`
@@ -1326,7 +1226,7 @@ export function generateKotHtml(
           <div class="kot-marathi-name">
             <span class="marathi-title">${marathiName}</span>${seatTag}
           </div>
-          ${hasEnglish ? `<div class="english-subtitle kot-english-subtitle">${item.menuItemName}</div>` : ""}
+          ${englishName ? `<div class="english-subtitle kot-english-subtitle">${englishName}</div>` : ""}
           ${breadTag}
           ${spiceTag}
           ${notesTag}
@@ -1488,7 +1388,9 @@ export function generateCancelledKotHtml(
   let itemsHtml = "";
   for (const item of kot.items) {
     const marathiName = getKotItemMarathiName(item);
-    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
+    const englishName =
+      (item as any).menuItemEnglishName ||
+      (item.menuItemName && item.menuItemName.trim() !== marathiName.trim() ? item.menuItemName : "");
     itemsHtml += `
       <tr style="text-decoration: line-through; opacity: 0.85;">
         <td style="width:${is58mm ? "22%" : "18%"}; text-align:center; vertical-align:top; padding:5px 2px;">
@@ -1498,7 +1400,7 @@ export function generateCancelledKotHtml(
           <div class="kot-marathi-name">
             <span class="marathi-title">${marathiName}</span>
           </div>
-          ${hasEnglish ? `<div class="english-subtitle kot-english-subtitle">(${item.menuItemName})</div>` : ""}
+          ${englishName ? `<div class="english-subtitle kot-english-subtitle">(${englishName})</div>` : ""}
         </td>
       </tr>`;
   }

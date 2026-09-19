@@ -164,8 +164,10 @@ describe("Kolhapuri Khanawal Complete Authentic Menu Catalog Validation", () => 
     expect(order.items[0].totalPrice).toBe(800);
     expect(order.subtotal).toBe(800);
 
-    // Check KOT details
-    expect(kot.items[0].menuItemName).toBe("Butter Chicken (Half)");
+    // Check KOT details (menu item name on KOT is authentic Marathi Devanagari)
+    expect(kot.items[0].menuItemName).toBe("बटर चिकन (हाफ)");
+    expect(kot.items[0].menuItemLocalName).toBe("बटर चिकन (हाफ)");
+    expect(kot.items[0].menuItemEnglishName).toBe("Butter Chicken (Half)");
     expect(kot.items[0].variantName).toBe("Half");
     expect(kot.items[0].quantity).toBe(2);
 

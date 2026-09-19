@@ -382,7 +382,9 @@ export default function KitchenDisplayPage() {
                       item.menuItemLocalName ||
                       store.menuItems.find((m) => m.id === item.menuItemId)?.localName ||
                       item.menuItemName;
-                    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
+                    const englishSubtitle =
+                      (item as any).menuItemEnglishName ||
+                      (item.menuItemName && item.menuItemName.trim() !== marathiName.trim() ? item.menuItemName : "");
 
                     return (
                       <div key={item.id} className="pt-2 first:pt-0">
@@ -395,9 +397,9 @@ export default function KitchenDisplayPage() {
                               <span className="font-black text-base text-stone-900 leading-snug block">
                                 {marathiName}
                               </span>
-                              {hasEnglish && (
+                              {englishSubtitle && (
                                 <span className="text-xs text-stone-500 font-semibold block">
-                                  {item.menuItemName}
+                                  {englishSubtitle}
                                 </span>
                               )}
                             </div>
