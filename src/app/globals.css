@@ -82,6 +82,18 @@ input, select, textarea {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+@media (max-width: 640px) {
+  /* Prevent iOS Safari automatic zoom on focus when font-size is < 16px */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.min-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
 input:focus, select:focus, textarea:focus {
   border-color: rgba(141, 29, 36, 0.56);
   box-shadow: 0 0 0 4px rgba(141, 29, 36, 0.08);

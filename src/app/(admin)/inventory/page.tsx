@@ -517,64 +517,105 @@ export default function InventoryLedgerPage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] text-stone-500 bg-[#FAF8F5]/80">
-                <th className="font-extrabold py-2.5 px-2">Timestamp</th>
-                <th className="font-extrabold py-2.5 px-2">Ingredient</th>
-                <th className="font-extrabold py-2.5 px-2">Type</th>
-                <th className="font-extrabold py-2.5 px-2 text-right">Quantity</th>
-                <th className="font-extrabold py-2.5 px-2 text-right">Unit Rate</th>
-                <th className="font-extrabold py-2.5 px-2 text-right">Total Value</th>
-                <th className="font-extrabold py-2.5 px-2 text-right">Balance</th>
-                <th className="font-extrabold py-2.5 px-2">Performed By</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {store.stockTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-6 text-center text-stone-400">
-                    No stock movements logged yet today. Movements occur on purchases, KOT prep, or stock counts.
-                  </td>
-                </tr>
-              ) : (
-                store.stockTransactions.map((tx) => (
-                  <tr key={tx.id} className="py-2 hover:bg-stone-50">
-                    <td className="py-2 text-stone-400 font-mono">
-                      {new Date(tx.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </td>
-                    <td className="py-2 font-bold text-stone-900">{tx.ingredientName}</td>
-                    <td className="py-2">
-                      <span
-                        className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
-                          tx.direction === "IN"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {tx.transactionType}
-                      </span>
-                    </td>
-                    <td className={`py-2 text-right font-black ${tx.direction === "IN" ? "text-emerald-700" : "text-red-600"}`}>
-                      {tx.direction === "IN" ? "+" : "-"}{tx.quantity} {tx.unit}
-                    </td>
-                    <td className="py-2 text-right text-stone-600">₹{tx.unitCost}</td>
-                    <td className="py-2 text-right font-bold text-stone-800">₹{tx.totalValue}</td>
-                    <td className="py-2 text-right font-black text-stone-900">{tx.runningBalance} {tx.unit}</td>
-                    <td className="py-2 text-stone-600">{tx.performedBy}</td>
+        {store.stockTransactions.length === 0 ? (
+          <div className="py-6 text-center text-stone-400 text-xs">
+            No stock movements logged yet today. Movements occur on purchases, KOT prep, or stock counts.
+          </div>
+        ) : (
+          <>
+            {/* Mobile Transaction Cards */}
+            <div className="sm:hidden space-y-2">
+              {store.stockTransactions.map((tx) => (
+                <div key={tx.id} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-1.5 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-stone-900 text-xs">{tx.ingredientName}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span
+                          className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${
+                            tx.direction === "IN"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {tx.transactionType}
+                        </span>
+                        <span className="text-[10px] text-stone-400 font-mono">
+                          {new Date(tx.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className={`font-black font-mono text-sm ${tx.direction === "IN" ? "text-emerald-700" : "text-red-600"}`}>
+                        {tx.direction === "IN" ? "+" : "-"}{tx.quantity} {tx.unit}
+                      </div>
+                      <div className="text-[10px] text-stone-500 font-medium">
+                        Bal: <strong className="text-stone-700 font-mono">{tx.runningBalance} {tx.unit}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-stone-200/60 text-stone-500">
+                    <span>Rate: ₹{tx.unitCost} • Total: <strong className="text-stone-700 font-bold">₹{tx.totalValue}</strong></span>
+                    <span className="truncate max-w-[120px]">{tx.performedBy}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] text-stone-500 bg-[#FAF8F5]/80">
+                    <th className="font-extrabold py-2.5 px-2">Timestamp</th>
+                    <th className="font-extrabold py-2.5 px-2">Ingredient</th>
+                    <th className="font-extrabold py-2.5 px-2">Type</th>
+                    <th className="font-extrabold py-2.5 px-2 text-right">Quantity</th>
+                    <th className="font-extrabold py-2.5 px-2 text-right">Unit Rate</th>
+                    <th className="font-extrabold py-2.5 px-2 text-right">Total Value</th>
+                    <th className="font-extrabold py-2.5 px-2 text-right">Balance</th>
+                    <th className="font-extrabold py-2.5 px-2">Performed By</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {store.stockTransactions.map((tx) => (
+                    <tr key={tx.id} className="py-2 hover:bg-stone-50">
+                      <td className="py-2 text-stone-400 font-mono">
+                        {new Date(tx.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      </td>
+                      <td className="py-2 font-bold text-stone-900">{tx.ingredientName}</td>
+                      <td className="py-2">
+                        <span
+                          className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded ${
+                            tx.direction === "IN"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {tx.transactionType}
+                        </span>
+                      </td>
+                      <td className={`py-2 text-right font-black ${tx.direction === "IN" ? "text-emerald-700" : "text-red-600"}`}>
+                        {tx.direction === "IN" ? "+" : "-"}{tx.quantity} {tx.unit}
+                      </td>
+                      <td className="py-2 text-right text-stone-600">₹{tx.unitCost}</td>
+                      <td className="py-2 text-right font-bold text-stone-800">₹{tx.totalValue}</td>
+                      <td className="py-2 text-right font-black text-stone-900">{tx.runningBalance} {tx.unit}</td>
+                      <td className="py-2 text-stone-600">{tx.performedBy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* MODAL: PHYSICAL STOCK COUNT RECONCILIATION IN LIGHT THEME */}
       {activeModal === "COUNT" && selectedIngredient && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
             <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base">
                 <Scale className="w-5 h-5 text-amber-600" />
@@ -650,8 +691,8 @@ export default function InventoryLedgerPage() {
 
       {/* MODAL: RECEIVE PURCHASE INBOUND IN LIGHT THEME */}
       {activeModal === "PURCHASE" && selectedIngredient && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
             <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base">
                 <Plus className="w-5 h-5 text-emerald-600" />
@@ -713,8 +754,8 @@ export default function InventoryLedgerPage() {
 
       {/* MODAL: LOG KITCHEN WASTAGE */}
       {activeModal === "WASTAGE" && selectedIngredient && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95">
             <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base">
                 <Trash2 className="w-5 h-5 text-rose-600" />
@@ -786,8 +827,8 @@ export default function InventoryLedgerPage() {
 
       {/* MODAL: ADD RAW INGREDIENT */}
       {activeModal === "ADD_INGREDIENT" && (
-        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#FAF8F5] border-b border-[#E7E2DA] p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-black text-sm text-stone-900">
                 <Boxes className="w-5 h-5 text-amber-600" />
@@ -943,8 +984,8 @@ export default function InventoryLedgerPage() {
 
       {/* MODAL: EDIT RAW INGREDIENT */}
       {activeModal === "EDIT_INGREDIENT" && editingIngredient && (
-        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-[#FAF8F5] border-b border-[#E7E2DA] p-4 flex items-center justify-between">
               <div className="flex items-center gap-2 font-black text-sm text-stone-900">
                 <Edit2 className="w-4 h-4 text-amber-600" />

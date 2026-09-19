@@ -1143,8 +1143,8 @@ Status: ${totalVariance === 0 ? "Balanced (Zero Variance)" : "Variance detected"
 
       {/* 6. Manual Float / Adjustment Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-stone-200 pb-3 shrink-0">
               <h3 className="text-base font-black text-stone-900">
                 New Float / Adjustment Entry
@@ -1311,8 +1311,8 @@ Status: ${totalVariance === 0 ? "Balanced (Zero Variance)" : "Variance detected"
 
       {/* 7. Thermal Slip Preview Modal */}
       {showSlipModal && (
-        <div className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-stone-200 pb-2.5 shrink-0">
               <h3 className="text-sm font-black text-stone-900 flex items-center gap-1.5">
                 <Printer className="w-4 h-4 text-stone-700" />

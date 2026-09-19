@@ -176,76 +176,137 @@ export default function PurchasesPage() {
           <span className="text-xs font-bold text-stone-500">{filteredPurchases.length} Transactions</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Supplier</th>
-                <th className="py-3 px-4">Item & Quantity</th>
-                <th className="py-3 px-4">Rate</th>
-                <th className="py-3 px-4">Total Amount</th>
-                <th className="py-3 px-4">Paid Via</th>
-                <th className="py-3 px-4 text-right">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+        {filteredPurchases.length === 0 ? (
+          <div className="p-8 text-center text-stone-400 text-xs font-semibold">
+            कोणतीही खरेदी सापडली नाही (No purchases found)
+          </div>
+        ) : (
+          <>
+            {/* Mobile Purchase Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
               {filteredPurchases.map((purchase) => (
-                <tr key={purchase.id} className="hover:bg-amber-50/30 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-700 whitespace-nowrap">
-                    {purchase.date}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Truck className="w-3.5 h-3.5 text-stone-400" />
-                      {purchase.supplierName}
+                <div key={purchase.id} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-stone-900 text-xs flex items-center gap-1">
+                        <Truck className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                        <span className="truncate">{purchase.supplierName}</span>
+                      </div>
+                      <div className="text-[10px] text-stone-400 font-mono mt-0.5">
+                        {purchase.date}
+                      </div>
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="font-bold text-stone-900">{purchase.ingredientName}</div>
-                    <div className="text-[11px] text-stone-500 font-medium">
-                      Qty: <span className="font-bold text-stone-800">{purchase.quantity} {purchase.unit}</span>
-                      {purchase.notes && ` • ${purchase.notes}`}
+                    <div className="text-right shrink-0">
+                      <div className="font-mono font-black text-stone-900 text-sm">
+                        ₹{purchase.totalAmount.toLocaleString("en-IN")}
+                      </div>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.2 rounded-full text-[9px] font-black uppercase ${
+                          purchase.paymentMethod === "CASH"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {purchase.paymentMethod}
+                      </span>
                     </div>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-700">
-                    ₹{purchase.rate}/{purchase.unit}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-black text-base text-stone-900">
-                    ₹{purchase.totalAmount.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                        purchase.paymentMethod === "CASH"
-                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                          : "bg-blue-100 text-blue-800 border border-blue-200"
-                      }`}
-                    >
-                      {purchase.paymentMethod}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-white border border-stone-200/60 flex items-center justify-between text-[11px]">
+                    <div>
+                      <span className="font-bold text-stone-800">{purchase.ingredientName}</span>
+                      <div className="text-[10px] text-stone-500">
+                        {purchase.quantity} {purchase.unit} @ ₹{purchase.rate}/{purchase.unit}
+                      </div>
+                    </div>
                     <button
+                      type="button"
                       onClick={() => handleRepeat(purchase.id)}
-                      className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-lg text-xs border border-amber-200 active:scale-95 transition-all"
+                      className="inline-flex items-center gap-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs border border-amber-200 active:scale-95 transition-all touch-manipulation shrink-0"
                       title="1-Tap Reorder with today's date"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
-                      <span>1-Tap Reorder</span>
+                      <span>Reorder</span>
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Supplier</th>
+                    <th className="py-3 px-4">Item & Quantity</th>
+                    <th className="py-3 px-4">Rate</th>
+                    <th className="py-3 px-4">Total Amount</th>
+                    <th className="py-3 px-4">Paid Via</th>
+                    <th className="py-3 px-4 text-right">Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredPurchases.map((purchase) => (
+                    <tr key={purchase.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-700 whitespace-nowrap">
+                        {purchase.date}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <Truck className="w-3.5 h-3.5 text-stone-400" />
+                          {purchase.supplierName}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-stone-900">{purchase.ingredientName}</div>
+                        <div className="text-[11px] text-stone-500 font-medium">
+                          Qty: <span className="font-bold text-stone-800">{purchase.quantity} {purchase.unit}</span>
+                          {purchase.notes && ` • ${purchase.notes}`}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-700">
+                        ₹{purchase.rate}/{purchase.unit}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-black text-base text-stone-900">
+                        ₹{purchase.totalAmount.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            purchase.paymentMethod === "CASH"
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              : "bg-blue-100 text-blue-800 border border-blue-200"
+                          }`}
+                        >
+                          {purchase.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleRepeat(purchase.id)}
+                          className="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-lg text-xs border border-amber-200 active:scale-95 transition-all touch-manipulation"
+                          title="1-Tap Reorder with today's date"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-amber-700" />
+                          <span>1-Tap Reorder</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* New Purchase Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-lg w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3">
               <div>
                 <h3 className="text-base font-black text-stone-900">खरेदी नोंदवा (Record New Purchase)</h3>

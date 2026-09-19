@@ -86,8 +86,8 @@ export function PwaInstallPrompt() {
 
   return (
     <>
-      {/* Floating Bottom-Right Install Banner */}
-      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:w-96 z-40 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-3.5 rounded-2xl shadow-2xl border border-amber-500/40 animate-in slide-in-from-bottom-5 duration-300">
+      {/* Floating Bottom-Right Install Banner — Elevated above mobile bottom navigation */}
+      <div className="fixed bottom-20 sm:bottom-6 left-3 right-3 sm:left-auto sm:right-6 sm:w-96 z-30 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-3.5 rounded-2xl shadow-2xl border border-amber-500/40 animate-in slide-in-from-bottom-5 duration-300">
         <div className="flex items-start justify-between gap-2.5">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-amber-600 p-0.5 shrink-0 shadow-md">
             <img

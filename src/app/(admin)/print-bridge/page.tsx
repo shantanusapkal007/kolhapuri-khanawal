@@ -245,9 +245,9 @@ export default function PrintBridgeAdminPage() {
         </div>
 
         {/* Live Bridge Status Pill & Send Test Button */}
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto w-full sm:w-auto">
           <div
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-bold transition-all shrink-0 ${
               online
                 ? "bg-emerald-950/80 border-emerald-500/50 text-emerald-300"
                 : "bg-rose-950/80 border-rose-500/50 text-rose-300"
@@ -264,9 +264,9 @@ export default function PrintBridgeAdminPage() {
           <button
             onClick={handleSendTestSlip}
             disabled={isEnqueuingTest}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 rounded-xl text-xs font-black shadow-lg shadow-amber-900/20 transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-3.5 sm:px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 rounded-xl text-xs font-black shadow-lg shadow-amber-900/20 transition-all cursor-pointer disabled:opacity-50 min-h-[40px] flex-1 sm:flex-none"
           >
-            <Send className="w-3.5 h-3.5" />
+            <Send className="w-3.5 h-3.5 shrink-0" />
             <span>{isEnqueuingTest ? "पाठवत आहे..." : "टेस्ट स्लिप प्रिंट करा"}</span>
           </button>
         </div>
@@ -386,185 +386,284 @@ export default function PrintBridgeAdminPage() {
 
       {/* Live Print Queue Table */}
       <div className="p-5 rounded-2xl bg-stone-900/70 border border-stone-800 space-y-4">
-        {/* Table Header Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-bold text-white">
-              प्रिंट रांग (Live Print Queue)
-            </h2>
-            <span className="text-xs text-stone-500">({filteredJobs.length} jobs)</span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Search Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-500" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="शोधा (Search)..."
-                className="pl-8 pr-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-mono text-stone-200 focus:outline-none focus:border-amber-400 w-44"
-              />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-amber-400" />
+              <h2 className="text-sm font-bold text-white">
+                प्रिंट रांग (Live Print Queue)
+              </h2>
+              <span className="text-xs text-stone-500">({filteredJobs.length} jobs)</span>
             </div>
 
-            {/* Status Filter Chips */}
-            <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 text-[11px] font-bold">
-              {(["ALL", "PENDING", "CLAIMED", "SUCCESS", "FAILED", "UNCERTAIN"] as const).map(
-                (filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setSelectedFilter(filter)}
-                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                      selectedFilter === filter
-                        ? "bg-amber-400 text-stone-950 font-black shadow-sm"
-                        : "text-stone-400 hover:text-stone-200"
-                    }`}
-                  >
-                    {filter}
-                  </button>
-                )
-              )}
-            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+              {/* Search & Clear Row on Mobile */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-none">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-stone-500" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="शोधा (Search)..."
+                    className="w-full sm:w-44 pl-8 pr-3 py-1.5 bg-stone-950 border border-stone-800 rounded-xl text-xs font-mono text-stone-200 focus:outline-none focus:border-amber-400 min-h-[38px] sm:min-h-0"
+                  />
+                </div>
 
-            {/* Clear Completed Action */}
-            <button
-              onClick={handleClearCompleted}
-              title="Clear jobs completed > 24 hours ago"
-              className="p-1.5 text-stone-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-xl border border-stone-800 transition-all cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+                {/* Clear Completed Action */}
+                <button
+                  onClick={handleClearCompleted}
+                  title="Clear jobs completed > 24 hours ago"
+                  className="p-2 sm:p-1.5 text-stone-400 hover:text-rose-300 hover:bg-rose-950/40 rounded-xl border border-stone-800 transition-all cursor-pointer min-h-[38px] min-w-[38px] sm:min-h-0 sm:min-w-0 flex items-center justify-center shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
 
-        {/* Queue Table */}
-        <div className="overflow-x-auto rounded-xl border border-stone-800">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-stone-950/80 border-b border-stone-800 text-stone-400 font-bold uppercase text-[10px]">
-                <th className="p-3">स्थिती (Status)</th>
-                <th className="p-3">शीर्षक व प्रकार (Job Title)</th>
-                <th className="p-3">विभाग (Station)</th>
-                <th className="p-3">कोणी पाठवले (Created By)</th>
-                <th className="p-3">वेळ (Time)</th>
-                <th className="p-3 text-right">कृती (Actions)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-800/60 font-mono">
-              {filteredJobs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-stone-500 font-sans">
-                    कोणतेही प्रिंट जॉब्स सापडले नाहीत (No print jobs in queue)
-                  </td>
-                </tr>
-              ) : (
-                filteredJobs.map((job) => {
-                  return (
-                    <tr
-                      key={job.id}
-                      className="hover:bg-stone-800/30 transition-colors"
+              {/* Status Filter Chips (Scrollable on small mobile) */}
+              <div className="flex items-center gap-1 bg-stone-950 p-1 rounded-xl border border-stone-800 text-[11px] font-bold overflow-x-auto no-scrollbar w-full sm:w-auto">
+                {(["ALL", "PENDING", "CLAIMED", "SUCCESS", "FAILED", "UNCERTAIN"] as const).map(
+                  (filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setSelectedFilter(filter)}
+                      className={`px-2.5 py-1.5 sm:py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap shrink-0 min-h-[32px] sm:min-h-0 ${
+                        selectedFilter === filter
+                          ? "bg-amber-400 text-stone-950 font-black shadow-sm"
+                          : "text-stone-400 hover:text-stone-200"
+                      }`}
                     >
-                      {/* Status */}
-                      <td className="p-3 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            job.status === "SUCCESS"
-                              ? "bg-emerald-950 border border-emerald-500/40 text-emerald-300"
-                              : job.status === "PENDING"
-                              ? "bg-amber-950 border border-amber-500/40 text-amber-300 animate-pulse"
-                              : job.status === "CLAIMED"
-                              ? "bg-sky-950 border border-sky-500/40 text-sky-300"
-                              : job.status === "UNCERTAIN"
-                              ? "bg-orange-950 border border-orange-500/40 text-orange-300"
-                              : "bg-rose-950 border border-rose-500/40 text-rose-300"
-                          }`}
-                        >
-                          {job.status === "SUCCESS" && <CheckCircle2 className="w-3 h-3" />}
-                          {job.status === "PENDING" && <Clock className="w-3 h-3" />}
-                          {job.status === "CLAIMED" && <RefreshCw className="w-3 h-3 animate-spin" />}
-                          {job.status === "UNCERTAIN" && <AlertTriangle className="w-3 h-3" />}
-                          {job.status === "FAILED" && <XCircle className="w-3 h-3" />}
-                          <span>{job.status}</span>
-                        </span>
-                      </td>
+                      {filter}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
 
-                      {/* Title & Type */}
-                      <td className="p-3">
-                        <div className="font-sans font-bold text-stone-200">{job.title}</div>
-                        <div className="text-[10px] text-stone-500 flex items-center gap-2 mt-0.5">
-                          <span className="bg-stone-800 px-1.5 py-0.2 rounded text-stone-300">
-                            {job.type}
-                          </span>
+          {/* Mobile Card List (< sm screens) */}
+          <div className="sm:hidden space-y-2.5">
+            {filteredJobs.length === 0 ? (
+              <div className="p-8 text-center text-stone-500 font-sans bg-stone-950/40 rounded-xl border border-stone-800/60">
+                कोणतेही प्रिंट जॉब्स सापडले नाहीत (No print jobs in queue)
+              </div>
+            ) : (
+              filteredJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="p-3.5 rounded-xl bg-stone-950/70 border border-stone-800/80 space-y-2.5"
+                >
+                  {/* Top Bar: Status + Station + Time */}
+                  <div className="flex items-center justify-between gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                        job.status === "SUCCESS"
+                          ? "bg-emerald-950 border border-emerald-500/40 text-emerald-300"
+                          : job.status === "PENDING"
+                          ? "bg-amber-950 border border-amber-500/40 text-amber-300 animate-pulse"
+                          : job.status === "CLAIMED"
+                          ? "bg-sky-950 border border-sky-500/40 text-sky-300"
+                          : job.status === "UNCERTAIN"
+                          ? "bg-orange-950 border border-orange-500/40 text-orange-300"
+                          : "bg-rose-950 border border-rose-500/40 text-rose-300"
+                      }`}
+                    >
+                      {job.status === "SUCCESS" && <CheckCircle2 className="w-3 h-3" />}
+                      {job.status === "PENDING" && <Clock className="w-3 h-3" />}
+                      {job.status === "CLAIMED" && <RefreshCw className="w-3 h-3 animate-spin" />}
+                      {job.status === "UNCERTAIN" && <AlertTriangle className="w-3 h-3" />}
+                      {job.status === "FAILED" && <XCircle className="w-3 h-3" />}
+                      <span>{job.status}</span>
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-stone-900 border border-stone-800 text-[10px] text-amber-300 font-bold font-mono">
+                        {job.stationCode}
+                      </span>
+                      <span className="text-[10px] text-stone-500 font-mono">
+                        {new Date(job.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Job Title & Details */}
+                  <div>
+                    <h3 className="text-xs font-bold text-stone-100 font-sans">{job.title}</h3>
+                    <div className="text-[10px] text-stone-500 flex flex-wrap items-center gap-1.5 mt-1 font-mono">
+                      <span className="bg-stone-900 px-1.5 py-0.5 rounded text-stone-300 border border-stone-800">
+                        {job.type}
+                      </span>
+                      <span>•</span>
+                      <span>{job.paperWidth}</span>
+                      {job.printerIp && (
+                        <>
                           <span>•</span>
-                          <span>{job.paperWidth}</span>
-                          {job.printerIp && (
-                            <>
-                              <span>•</span>
-                              <span className="text-emerald-400">{job.printerIp}</span>
-                            </>
-                          )}
-                        </div>
-                        {job.errorMessage && (
-                          <div className="text-[10px] text-rose-400 mt-1 font-sans">
-                            ⚠️ {job.errorMessage}
+                          <span className="text-emerald-400">{job.printerIp}</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span className="text-stone-400 font-sans">{job.createdByName || "Staff"}</span>
+                    </div>
+                    {job.errorMessage && (
+                      <div className="text-[10px] text-rose-400 mt-1 font-sans bg-rose-950/30 p-1.5 rounded-lg border border-rose-900/40">
+                        ⚠️ {job.errorMessage}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Mobile Actions */}
+                  {(job.status === "FAILED" || job.status === "UNCERTAIN" || job.status === "PENDING") && (
+                    <div className="pt-2 border-t border-stone-900 flex items-center gap-2">
+                      {(job.status === "FAILED" || job.status === "UNCERTAIN") && (
+                        <button
+                          onClick={() => handleRetryJob(job.id)}
+                          className="flex-1 py-2 px-3 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center justify-center gap-1.5 transition-all min-h-[38px]"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>पुन्हा प्रयत्न (Retry)</span>
+                        </button>
+                      )}
+                      {job.status === "PENDING" && (
+                        <button
+                          onClick={() => handleCancelJob(job.id)}
+                          className="flex-1 py-2 px-3 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center justify-center gap-1.5 transition-all min-h-[38px]"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>रद्द करा (Cancel)</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Queue Table (sm:block) */}
+          <div className="hidden sm:block overflow-x-auto rounded-xl border border-stone-800">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-stone-950/80 border-b border-stone-800 text-stone-400 font-bold uppercase text-[10px]">
+                  <th className="p-3">स्थिती (Status)</th>
+                  <th className="p-3">शीर्षक व प्रकार (Job Title)</th>
+                  <th className="p-3">विभाग (Station)</th>
+                  <th className="p-3">कोणी पाठवले (Created By)</th>
+                  <th className="p-3">वेळ (Time)</th>
+                  <th className="p-3 text-right">कृती (Actions)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-800/60 font-mono">
+                {filteredJobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-stone-500 font-sans">
+                      कोणतेही प्रिंट जॉब्स सापडले नाहीत (No print jobs in queue)
+                    </td>
+                  </tr>
+                ) : (
+                  filteredJobs.map((job) => {
+                    return (
+                      <tr
+                        key={job.id}
+                        className="hover:bg-stone-800/30 transition-colors"
+                      >
+                        {/* Status */}
+                        <td className="p-3 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              job.status === "SUCCESS"
+                                ? "bg-emerald-950 border border-emerald-500/40 text-emerald-300"
+                                : job.status === "PENDING"
+                                ? "bg-amber-950 border border-amber-500/40 text-amber-300 animate-pulse"
+                                : job.status === "CLAIMED"
+                                ? "bg-sky-950 border border-sky-500/40 text-sky-300"
+                                : job.status === "UNCERTAIN"
+                                ? "bg-orange-950 border border-orange-500/40 text-orange-300"
+                                : "bg-rose-950 border border-rose-500/40 text-rose-300"
+                            }`}
+                          >
+                            {job.status === "SUCCESS" && <CheckCircle2 className="w-3 h-3" />}
+                            {job.status === "PENDING" && <Clock className="w-3 h-3" />}
+                            {job.status === "CLAIMED" && <RefreshCw className="w-3 h-3 animate-spin" />}
+                            {job.status === "UNCERTAIN" && <AlertTriangle className="w-3 h-3" />}
+                            {job.status === "FAILED" && <XCircle className="w-3 h-3" />}
+                            <span>{job.status}</span>
+                          </span>
+                        </td>
+
+                        {/* Title & Type */}
+                        <td className="p-3">
+                          <div className="font-sans font-bold text-stone-200">{job.title}</div>
+                          <div className="text-[10px] text-stone-500 flex items-center gap-2 mt-0.5">
+                            <span className="bg-stone-800 px-1.5 py-0.2 rounded text-stone-300">
+                              {job.type}
+                            </span>
+                            <span>•</span>
+                            <span>{job.paperWidth}</span>
+                            {job.printerIp && (
+                              <>
+                                <span>•</span>
+                                <span className="text-emerald-400">{job.printerIp}</span>
+                              </>
+                            )}
                           </div>
-                        )}
-                      </td>
-
-                      {/* Station */}
-                      <td className="p-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded bg-stone-900 border border-stone-800 text-[11px] text-amber-300 font-bold">
-                          {job.stationCode}
-                        </span>
-                      </td>
-
-                      {/* Created By */}
-                      <td className="p-3 whitespace-nowrap text-stone-300 font-sans">
-                        <span className="text-xs">{job.createdByName || "Staff"}</span>
-                      </td>
-
-                      {/* Time */}
-                      <td className="p-3 whitespace-nowrap text-stone-400 text-[11px]">
-                        <div>{new Date(job.createdAt).toLocaleTimeString("en-IN")}</div>
-                        <div className="text-[10px] text-stone-500">
-                          {new Date(job.createdAt).toLocaleDateString("en-IN")}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="p-3 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {(job.status === "FAILED" || job.status === "UNCERTAIN") && (
-                            <button
-                              onClick={() => handleRetryJob(job.id)}
-                              title="पुन्हा प्रयत्न करा (Retry Job)"
-                              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              <span>Retry</span>
-                            </button>
+                          {job.errorMessage && (
+                            <div className="text-[10px] text-rose-400 mt-1 font-sans">
+                              ⚠️ {job.errorMessage}
+                            </div>
                           )}
-                          {job.status === "PENDING" && (
-                            <button
-                              onClick={() => handleCancelJob(job.id)}
-                              title="रद्द करा (Cancel Job)"
-                              className="px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                              <span>Cancel</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+
+                        {/* Station */}
+                        <td className="p-3 whitespace-nowrap">
+                          <span className="px-2 py-0.5 rounded bg-stone-900 border border-stone-800 text-[11px] text-amber-300 font-bold">
+                            {job.stationCode}
+                          </span>
+                        </td>
+
+                        {/* Created By */}
+                        <td className="p-3 whitespace-nowrap text-stone-300 font-sans">
+                          <span className="text-xs">{job.createdByName || "Staff"}</span>
+                        </td>
+
+                        {/* Time */}
+                        <td className="p-3 whitespace-nowrap text-stone-400 text-[11px]">
+                          <div>{new Date(job.createdAt).toLocaleTimeString("en-IN")}</div>
+                          <div className="text-[10px] text-stone-500">
+                            {new Date(job.createdAt).toLocaleDateString("en-IN")}
+                          </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="p-3 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {(job.status === "FAILED" || job.status === "UNCERTAIN") && (
+                              <button
+                                onClick={() => handleRetryJob(job.id)}
+                                title="पुन्हा प्रयत्न करा (Retry Job)"
+                                className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer min-h-[36px]"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Retry</span>
+                              </button>
+                            )}
+                            {job.status === "PENDING" && (
+                              <button
+                                onClick={() => handleCancelJob(job.id)}
+                                title="रद्द करा (Cancel Job)"
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer min-h-[36px]"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Cancel</span>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
       </div>
 
       {/* Setup Guide Section */}

@@ -426,26 +426,26 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleTakeParcel()}
-            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-amber-300 cursor-pointer"
+            className="min-h-[38px] px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 border border-amber-300 cursor-pointer"
             title="1-Tap Take Parcel"
           >
-            <ShoppingBag className="w-3 h-3 text-stone-950" />
-            <span>🛍️ Parcel</span>
+            <ShoppingBag className="w-3.5 h-3.5 text-stone-950 shrink-0" />
+            <span>Parcel</span>
           </button>
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="px-2 py-1.5 bg-stone-800/90 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-[10px] rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="min-h-[38px] px-2.5 py-1.5 bg-stone-800/90 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-xs rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
           >
-            <Printer className="w-3 h-3 text-amber-400" />
+            <Printer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>प्रिंटर</span>
           </button>
           <button
             type="button"
             onClick={() => handleOpenAddParty(1)}
-            className="px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-[10px] rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40 cursor-pointer"
+            className="min-h-[38px] px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40 cursor-pointer"
           >
-            <Plus className="w-3 h-3 text-amber-200" />
+            <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
             <span>Seat</span>
           </button>
         </div>
@@ -614,8 +614,8 @@ export default function WaiterFloorPage() {
         </div>
       )}
 
-      {/* 12 Physical Tables Grid: Exactly 3 Tables per Line on Mobile, Responsive & Touch-Friendly */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3.5 max-w-2xl sm:max-w-4xl mx-auto w-full pb-6">
+      {/* 12 Physical Tables Grid: Responsive 2-col on narrow mobile (<380px), 3-col on >=380px, Touch-Friendly */}
+      <div className="grid grid-cols-2 min-[380px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3.5 max-w-2xl sm:max-w-4xl mx-auto w-full pb-6">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
             (p) => (p.tableId === table.id || p.tableNumber === table.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
@@ -766,14 +766,13 @@ export default function WaiterFloorPage() {
               {isOccupied ? (
                 isShared ? (
                   <div className="pt-2 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1 w-full">
+                    <div className="grid grid-cols-2 gap-1.5 w-full">
                       <button
                         type="button"
                         onClick={() => setActiveTableForDetail(table)}
-                        className="w-full py-2 px-0.5 bg-purple-600 hover:bg-purple-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation"
+                        className="w-full min-h-[40px] py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation cursor-pointer flex items-center justify-center"
                       >
-                        <span className="xs:hidden">{tableParties.length}P →</span>
-                        <span className="hidden xs:inline">{tableParties.length} Parties →</span>
+                        <span>{tableParties.length}P View →</span>
                       </button>
                       <button
                         type="button"
@@ -783,24 +782,22 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className="w-full py-2 px-0.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                        className="w-full min-h-[40px] py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
                       >
-                        <CheckCircle2 className="w-3 h-3 text-emerald-200 shrink-0" />
-                        <span className="xs:hidden">Paid</span>
-                        <span className="hidden xs:inline">Paid</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                        <span>Paid</span>
                       </button>
                     </div>
                   </div>
                 ) : (
                   <div className="pt-2 border-t border-stone-100 shrink-0">
-                    <div className="grid grid-cols-2 gap-1 w-full">
+                    <div className="grid grid-cols-2 gap-1.5 w-full">
                       <Link
                         href={`/waiter/order/${primaryParty.id}`}
-                        className="w-full py-2 px-0.5 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation border border-red-500/30"
+                        className="w-full min-h-[40px] py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
                       >
-                        <Plus className="w-3 h-3 text-amber-200 shrink-0" />
-                        <span className="xs:hidden">Ord</span>
-                        <span className="hidden xs:inline">Order</span>
+                        <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
+                        <span>Order</span>
                       </Link>
                       <button
                         type="button"
@@ -810,15 +807,14 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className={`w-full py-2 px-0.5 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-0.5 sm:gap-1 text-center truncate touch-manipulation cursor-pointer border ${
+                        className={`w-full min-h-[40px] py-2 px-1 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border ${
                           hasBillRequested
                             ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 ring-1 ring-amber-300 animate-pulse font-black"
                             : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-emerald-500/40"
                         }`}
                       >
-                        <CheckCircle2 className={`w-3 h-3 shrink-0 ${hasBillRequested ? "text-stone-950" : "text-emerald-200"}`} />
-                        <span className="xs:hidden">{hasBillRequested ? "Paid 🔥" : "Paid"}</span>
-                        <span className="hidden xs:inline">{hasBillRequested ? "Bill Paid 🔥" : "Paid"}</span>
+                        <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${hasBillRequested ? "text-stone-950" : "text-emerald-200"}`} />
+                        <span>{hasBillRequested ? "Paid 🔥" : "Paid"}</span>
                       </button>
                     </div>
                   </div>
@@ -828,11 +824,11 @@ export default function WaiterFloorPage() {
                   <button
                     type="button"
                     onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
-                    className="w-full py-2 px-1 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-[10px] sm:text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-emerald-500/30"
+                    className="w-full min-h-[40px] py-2 px-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 text-center truncate touch-manipulation border border-emerald-500/30 cursor-pointer"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
-                    <Plus className="w-3.5 h-3.5 shrink-0" />
-                    <span>Seat (2)</span>
+                    <Plus className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
+                    <span>Seat 2G →</span>
                   </button>
                 </div>
               )}

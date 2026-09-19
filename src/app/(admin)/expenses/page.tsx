@@ -417,93 +417,158 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Expenses Records Table */}
+      {/* Expenses Records Table & Mobile Cards */}
       <div className="bg-white rounded-2xl border border-[#E7E2DA] shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          {filteredExpenses.length === 0 ? (
-            <div className="p-8 text-center text-stone-400">
-              <Wallet className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-xs font-semibold">कोणताही खर्च सापडला नाही</p>
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-stone-200 bg-stone-50/70 text-stone-600 font-extrabold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">तारीख (Date)</th>
-                  <th className="py-3 px-3">मुख्य प्रवर्ग (Category)</th>
-                  <th className="py-3 px-3">उपकॅटेगरी (Subcategory)</th>
-                  <th className="py-3 px-3">पार्टी / विक्रेता (Party)</th>
-                  <th className="py-3 px-3">वारंवारता (Freq)</th>
-                  <th className="py-3 px-3">पद्धत (Mode)</th>
-                  <th className="py-3 px-3">रक्कम (Amount)</th>
-                  <th className="py-3 px-4 text-right">कृती</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filteredExpenses.map((exp) => (
-                  <tr key={exp.id} className="hover:bg-amber-50/30 transition-colors">
-                    <td className="py-3 px-4 text-stone-500 font-mono text-[11px]">
-                      {exp.date}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="font-bold text-stone-900">{exp.category}</span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-semibold text-[11px]">
+        {filteredExpenses.length === 0 ? (
+          <div className="p-8 text-center text-stone-400">
+            <Wallet className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-semibold">कोणताही खर्च सापडला नाही</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Cards View */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
+              {filteredExpenses.map((exp) => (
+                <div key={exp.id} className="p-3 bg-[#FAF8F5]/60 rounded-xl border border-stone-200/80 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-black text-xs text-stone-900">{exp.category}</span>
+                        <span
+                          className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            exp.paymentMethod === "CASH"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-blue-100 text-blue-900 border border-blue-300"
+                          }`}
+                        >
+                          {exp.paymentMethod === "CASH" ? (
+                            <Banknote className="w-3 h-3" />
+                          ) : (
+                            <QrCode className="w-3 h-3" />
+                          )}
+                          {exp.paymentMethod}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-stone-600 font-semibold mt-0.5">
                         {exp.subcategory || exp.item}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-black text-base text-stone-900">
+                        ₹{exp.amount.toLocaleString("en-IN")}
                       </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="inline-flex items-center gap-1 font-bold text-amber-950">
-                        <Users className="w-3 h-3 text-amber-700" />
-                        {exp.party || exp.paidTo || "Local Vendor"}
+                      <span className="text-[10px] text-stone-400 font-mono block">
+                        {exp.date}
                       </span>
-                    </td>
-                    <td className="py-3 px-3">
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 truncate max-w-[200px]">
+                      <Users className="w-3 h-3 text-amber-700 shrink-0" />
+                      <span className="truncate">{exp.party || exp.paidTo || "Local Vendor"}</span>
+                    </span>
+
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-stone-100 text-stone-600 border border-stone-200">
                         {exp.frequency || "DAILY"}
                       </span>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                          exp.paymentMethod === "CASH"
-                            ? "bg-amber-100 text-amber-900 border border-amber-300"
-                            : "bg-blue-100 text-blue-900 border border-blue-300"
-                        }`}
-                      >
-                        {exp.paymentMethod === "CASH" ? (
-                          <Banknote className="w-3 h-3" />
-                        ) : (
-                          <QrCode className="w-3 h-3" />
-                        )}
-                        {exp.paymentMethod}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono font-black text-stone-900 text-sm">
-                      ₹{exp.amount.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3 px-4 text-right">
                       <button
+                        type="button"
                         onClick={() => handleDeleteExpense(exp.id)}
-                        className="p-1.5 rounded-lg border border-stone-200 hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                        className="p-1.5 min-h-[36px] min-w-[36px] rounded-lg border border-stone-200 hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors flex items-center justify-center touch-manipulation active:scale-95"
                         title="Delete expense"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-stone-200 bg-stone-50/70 text-stone-600 font-extrabold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-4">तारीख (Date)</th>
+                    <th className="py-3 px-3">मुख्य प्रवर्ग (Category)</th>
+                    <th className="py-3 px-3">उपकॅटेगरी (Subcategory)</th>
+                    <th className="py-3 px-3">पार्टी / विक्रेता (Party)</th>
+                    <th className="py-3 px-3">वारंवारता (Freq)</th>
+                    <th className="py-3 px-3">पद्धत (Mode)</th>
+                    <th className="py-3 px-3">रक्कम (Amount)</th>
+                    <th className="py-3 px-4 text-right">कृती</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredExpenses.map((exp) => (
+                    <tr key={exp.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="py-3 px-4 text-stone-500 font-mono text-[11px]">
+                        {exp.date}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="font-bold text-stone-900">{exp.category}</span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-stone-100 text-stone-700 font-semibold text-[11px]">
+                          {exp.subcategory || exp.item}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="inline-flex items-center gap-1 font-bold text-amber-950">
+                          <Users className="w-3 h-3 text-amber-700" />
+                          {exp.party || exp.paidTo || "Local Vendor"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-stone-100 text-stone-600 border border-stone-200">
+                          {exp.frequency || "DAILY"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            exp.paymentMethod === "CASH"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-blue-100 text-blue-900 border border-blue-300"
+                          }`}
+                        >
+                          {exp.paymentMethod === "CASH" ? (
+                            <Banknote className="w-3 h-3" />
+                          ) : (
+                            <QrCode className="w-3 h-3" />
+                          )}
+                          {exp.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 font-mono font-black text-stone-900 text-sm">
+                        ₹{exp.amount.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExpense(exp.id)}
+                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
+                          title="Delete expense"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* RECORD EXPENSE MODAL (WITH 3 DISTINCT FIELDS: Category, Subcategory, Party) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-stone-200 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-black text-stone-900 flex items-center gap-2">
               <Wallet className="w-5 h-5 text-red-600" />
               <span>नवीन खर्च नोंदवा (Record Hotel Expense)</span>

@@ -343,96 +343,165 @@ export default function SellPage() {
         </div>
 
         {/* Bills Table */}
-        <div className="overflow-x-auto">
-          {filteredBills.length === 0 ? (
-            <div className="p-8 text-center text-stone-400">
-              <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
-              <p className="text-xs font-semibold">कोणतेही बिल सापडले नाही</p>
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-stone-200 bg-stone-50/70 text-stone-600 font-extrabold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-4">बिल क्रमांक</th>
-                  <th className="py-3 px-3">टेबल क्र.</th>
-                  <th className="py-3 px-3">आयटम्स</th>
-                  <th className="py-3 px-3">रक्कम (Total)</th>
-                  <th className="py-3 px-3">पेमेंट पद्धत</th>
-                  <th className="py-3 px-3">वेळ (Time)</th>
-                  <th className="py-3 px-4 text-right">कृती (Actions)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                {filteredBills.map((bill) => (
-                  <tr key={bill.id} className="hover:bg-amber-50/30 transition-colors">
-                    <td className="py-3 px-4 font-mono font-black text-stone-900">
-                      #{bill.billNumber}
-                    </td>
-                    <td className="py-3 px-3 font-bold text-stone-800">
-                      टेबल {bill.tableNumber}
-                    </td>
-                    <td className="py-3 px-3 text-stone-600">
-                      {bill.items.length} आयटम्स
-                    </td>
-                    <td className="py-3 px-3 font-mono font-black text-stone-900">
-                      ₹{bill.grandTotal.toLocaleString("en-IN")}
-                    </td>
-                    <td className="py-3 px-3">
-                      {(() => {
-                        const method = bill.payments[0]?.paymentMethod || "CASH";
-                        return (
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
-                              method === "CASH"
-                                ? "bg-amber-100 text-amber-900 border border-amber-300"
-                                : method === "UPI"
-                                ? "bg-blue-100 text-blue-900 border border-blue-300"
-                                : "bg-purple-100 text-purple-900 border border-purple-300"
-                            }`}
-                          >
-                            {method === "CASH" ? (
-                              <Banknote className="w-3 h-3" />
-                            ) : (
-                              <QrCode className="w-3 h-3" />
-                            )}
-                            {method}
+        {filteredBills.length === 0 ? (
+          <div className="p-8 text-center text-stone-400">
+            <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs font-semibold">कोणतेही बिल सापडले नाही</p>
+          </div>
+        ) : (
+          <>
+            {/* Mobile Bills Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
+              {filteredBills.map((bill) => {
+                const method = bill.payments[0]?.paymentMethod || "CASH";
+                return (
+                  <div key={bill.id} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-black text-stone-900 text-sm">#{bill.billNumber}</span>
+                          <span className="font-bold text-stone-800 bg-stone-100 px-1.5 py-0.2 rounded text-[11px]">
+                            टेबल {bill.tableNumber}
                           </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="py-3 px-3 text-stone-500 font-mono text-[11px]">
-                      {new Date(bill.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-1.5">
+                        </div>
+                        <div className="text-[10px] text-stone-500 font-mono mt-0.5">
+                          {new Date(bill.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} • {bill.items.length} आयटम्स
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-mono font-black text-stone-900 text-base">
+                          ₹{bill.grandTotal.toLocaleString("en-IN")}
+                        </div>
+                        <span
+                          className={`inline-flex items-center gap-0.5 px-2 py-0.2 rounded-full text-[9px] font-black ${
+                            method === "CASH"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-blue-100 text-blue-900 border border-blue-300"
+                          }`}
+                        >
+                          {method === "CASH" ? <Banknote className="w-2.5 h-2.5" /> : <QrCode className="w-2.5 h-2.5" />}
+                          {method}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-stone-200/60">
                       <button
+                        type="button"
                         onClick={() => {
                           setPreviewBill(bill);
                           setIsPreviewModalOpen(true);
                         }}
-                        className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 transition-colors"
+                        className="px-3 py-1.5 min-h-[36px] rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 font-bold text-xs transition-colors flex items-center gap-1 touch-manipulation active:scale-95"
                         title="पावती पहा (View Receipt)"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-3.5 h-3.5 text-stone-500" />
+                        <span>पहा</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handlePrintReprint(bill)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-colors"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[36px] rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-2xs transition-colors touch-manipulation active:scale-95"
                         title="थर्मल प्रिंटरवर डुप्लिकेट प्रिंट करा"
                       >
-                        <Printer className="w-3 h-3" />
-                        <span>रीप्रिंट (Reprint)</span>
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>रीप्रिंट</span>
                       </button>
-                    </td>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-stone-200 bg-stone-50/70 text-stone-600 font-extrabold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-4">बिल क्रमांक</th>
+                    <th className="py-3 px-3">टेबल क्र.</th>
+                    <th className="py-3 px-3">आयटम्स</th>
+                    <th className="py-3 px-3">रक्कम (Total)</th>
+                    <th className="py-3 px-3">पेमेंट पद्धत</th>
+                    <th className="py-3 px-3">वेळ (Time)</th>
+                    <th className="py-3 px-4 text-right">कृती (Actions)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {filteredBills.map((bill) => (
+                    <tr key={bill.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="py-3 px-4 font-mono font-black text-stone-900">
+                        #{bill.billNumber}
+                      </td>
+                      <td className="py-3 px-3 font-bold text-stone-800">
+                        टेबल {bill.tableNumber}
+                      </td>
+                      <td className="py-3 px-3 text-stone-600">
+                        {bill.items.length} आयटम्स
+                      </td>
+                      <td className="py-3 px-3 font-mono font-black text-stone-900">
+                        ₹{bill.grandTotal.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-3">
+                        {(() => {
+                          const method = bill.payments[0]?.paymentMethod || "CASH";
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                method === "CASH"
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                  : method === "UPI"
+                                  ? "bg-blue-100 text-blue-900 border border-blue-300"
+                                  : "bg-purple-100 text-purple-900 border border-purple-300"
+                              }`}
+                            >
+                              {method === "CASH" ? (
+                                <Banknote className="w-3 h-3" />
+                              ) : (
+                                <QrCode className="w-3 h-3" />
+                              )}
+                              {method}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="py-3 px-3 text-stone-500 font-mono text-[11px]">
+                        {new Date(bill.createdAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewBill(bill);
+                            setIsPreviewModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg border border-stone-200 hover:bg-stone-100 text-stone-600 hover:text-stone-900 transition-colors"
+                          title="पावती पहा (View Receipt)"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handlePrintReprint(bill)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs transition-colors"
+                          title="थर्मल प्रिंटरवर डुप्लिकेट प्रिंट करा"
+                        >
+                          <Printer className="w-3 h-3" />
+                          <span>रीप्रिंट (Reprint)</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Thermal Receipt Preview Modal */}

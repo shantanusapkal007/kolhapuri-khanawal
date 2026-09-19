@@ -158,7 +158,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
               key={item.href}
               href={item.href}
               onClick={() => triggerHaptic("tap")}
-              className={`relative flex flex-col items-center justify-center min-h-[46px] py-1 px-0.5 rounded-xl transition-all touch-manipulation active:scale-95 ${
+              className={`relative flex flex-col items-center justify-center min-h-[48px] py-1 px-0.5 rounded-xl transition-all touch-manipulation active:scale-95 ${
                 active
                   ? "text-red-700 font-black"
                   : "text-stone-500 hover:text-stone-900 font-bold"
@@ -200,7 +200,7 @@ export function MobileBottomNav({ onOpenMoreDrawer }: MobileBottomNavProps) {
             triggerHaptic("tap");
             onOpenMoreDrawer();
           }}
-          className="relative flex flex-col items-center justify-center min-h-[46px] py-1 px-0.5 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-bold cursor-pointer"
+          className="relative flex flex-col items-center justify-center min-h-[48px] py-1 px-0.5 rounded-xl text-stone-500 hover:text-stone-900 transition-all touch-manipulation active:scale-95 font-bold cursor-pointer"
           aria-label="Open staff & back-office options"
         >
           <div className="relative flex items-center justify-center">

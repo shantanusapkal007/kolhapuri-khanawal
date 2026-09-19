@@ -223,48 +223,83 @@ export default function StaffPage() {
           <span className="text-xs font-bold text-stone-500">{store.staffAdvances.length} Advance Entries</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Staff Name</th>
-                <th className="py-3 px-4">Advance Amount</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4 text-right">Reason / Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+        {store.staffAdvances.length === 0 ? (
+          <div className="p-6 text-center text-stone-400 text-xs">
+            कोणतीही उचल नोंदवलेली नाही (No staff advances recorded)
+          </div>
+        ) : (
+          <>
+            {/* Mobile Advances Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
               {store.staffAdvances.map((adv) => (
-                <tr key={adv.id} className="hover:bg-amber-50/30">
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-700 whitespace-nowrap">
-                    {adv.date}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
-                    {adv.employeeName}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-black text-amber-900 text-base">
-                    ₹{adv.amount.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                      {adv.status}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right text-stone-500 font-medium text-[11px]">
+                <div key={adv.id} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-1.5 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-stone-900 text-xs">{adv.employeeName}</div>
+                      <div className="text-[10px] text-stone-400 font-mono mt-0.5">{adv.date}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-black text-amber-900 text-sm">
+                        ₹{adv.amount.toLocaleString("en-IN")}
+                      </div>
+                      <span className="inline-flex items-center px-2 py-0.2 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                        {adv.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-stone-500 pt-1 border-t border-stone-200/60 italic">
                     {adv.notes || "Staff advance draw"}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Staff Name</th>
+                    <th className="py-3 px-4">Advance Amount</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Reason / Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {store.staffAdvances.map((adv) => (
+                    <tr key={adv.id} className="hover:bg-amber-50/30">
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-700 whitespace-nowrap">
+                        {adv.date}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
+                        {adv.employeeName}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-black text-amber-900 text-base">
+                        ₹{adv.amount.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                          {adv.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-stone-500 font-medium text-[11px]">
+                        {adv.notes || "Staff advance draw"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Give Advance Modal */}
       {showAdvanceModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3">
               <h3 className="text-base font-black text-stone-900">Record Staff Advance</h3>
               <button
@@ -337,8 +372,8 @@ export default function StaffPage() {
 
       {/* Salary Slip Modal */}
       {showSalaryModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3">
               <div>
                 <h3 className="text-base font-black text-stone-900">Monthly Salary Statement</h3>

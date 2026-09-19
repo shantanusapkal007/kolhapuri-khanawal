@@ -111,77 +111,154 @@ export default function PurchasePlannerPage() {
           <span className="text-xs font-bold text-stone-500">{recommendations.length} Ingredients Calculated</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Ingredient / Item</th>
-                <th className="py-3 px-4">Current Stock</th>
-                <th className="py-3 px-4">Daily Par Requirement</th>
-                <th className="py-3 px-4">Recommended To Buy</th>
-                <th className="py-3 px-4">Estimated Cost</th>
-                <th className="py-3 px-4">Urgency</th>
-                <th className="py-3 px-4 text-right">Quick Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+        {recommendations.length === 0 ? (
+          <div className="p-8 text-center text-stone-400 text-xs font-semibold">
+            सर्व स्टॉक पर्याप्त आहे (All stocks adequate)
+          </div>
+        ) : (
+          <>
+            {/* Mobile Procurement Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
               {recommendations.map((rec) => (
-                <tr key={rec.ingredientId} className="hover:bg-amber-50/30">
-                  <td className="py-3.5 px-4">
-                    <div className="font-black text-stone-900">{rec.ingredientName}</div>
-                    {rec.localName && (
-                      <div className="text-[11px] text-stone-500 font-bold">{rec.localName}</div>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-800">
-                    {rec.currentStock} {rec.unit}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-medium text-stone-600">
-                    {rec.expectedDailyRequirement} {rec.unit}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-black text-base text-stone-900">
-                    {rec.recommendedPurchaseQty > 0 ? (
-                      <span className="text-red-700">
-                        {rec.recommendedPurchaseQty} {rec.unit}
+                <div key={rec.ingredientId} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-black text-stone-900 text-xs">{rec.ingredientName}</div>
+                      {rec.localName && (
+                        <div className="text-[10px] text-stone-500 font-bold">{rec.localName}</div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                          rec.urgency === "CRITICAL"
+                            ? "bg-red-100 text-red-800 border border-red-300 animate-pulse"
+                            : rec.urgency === "HIGH"
+                            ? "bg-amber-100 text-amber-800 border border-amber-300"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {rec.urgency}
                       </span>
-                    ) : (
-                      <span className="text-emerald-700">Adequate ✓</span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-900">
-                    ₹{rec.estimatedCost.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                        rec.urgency === "CRITICAL"
-                          ? "bg-red-100 text-red-800 border border-red-300 animate-pulse"
-                          : rec.urgency === "HIGH"
-                          ? "bg-amber-100 text-amber-800 border border-amber-300"
-                          : "bg-emerald-100 text-emerald-800"
-                      }`}
-                    >
-                      {rec.urgency}
-                    </span>
-                  </td>
-                  <td className="py-3.5 px-4 text-right">
-                    {rec.recommendedPurchaseQty > 0 ? (
+                      <div className="font-mono font-black text-stone-900 text-xs mt-0.5">
+                        ₹{rec.estimatedCost.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-2 rounded-lg bg-white border border-stone-200/60 text-[11px]">
+                    <div>
+                      <span className="text-stone-500">Current:</span>{" "}
+                      <strong className="text-stone-800 font-mono font-bold">{rec.currentStock} {rec.unit}</strong>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">Daily Par:</span>{" "}
+                      <strong className="text-stone-700 font-mono">{rec.expectedDailyRequirement} {rec.unit}</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 text-xs">
+                    <div>
+                      <span className="text-[10px] text-stone-500 uppercase font-bold">To Buy: </span>
+                      {rec.recommendedPurchaseQty > 0 ? (
+                        <span className="font-mono font-black text-sm text-red-700">
+                          {rec.recommendedPurchaseQty} {rec.unit}
+                        </span>
+                      ) : (
+                        <span className="font-bold text-emerald-700 text-xs">Adequate ✓</span>
+                      )}
+                    </div>
+
+                    {rec.recommendedPurchaseQty > 0 && (
                       <button
+                        type="button"
                         onClick={() => handleFastOrder(rec)}
-                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs shadow-xs active:scale-95 transition-all"
+                        className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold px-3 py-2 min-h-[38px] rounded-xl text-xs shadow-xs active:scale-95 transition-all touch-manipulation"
                       >
                         <ShoppingCart className="w-3.5 h-3.5" />
                         <span>1-Click Buy</span>
                       </button>
-                    ) : (
-                      <span className="text-xs font-bold text-stone-400">No Action</span>
                     )}
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Ingredient / Item</th>
+                    <th className="py-3 px-4">Current Stock</th>
+                    <th className="py-3 px-4">Daily Par Requirement</th>
+                    <th className="py-3 px-4">Recommended To Buy</th>
+                    <th className="py-3 px-4">Estimated Cost</th>
+                    <th className="py-3 px-4">Urgency</th>
+                    <th className="py-3 px-4 text-right">Quick Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {recommendations.map((rec) => (
+                    <tr key={rec.ingredientId} className="hover:bg-amber-50/30">
+                      <td className="py-3.5 px-4">
+                        <div className="font-black text-stone-900">{rec.ingredientName}</div>
+                        {rec.localName && (
+                          <div className="text-[11px] text-stone-500 font-bold">{rec.localName}</div>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-800">
+                        {rec.currentStock} {rec.unit}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-stone-600">
+                        {rec.expectedDailyRequirement} {rec.unit}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-black text-base text-stone-900">
+                        {rec.recommendedPurchaseQty > 0 ? (
+                          <span className="text-red-700">
+                            {rec.recommendedPurchaseQty} {rec.unit}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-700">Adequate ✓</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-900">
+                        ₹{rec.estimatedCost.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            rec.urgency === "CRITICAL"
+                              ? "bg-red-100 text-red-800 border border-red-300 animate-pulse"
+                              : rec.urgency === "HIGH"
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {rec.urgency}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {rec.recommendedPurchaseQty > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => handleFastOrder(rec)}
+                            className="inline-flex items-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold px-3.5 py-1.5 rounded-lg text-xs shadow-xs active:scale-95 transition-all touch-manipulation"
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" />
+                            <span>1-Click Buy</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-stone-400">No Action</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

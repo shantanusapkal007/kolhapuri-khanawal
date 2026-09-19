@@ -379,7 +379,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
               <button
                 type="button"
                 onClick={onCloseMobile}
-                className="lg:hidden p-2 text-stone-500 hover:text-stone-800 rounded-xl hover:bg-stone-100 touch-manipulation active:scale-95"
+                className="lg:hidden w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center text-stone-500 hover:text-stone-800 rounded-xl hover:bg-stone-100 touch-manipulation active:scale-95 cursor-pointer"
                 aria-label="Close navigation drawer"
               >
                 <X className="w-5 h-5" />
@@ -427,7 +427,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
                       }
                       if (onCloseMobile) onCloseMobile();
                     }}
-                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all group ${
+                    className={`flex items-center justify-between px-3 py-2.5 min-h-[44px] rounded-xl text-xs transition-all group ${
                       !isAllowed
                         ? "opacity-40 hover:opacity-70 text-stone-400 hover:bg-stone-50 cursor-not-allowed"
                         : isActive

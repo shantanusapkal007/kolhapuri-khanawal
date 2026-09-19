@@ -921,7 +921,7 @@ export default function WaiterOrderClient({
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
+            className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
             title="प्रिंटर सेटिंग्ज (Printer Settings)"
           >
             <Printer className="w-4 h-4 text-amber-600" />
@@ -932,7 +932,7 @@ export default function WaiterOrderClient({
             <button
               type="button"
               onClick={() => setShowMoreActions(!showMoreActions)}
-              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
+              className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl sm:rounded-2xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 active:scale-95 cursor-pointer shadow-2xs shrink-0 touch-manipulation"
               title="More Actions"
             >
               <MoreVertical className="w-4 h-4" />
@@ -1364,11 +1364,11 @@ export default function WaiterOrderClient({
                     </div>
 
                     {inCartTotal > 0 ? (
-                      <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-2xl shrink-0">
+                      <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl shrink-0">
                         <button
                           type="button"
                           onClick={() => handleThaliQuantityChange(item, -1)}
-                          className="w-8 h-8 rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                           title="कमी करा (Decrease Thali)"
                         >
                           <Minus className="w-4 h-4" />
@@ -1380,7 +1380,7 @@ export default function WaiterOrderClient({
                           type="button"
                           disabled={isOut}
                           onClick={() => handleThaliQuantityChange(item, 1)}
-                          className="w-8 h-8 rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                           title="वाढवा (Increase Thali)"
                         >
                           <Plus className="w-4 h-4" />
@@ -1484,11 +1484,11 @@ export default function WaiterOrderClient({
                   </span>
 
                   {inCartTotal > 0 ? (
-                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 p-1 rounded-2xl">
+                    <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl">
                       <button
                         type="button"
                         onClick={() => handleCardDecrement(item)}
-                        className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                        className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -1499,7 +1499,7 @@ export default function WaiterOrderClient({
                         type="button"
                         disabled={isOut}
                         onClick={() => handleAddToCart(item)}
-                        className="w-8 h-8 rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                        className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -1594,13 +1594,14 @@ export default function WaiterOrderClient({
               <button
                 type="button"
                 onClick={() => setShowSettleModal(true)}
-                className="py-3 px-4 sm:px-5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                className="py-2.5 sm:py-3 px-3.5 sm:px-5 min-h-[44px] bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40 shrink-0"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                <span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-200 shrink-0" />
+                <span className="sm:hidden">Settle & Close</span>
+                <span className="hidden sm:inline">
                   {party.isTakeaway || party.tableNumber === 0
-                    ? "✅ Bill is Paid — Complete Parcel →"
-                    : "✅ Bill is Paid — Close Table →"}
+                    ? "Bill is Paid — Complete Parcel →"
+                    : "Bill is Paid — Close Table →"}
                 </span>
               </button>
             </div>

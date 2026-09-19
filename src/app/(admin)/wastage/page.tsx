@@ -118,63 +118,98 @@ export default function WastagePage() {
           <span className="text-xs font-bold text-stone-500">{store.wastageRecords.length} Records</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Date & Time</th>
-                <th className="py-3 px-4">Ingredient</th>
-                <th className="py-3 px-4">Quantity Deducted</th>
-                <th className="py-3 px-4">Reason Code</th>
-                <th className="py-3 px-4">Estimated Loss</th>
-                <th className="py-3 px-4">Reported By</th>
-                <th className="py-3 px-4 text-right">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+        {store.wastageRecords.length === 0 ? (
+          <div className="py-8 text-center text-stone-400 font-medium text-xs">
+            No wastage recorded yet today. Zero loss!
+          </div>
+        ) : (
+          <>
+            {/* Mobile Wastage Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
               {store.wastageRecords.map((w) => (
-                <tr key={w.id} className="hover:bg-amber-50/30">
-                  <td className="py-3.5 px-4 font-mono font-medium text-stone-700 whitespace-nowrap">
-                    {w.timestamp.split("T")[0]}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
-                    {w.ingredientName}
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-black text-red-700">
-                    -{w.quantity} {w.unit}
-                  </td>
-                  <td className="py-3.5 px-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                <div key={w.id} className="p-3 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-bold text-stone-900 text-xs">{w.ingredientName}</div>
+                      <div className="text-[10px] text-stone-400 font-mono mt-0.5">{w.timestamp.split("T")[0]}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="font-mono font-black text-sm text-red-700">
+                        -{w.quantity} {w.unit}
+                      </div>
+                      <div className="text-[11px] font-bold text-stone-800">
+                        ₹{w.estimatedCost.toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                       {reasonLabels[w.reason] || w.reason}
                     </span>
-                  </td>
-                  <td className="py-3.5 px-4 font-mono font-bold text-stone-900">
-                    ₹{w.estimatedCost.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3.5 px-4 text-stone-700 font-medium">
-                    {w.recordedBy}
-                  </td>
-                  <td className="py-3.5 px-4 text-right text-stone-500 text-[11px] font-medium">
-                    {w.notes || "Recorded on shift"}
-                  </td>
-                </tr>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-200/60">
+                    <span>By: <strong className="text-stone-700">{w.recordedBy}</strong></span>
+                    {w.notes && <span className="italic truncate max-w-[150px]">“{w.notes}”</span>}
+                  </div>
+                </div>
               ))}
-              {store.wastageRecords.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="py-8 text-center text-stone-400 font-medium">
-                    No wastage recorded yet today. Zero loss!
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4">Ingredient</th>
+                    <th className="py-3 px-4">Quantity Deducted</th>
+                    <th className="py-3 px-4">Reason Code</th>
+                    <th className="py-3 px-4">Estimated Loss</th>
+                    <th className="py-3 px-4">Reported By</th>
+                    <th className="py-3 px-4 text-right">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {store.wastageRecords.map((w) => (
+                    <tr key={w.id} className="hover:bg-amber-50/30">
+                      <td className="py-3.5 px-4 font-mono font-medium text-stone-700 whitespace-nowrap">
+                        {w.timestamp.split("T")[0]}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-stone-900 whitespace-nowrap">
+                        {w.ingredientName}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-black text-red-700">
+                        -{w.quantity} {w.unit}
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          {reasonLabels[w.reason] || w.reason}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-stone-900">
+                        ₹{w.estimatedCost.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3.5 px-4 text-stone-700 font-medium">
+                        {w.recordedBy}
+                      </td>
+                      <td className="py-3.5 px-4 text-right text-stone-500 text-[11px] font-medium">
+                        {w.notes || "Recorded on shift"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Record Wastage Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-md w-full border border-[#E7E2DA] shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#E7E2DA] pb-3">
               <div>
                 <h3 className="text-base font-black text-stone-900">Log Wastage / Spoilage</h3>

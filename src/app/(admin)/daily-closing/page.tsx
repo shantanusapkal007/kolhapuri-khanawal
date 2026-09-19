@@ -215,14 +215,15 @@ export default function DailyClosingPage() {
           <button
             onClick={handleCloseDay}
             disabled={!allChecked}
-            className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-black text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
+            className={`w-full sm:w-auto px-5 sm:px-6 py-3.5 min-h-[44px] rounded-xl font-black text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2 touch-manipulation ${
               allChecked
                 ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-red-700/20 active:scale-95"
                 : "bg-stone-200 text-stone-400 cursor-not-allowed"
             }`}
           >
-            <Lock className="w-4 h-4" />
-            <span>🔒 CLOSE DAY & SAVE AUDIT SNAPSHOT</span>
+            <Lock className="w-4 h-4 shrink-0" />
+            <span className="sm:hidden">Close Day & Save Audit</span>
+            <span className="hidden sm:inline">CLOSE DAY & SAVE AUDIT SNAPSHOT</span>
           </button>
         </div>
 
@@ -251,58 +252,112 @@ export default function DailyClosingPage() {
           <span className="text-xs font-bold text-stone-500">{store.dailyClosings.length} Saved Days</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-4">Date</th>
-                <th className="py-3 px-4">Closed By</th>
-                <th className="py-3 px-4">Total Sales</th>
-                <th className="py-3 px-4">Thalis Sold</th>
-                <th className="py-3 px-4">Cash Sales</th>
-                <th className="py-3 px-4">UPI Sales</th>
-                <th className="py-3 px-4">Cash Variance</th>
-                <th className="py-3 px-4 text-right">Notes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
+        {store.dailyClosings.length === 0 ? (
+          <div className="p-6 text-center text-stone-400 text-xs">
+            No past daily closings recorded yet.
+          </div>
+        ) : (
+          <>
+            {/* Mobile Closings Cards */}
+            <div className="sm:hidden divide-y divide-stone-100 p-2 space-y-2">
               {store.dailyClosings.map((closing) => (
-                <tr key={closing.id} className="hover:bg-amber-50/30">
-                  <td className="py-3 px-4 font-mono font-bold text-stone-900 whitespace-nowrap">
-                    {closing.date}
-                  </td>
-                  <td className="py-3 px-4 font-medium text-stone-800 whitespace-nowrap">
-                    {closing.closedBy}
-                  </td>
-                  <td className="py-3 px-4 font-mono font-black text-stone-900">
-                    ₹{closing.totalSales.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3 px-4 font-bold text-stone-800">
-                    {closing.totalThalisSold} ({closing.chickenThalisSold} C, {closing.muttonThalisSold} M)
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-emerald-700">
-                    ₹{closing.cashSales.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3 px-4 font-mono font-bold text-blue-700">
-                    ₹{closing.upiSales.toLocaleString("en-IN")}
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`font-mono font-bold text-xs ${
-                        closing.cashVariance === 0 ? "text-emerald-700" : "text-amber-700"
-                      }`}
-                    >
-                      {closing.cashVariance === 0 ? "₹0.00" : `₹${closing.cashVariance}`}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-stone-500 font-medium text-[11px]">
-                    {closing.notes || "Checklist confirmed"}
-                  </td>
-                </tr>
+                <div key={closing.id} className="p-3.5 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="font-mono font-bold text-stone-900 text-sm">{closing.date}</div>
+                      <div className="text-[11px] text-stone-500 font-medium mt-0.5">
+                        By {closing.closedBy} • {closing.totalThalisSold} Thalis ({closing.chickenThalisSold}C, {closing.muttonThalisSold}M)
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono font-black text-stone-900 text-base">
+                        ₹{closing.totalSales.toLocaleString("en-IN")}
+                      </div>
+                      <span
+                        className={`font-mono font-bold text-[10px] ${
+                          closing.cashVariance === 0 ? "text-emerald-700" : "text-amber-700"
+                        }`}
+                      >
+                        Var: {closing.cashVariance === 0 ? "₹0.00" : `₹${closing.cashVariance}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/60 text-[11px]">
+                    <div>
+                      <span className="text-stone-500">Cash:</span>{" "}
+                      <strong className="text-emerald-700 font-mono font-bold">₹{closing.cashSales.toLocaleString("en-IN")}</strong>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">UPI:</span>{" "}
+                      <strong className="text-blue-700 font-mono font-bold">₹{closing.upiSales.toLocaleString("en-IN")}</strong>
+                    </div>
+                  </div>
+
+                  {closing.notes && (
+                    <div className="text-[10px] text-stone-500 italic pt-0.5">
+                      “{closing.notes}”
+                    </div>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-[#E7E2DA] bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[11px]">
+                    <th className="py-3 px-4">Date</th>
+                    <th className="py-3 px-4">Closed By</th>
+                    <th className="py-3 px-4">Total Sales</th>
+                    <th className="py-3 px-4">Thalis Sold</th>
+                    <th className="py-3 px-4">Cash Sales</th>
+                    <th className="py-3 px-4">UPI Sales</th>
+                    <th className="py-3 px-4">Cash Variance</th>
+                    <th className="py-3 px-4 text-right">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {store.dailyClosings.map((closing) => (
+                    <tr key={closing.id} className="hover:bg-amber-50/30">
+                      <td className="py-3 px-4 font-mono font-bold text-stone-900 whitespace-nowrap">
+                        {closing.date}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-stone-800 whitespace-nowrap">
+                        {closing.closedBy}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-black text-stone-900">
+                        ₹{closing.totalSales.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-4 font-bold text-stone-800">
+                        {closing.totalThalisSold} ({closing.chickenThalisSold} C, {closing.muttonThalisSold} M)
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-emerald-700">
+                        ₹{closing.cashSales.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-blue-700">
+                        ₹{closing.upiSales.toLocaleString("en-IN")}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`font-mono font-bold text-xs ${
+                            closing.cashVariance === 0 ? "text-emerald-700" : "text-amber-700"
+                          }`}
+                        >
+                          {closing.cashVariance === 0 ? "₹0.00" : `₹${closing.cashVariance}`}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right text-stone-500 font-medium text-[11px]">
+                        {closing.notes || "Checklist confirmed"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Thermal Receipt Preview Modal */}

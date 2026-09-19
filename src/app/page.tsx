@@ -90,34 +90,36 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Quick Action Buttons on Desktop / Top Row */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <Link
-              href="/settings"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs font-bold text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-95 transition-all touch-manipulation"
-              title="Configure restaurant profile, thermal POS hardware & backups"
-            >
-              <Sliders className="w-4 h-4 text-stone-600" />
-              <span>Settings</span>
-            </Link>
-
-            <button
-              type="button"
-              onClick={handlePrintDailyReport}
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-95 transition-all touch-manipulation"
-              title="Quick print current shift summary to thermal receipt"
-            >
-              <Printer className="w-4 h-4 text-stone-600" />
-              <span>Print Z-Report</span>
-            </button>
-
+          {/* Quick Action Buttons: Prominent primary action on mobile */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 shrink-0 w-full sm:w-auto">
             <Link
               href="/waiter"
-              className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2.5 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation"
+              className="order-1 sm:order-3 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-3 sm:py-2.5 text-xs font-black shadow-md shadow-red-700/20 active:scale-95 transition-all touch-manipulation min-h-[44px]"
             >
               <Plus className="w-4 h-4 text-amber-200" />
-              <span>Seat Party</span>
+              <span>+ Seat Party (टेबल बसवा)</span>
             </Link>
+
+            <div className="order-2 flex items-center gap-2 w-full sm:w-auto">
+              <Link
+                href="/settings"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-xs font-bold text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-95 transition-all touch-manipulation min-h-[44px]"
+                title="Configure restaurant profile, thermal POS hardware & backups"
+              >
+                <Sliders className="w-4 h-4 text-stone-600" />
+                <span>Settings</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handlePrintDailyReport}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-xs font-bold text-stone-800 shadow-2xs hover:bg-stone-50 active:scale-95 transition-all touch-manipulation min-h-[44px] cursor-pointer"
+                title="Quick print current shift summary to thermal receipt"
+              >
+                <Printer className="w-4 h-4 text-stone-600" />
+                <span>Z-Report</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -125,21 +127,21 @@ export default function HomePage() {
       {/* Critical Reminders & Unclassified Alerts */}
       <div className="space-y-3">
         {summary.unreviewedExpensesCount > 0 && (
-          <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-            <div className="flex items-center gap-3">
+          <div className="p-3.5 sm:p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
               <div>
                 <h4 className="text-xs sm:text-sm font-black text-amber-950">
-                  {summary.unreviewedExpensesCount} Unclassified Expense Transaction Pending Review
+                  {summary.unreviewedExpensesCount} Unclassified Expense Pending Review
                 </h4>
                 <p className="text-[11px] sm:text-xs text-amber-900/80 font-medium">
-                  Verify receipts before daily cash closing to keep financial records leak-free.
+                  Verify receipts before daily cash closing.
                 </p>
               </div>
             </div>
             <Link
               href="/expenses"
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs shrink-0 touch-manipulation"
+              className="w-full sm:w-auto text-center px-4 py-2.5 sm:py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs shrink-0 touch-manipulation min-h-[40px] flex items-center justify-center"
             >
               Review Now →
             </Link>
@@ -149,9 +151,9 @@ export default function HomePage() {
         {criticalReminders.map((rem) => (
           <div
             key={rem.id}
-            className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in"
+            className="p-3.5 sm:p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 sm:gap-3">
               <ShieldAlert className="w-5 h-5 text-red-700 shrink-0" />
               <div>
                 <h4 className="text-xs sm:text-sm font-black text-red-950">
@@ -161,7 +163,7 @@ export default function HomePage() {
             </div>
             <Link
               href="/tasks-maintenance"
-              className="px-3.5 py-1.5 bg-red-700 hover:bg-red-800 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 touch-manipulation"
+              className="w-full sm:w-auto text-center px-3.5 py-2.5 sm:py-1.5 bg-red-700 hover:bg-red-800 text-white font-bold text-xs rounded-xl shadow-xs shrink-0 touch-manipulation min-h-[40px] flex items-center justify-center"
             >
               View Log
             </Link>
@@ -174,16 +176,16 @@ export default function HomePage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xs sm:text-sm font-black text-stone-900 uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-red-700" />
-            <span>५ मुख्य प्रश्न (5 Core Operational Questions)</span>
+            <span>५ मुख्य प्रश्न (5 Core Questions)</span>
           </h2>
-          <span className="text-[11px] font-bold text-stone-400">Live Real-time Metrics</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-stone-400">Live Metrics</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
           {/* Question 1: Today's Sales (spans 2 columns on mobile) */}
-          <div className="col-span-2 md:col-span-1 premium-card p-4 sm:p-5 flex flex-col justify-between space-y-3 border-l-4 border-l-red-600">
+          <div className="col-span-2 md:col-span-1 premium-card p-3.5 sm:p-5 flex flex-col justify-between space-y-2.5 sm:space-y-3 border-l-4 border-l-red-600">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
+              <span className="text-[10px] sm:text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
                 1. आजची विक्री
               </span>
               <span className="text-[10px] font-bold bg-red-50 text-red-800 px-2 py-0.5 rounded-full border border-red-200/60">
@@ -192,10 +194,10 @@ export default function HomePage() {
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-900 font-mono tracking-tight">
                 ₹{summary.todaysSales.toLocaleString("en-IN")}
               </div>
-              <div className="text-[11px] font-bold text-stone-500 mt-2 flex items-center justify-between border-t border-stone-100 pt-1.5">
+              <div className="text-[10px] sm:text-[11px] font-bold text-stone-500 mt-2 flex items-center justify-between border-t border-stone-100 pt-1.5">
                 <span className="text-emerald-700 font-bold">Cash: ₹{summary.cashSales}</span>
                 <span className="text-blue-700 font-bold">UPI: ₹{summary.upiSales}</span>
               </div>
@@ -203,9 +205,9 @@ export default function HomePage() {
           </div>
 
           {/* Question 2: Cash in Drawer */}
-          <div className="premium-card p-4 sm:p-5 flex flex-col justify-between space-y-3 border-l-4 border-l-emerald-600 bg-emerald-50/20">
+          <div className="premium-card p-3.5 sm:p-5 flex flex-col justify-between space-y-2.5 sm:space-y-3 border-l-4 border-l-emerald-600 bg-emerald-50/20">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-emerald-800 uppercase tracking-wide">
+              <span className="text-[10px] sm:text-[11px] font-extrabold text-emerald-800 uppercase tracking-wide">
                 2. गल्ल्यात रोख
               </span>
               <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
@@ -214,19 +216,19 @@ export default function HomePage() {
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-950 font-mono tracking-tight">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-emerald-950 font-mono tracking-tight">
                 ₹{summary.cashInDrawer.toLocaleString("en-IN")}
               </div>
               <p className="text-[10px] text-emerald-800 font-medium mt-1">
-                Float + Cash sales in box
+                Float + Cash sales
               </p>
             </div>
           </div>
 
           {/* Question 3: UPI in Bank */}
-          <div className="premium-card p-4 sm:p-5 flex flex-col justify-between space-y-3 border-l-4 border-l-blue-600 bg-blue-50/20">
+          <div className="premium-card p-3.5 sm:p-5 flex flex-col justify-between space-y-2.5 sm:space-y-3 border-l-4 border-l-blue-600 bg-blue-50/20">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-blue-800 uppercase tracking-wide">
+              <span className="text-[10px] sm:text-[11px] font-extrabold text-blue-800 uppercase tracking-wide">
                 3. बँक जमा
               </span>
               <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -235,19 +237,19 @@ export default function HomePage() {
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-blue-950 font-mono tracking-tight">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-blue-950 font-mono tracking-tight">
                 ₹{summary.upiInBank.toLocaleString("en-IN")}
               </div>
               <p className="text-[10px] text-blue-800 font-medium mt-1">
-                Soundbox settled total
+                Soundbox settled
               </p>
             </div>
           </div>
 
           {/* Question 4: Meat Stock */}
-          <div className="premium-card p-4 sm:p-5 flex flex-col justify-between space-y-3 border-l-4 border-l-amber-600">
+          <div className="premium-card p-3.5 sm:p-5 flex flex-col justify-between space-y-2.5 sm:space-y-3 border-l-4 border-l-amber-600">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
+              <span className="text-[10px] sm:text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
                 4. मटण/चिकन साठा
               </span>
               <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200/60">
@@ -257,13 +259,13 @@ export default function HomePage() {
 
             <div>
               <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex justify-between items-center text-[11px] sm:text-xs">
                   <span className="font-bold text-stone-600">कोंबडी (Chicken):</span>
                   <span className={`font-mono font-black ${summary.chickenStockKg <= 5 ? "text-red-600" : "text-stone-900"}`}>
                     {summary.chickenStockKg} kg
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex justify-between items-center text-[11px] sm:text-xs">
                   <span className="font-bold text-stone-600">बोकड (Mutton):</span>
                   <span className={`font-mono font-black ${summary.muttonStockKg <= 6 ? "text-amber-600" : "text-stone-900"}`}>
                     {summary.muttonStockKg} kg
@@ -277,9 +279,9 @@ export default function HomePage() {
           </div>
 
           {/* Question 5: Thalis Sold */}
-          <div className="col-span-2 md:col-span-1 premium-card p-4 sm:p-5 flex flex-col justify-between space-y-3 border-l-4 border-l-purple-600">
+          <div className="col-span-2 md:col-span-1 premium-card p-3.5 sm:p-5 flex flex-col justify-between space-y-2.5 sm:space-y-3 border-l-4 border-l-purple-600">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
+              <span className="text-[10px] sm:text-[11px] font-extrabold text-stone-500 uppercase tracking-wide">
                 5. एकूण थाळ्या
               </span>
               <span className="text-[10px] font-bold bg-purple-50 text-purple-800 px-2 py-0.5 rounded-full border border-purple-200/60">
@@ -288,10 +290,10 @@ export default function HomePage() {
             </div>
 
             <div>
-              <div className="text-2xl sm:text-3xl font-black text-stone-900 font-mono tracking-tight">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-black text-stone-900 font-mono tracking-tight">
                 {summary.thalisSold} <span className="text-xs font-bold text-stone-400">Sold</span>
               </div>
-              <div className="text-[11px] font-bold text-stone-600 mt-2 flex items-center justify-between border-t border-stone-100 pt-1.5">
+              <div className="text-[10px] sm:text-[11px] font-bold text-stone-600 mt-2 flex items-center justify-between border-t border-stone-100 pt-1.5">
                 <span>🍗 {summary.chickenThalisSold} Chicken</span>
                 <span>🐐 {summary.muttonThalisSold} Mutton</span>
               </div>

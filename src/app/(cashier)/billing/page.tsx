@@ -361,58 +361,61 @@ export default function CashierBillingPage() {
       )}
 
       {/* Luxury Hero Header */}
-      <div className="luxury-card rounded-2xl p-5 sm:p-6 border border-[#E7E2DA] flex items-center justify-between bg-gradient-to-r from-white via-[#FAF8F5] to-white">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 border border-emerald-500/30 shrink-0">
-            <Receipt className="w-6 h-6 text-amber-100" />
+      <div className="luxury-card rounded-2xl p-4 sm:p-6 border border-[#E7E2DA] flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-700 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 border border-emerald-500/30 shrink-0">
+            <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-amber-100" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                Cashier Billing & Settlement
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight">
+                Cashier Billing
               </h1>
-              <span className="bg-emerald-50 text-emerald-900 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wider">
+              <span className="bg-emerald-50 text-emerald-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 uppercase tracking-wider">
                 GST Point-of-Sale
               </span>
             </div>
-            <p className="text-xs text-stone-500 font-medium mt-0.5">
-              Select an active party below to compute itemized GST, apply discounts, or record multi-tender payments.
+            <p className="text-[11px] sm:text-xs text-stone-500 font-medium mt-0.5">
+              Select an active party below to compute itemized GST, apply discounts, or settle payments.
             </p>
           </div>
         </div>
 
         {/* Operational Toolbar: Z-Report, Printers & Cash Drawer */}
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto">
           <button
+            type="button"
             onClick={() => {
               triggerCashDrawerKick();
               showToast("Cash drawer kick pulse sent");
             }}
-            className="flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs px-3 py-2.5 rounded-xl transition-all border border-stone-300 shadow-2xs"
+            className="flex items-center justify-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs px-2.5 sm:px-3 py-2.5 min-h-[40px] rounded-xl transition-all border border-stone-300 shadow-2xs touch-manipulation active:scale-95"
             title="Trigger ESC/POS Cash Drawer Kick pulse"
           >
-            <Banknote className="w-4 h-4 text-emerald-600" />
-            <span className="hidden sm:inline">Kick Drawer</span>
+            <Banknote className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="truncate">Drawer</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               const report = store.generateDayEndReport();
               setDayEndReportData(report);
               setIsZReportModalOpen(true);
             }}
-            className="flex items-center gap-1.5 bg-stone-900 hover:bg-black text-amber-300 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-all shadow-sm"
+            className="flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-black text-amber-300 font-bold text-xs px-2.5 sm:px-3.5 py-2.5 min-h-[40px] rounded-xl transition-all shadow-sm touch-manipulation active:scale-95"
             title="Generate and print daily sales closure slip (Z-Report)"
           >
-            <Calendar className="w-4 h-4 text-amber-400" />
-            <span>Day-End Z-Report</span>
+            <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="truncate">Z-Report</span>
           </button>
           <button
+            type="button"
             onClick={() => setIsPrinterSettingsOpen(true)}
-            className="flex items-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 font-bold text-xs px-3 py-2.5 rounded-xl transition-all border border-stone-300 shadow-2xs"
+            className="flex items-center justify-center gap-1.5 bg-white hover:bg-stone-100 text-stone-700 font-bold text-xs px-2.5 sm:px-3 py-2.5 min-h-[40px] rounded-xl transition-all border border-stone-300 shadow-2xs touch-manipulation active:scale-95"
             title="Thermal printer paper width and station routing configuration"
           >
-            <Sliders className="w-4 h-4 text-stone-600" />
-            <span className="hidden sm:inline">Printers</span>
+            <Sliders className="w-4 h-4 text-stone-600 shrink-0" />
+            <span className="truncate">Printers</span>
           </button>
         </div>
       </div>
@@ -668,38 +671,70 @@ export default function CashierBillingPage() {
                 </div>
 
                 {itemViewTab === "ALL" ? (
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-stone-200 text-stone-500 pb-2">
-                        <th className="font-bold py-1.5">Item</th>
-                        <th className="font-bold py-1.5 text-center">Qty</th>
-                        <th className="font-bold py-1.5 text-right">Price</th>
-                        <th className="font-bold py-1.5 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
+                  <>
+                    {/* Mobile Item Cards */}
+                    <div className="sm:hidden space-y-2">
                       {activeBill.items.map((it) => (
-                        <tr key={it.id} className="py-2">
-                          <td className="py-2 font-bold text-stone-900">
-                            {(it as any).menuItemLocalName || it.menuItemName}
+                        <div key={it.id} className="p-2.5 rounded-xl border border-stone-200 bg-white flex items-center justify-between text-xs">
+                          <div className="space-y-0.5 min-w-0 pr-2">
+                            <div className="font-bold text-stone-900 leading-tight">
+                              {(it as any).menuItemLocalName || it.menuItemName}
+                            </div>
                             {(it as any).menuItemLocalName && (it as any).menuItemLocalName !== it.menuItemName && (
-                              <span className="text-[10px] text-stone-500 block">
+                              <div className="text-[10px] text-stone-500 truncate">
                                 {it.menuItemName}
-                              </span>
+                              </div>
                             )}
-                            {it.seatNumber && (
-                              <span className="text-[10px] text-stone-400 font-normal ml-1">
-                                (Seat {it.seatNumber})
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-2 text-center font-bold text-stone-700">{it.quantity}</td>
-                          <td className="py-2 text-right text-stone-700">₹{it.unitPrice}</td>
-                          <td className="py-2 text-right font-black text-stone-900">₹{it.totalPrice}</td>
-                        </tr>
+                            <div className="flex items-center gap-1.5 text-[10px] text-stone-500">
+                              <span className="font-semibold text-stone-700">{it.quantity} × ₹{it.unitPrice}</span>
+                              {it.seatNumber && (
+                                <span className="bg-stone-100 text-stone-600 px-1.5 py-0.5 rounded">
+                                  Seat {it.seatNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="font-black text-sm text-stone-900">₹{it.totalPrice}</span>
+                          </div>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+
+                    {/* Desktop Items Table */}
+                    <table className="hidden sm:table w-full text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-stone-200 text-stone-500 pb-2">
+                          <th className="font-bold py-1.5">Item</th>
+                          <th className="font-bold py-1.5 text-center">Qty</th>
+                          <th className="font-bold py-1.5 text-right">Price</th>
+                          <th className="font-bold py-1.5 text-right">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-stone-100">
+                        {activeBill.items.map((it) => (
+                          <tr key={it.id} className="py-2">
+                            <td className="py-2 font-bold text-stone-900">
+                              {(it as any).menuItemLocalName || it.menuItemName}
+                              {(it as any).menuItemLocalName && (it as any).menuItemLocalName !== it.menuItemName && (
+                                <span className="text-[10px] text-stone-500 block">
+                                  {it.menuItemName}
+                                </span>
+                              )}
+                              {it.seatNumber && (
+                                <span className="text-[10px] text-stone-400 font-normal ml-1">
+                                  (Seat {it.seatNumber})
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 text-center font-bold text-stone-700">{it.quantity}</td>
+                            <td className="py-2 text-right text-stone-700">₹{it.unitPrice}</td>
+                            <td className="py-2 text-right font-black text-stone-900">₹{it.totalPrice}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
                 ) : (
                   <div className="space-y-3">
                     {Object.entries(
@@ -720,10 +755,25 @@ export default function CashierBillingPage() {
                               {seatName}
                             </span>
                             <span className="font-bold text-xs text-stone-700">
-                              Estimated Seat Total: <b className="text-stone-950 font-black">₹{seatTotal}</b>
+                              Seat Total: <b className="text-stone-950 font-black">₹{seatTotal}</b>
                             </span>
                           </div>
-                          <table className="w-full text-xs text-left">
+
+                          {/* Mobile seat breakdown items */}
+                          <div className="sm:hidden space-y-1.5">
+                            {seatItems.map((it) => (
+                              <div key={it.id} className="flex items-center justify-between text-xs py-1 border-b border-stone-100/80 last:border-0">
+                                <div>
+                                  <div className="font-medium text-stone-900">{(it as any).menuItemLocalName || it.menuItemName}</div>
+                                  <div className="text-[10px] text-stone-500">{it.quantity} × ₹{it.unitPrice}</div>
+                                </div>
+                                <span className="font-bold text-stone-900">₹{it.totalPrice}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Desktop seat breakdown table */}
+                          <table className="hidden sm:table w-full text-xs text-left">
                             <tbody className="divide-y divide-stone-100">
                               {seatItems.map((it) => (
                                 <tr key={it.id} className="py-1">
@@ -744,14 +794,15 @@ export default function CashierBillingPage() {
                 )}
 
                 {/* Discount Pills & Void Bill Action */}
-                <div className="flex items-center justify-between pt-2 border-t border-stone-100 text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-stone-700">Discounts:</span>
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 pt-2 border-t border-stone-100 text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="font-bold text-stone-700 text-xs">Discounts:</span>
                     {[0, 5, 10, 15].map((pct) => (
                       <button
+                        type="button"
                         key={pct}
                         onClick={() => handleApplyDiscount(pct)}
-                        className={`px-2.5 py-1 rounded-lg font-bold transition-all ${
+                        className={`px-2.5 py-1.5 min-h-[36px] rounded-xl font-bold transition-all touch-manipulation active:scale-95 ${
                           discountPercent === pct
                             ? "bg-red-600 text-white shadow-xs"
                             : "bg-stone-100 text-stone-700 hover:bg-stone-200"
@@ -765,7 +816,7 @@ export default function CashierBillingPage() {
                   <button
                     type="button"
                     onClick={() => setVoidBillModal({ open: true, billId: activeBill.id })}
-                    className="text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 hover:bg-rose-50 px-2.5 py-1 rounded-lg transition-all text-xs border border-rose-200"
+                    className="text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 hover:bg-rose-50 px-3 py-1.5 min-h-[36px] rounded-xl transition-all text-xs border border-rose-200 touch-manipulation active:scale-95 shrink-0"
                     title="Void / Cancel this Bill"
                   >
                     <XCircle className="w-3.5 h-3.5" />
@@ -825,17 +876,19 @@ export default function CashierBillingPage() {
 
                 {/* Settlement Actions */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => activeBill && handlePrintReceipt(activeBill, false)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation cursor-pointer"
+                      className="col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold text-xs px-4 py-2.5 min-h-[44px] rounded-xl transition-all shadow-sm active:scale-95 touch-manipulation cursor-pointer"
                     >
                       <Printer className="w-4 h-4" />
                       <span>Print Receipt</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setIsPrintModalOpen(true)}
-                      className="flex items-center justify-center gap-1.5 bg-white border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
+                      className="flex items-center justify-center gap-1.5 bg-white border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs px-3 py-2.5 min-h-[44px] rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Preview</span>
@@ -844,27 +897,29 @@ export default function CashierBillingPage() {
                       <button
                         type="button"
                         onClick={() => activeBill && handlePrintPreBill(activeBill)}
-                        className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2.5 rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
+                        className="flex items-center justify-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs px-3 py-2.5 min-h-[44px] rounded-xl transition-all touch-manipulation active:scale-95 cursor-pointer"
                         title="Print interim table check / estimate for guest review"
                       >
                         <FileText className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Pre-Bill (कच्चा बिल)</span>
+                        <span>Pre-Bill</span>
                       </button>
                     )}
                   </div>
 
                   {activeBill.balanceDue > 0 ? (
                     <button
+                      type="button"
                       onClick={() => setIsPaymentModalOpen(true)}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-6 py-3 rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm px-5 py-3 min-h-[44px] rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation"
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>COLLECT PAYMENT / BILL IS PAID (₹{activeBill.balanceDue})</span>
+                      <span className="sm:hidden">Pay ₹{activeBill.balanceDue}</span>
+                      <span className="hidden sm:inline">COLLECT PAYMENT (₹{activeBill.balanceDue})</span>
                     </button>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200">
-                        <CheckCircle2 className="w-4 h-4" /> BILL SETTLED & TABLE CLOSED
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <span className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-2.5 min-h-[44px] rounded-xl border border-emerald-200 text-center">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> Bill Settled & Closed
                       </span>
                       <button
                         type="button"
@@ -873,7 +928,7 @@ export default function CashierBillingPage() {
                           setSelectedPartyId("");
                           setMobileView("LIST");
                         }}
-                        className="flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
+                        className="flex items-center justify-center gap-1.5 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs px-4 py-2.5 min-h-[44px] rounded-xl shadow-xs active:scale-95 transition-all touch-manipulation cursor-pointer"
                       >
                         <span>Next Table →</span>
                       </button>
@@ -888,8 +943,8 @@ export default function CashierBillingPage() {
 
       {/* MODAL: PAYMENT SETTLEMENT IN LIGHT THEME */}
       {isPaymentModalOpen && activeBill && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-stone-50 border-b border-stone-200 text-stone-900 p-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2 font-bold text-base">
                 <QrCode className="w-5 h-5 text-emerald-600" />
@@ -1171,8 +1226,8 @@ export default function CashierBillingPage() {
 
       {/* MODAL: DAY-END Z-REPORT (दिवसाचा हिशोब) */}
       {isZReportModalOpen && dayEndReportData && (
-        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
             {/* Header */}
             <div className="bg-stone-900 text-white p-4 flex items-center justify-between">
               <div className="flex items-center gap-2.5">

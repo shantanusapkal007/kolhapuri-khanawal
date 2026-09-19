@@ -98,69 +98,69 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
 
   const getPageMeta = () => {
     if (pathname.startsWith("/waiter/order")) {
-      return { title: "Order Entry & KOT", marathi: "ऑर्डर व केओटी", subtitle: "Seat tagging, modifiers & 1-tap kitchen send", icon: Utensils };
+      return { title: "Order Entry & KOT", shortTitle: "Order KOT", marathi: "ऑर्डर व केओटी", subtitle: "Seat tagging, modifiers & 1-tap kitchen send", icon: Utensils };
     }
     if (pathname.startsWith("/waiter")) {
       return { title: "Floor & 12 Dining Tables", shortTitle: "Dining Tables", marathi: "मजला व टेबल", subtitle: "12 tables, shared parties & live occupancy", icon: Utensils };
     }
     if (pathname.startsWith("/kitchen")) {
-      return { title: "Kitchen Display System", marathi: "स्वयंपाकघर KDS", subtitle: "Station routing (Thali, Bhakri, Sukka, Solkadhi)", icon: ChefHat };
+      return { title: "Kitchen Display System", shortTitle: "Kitchen KDS", marathi: "स्वयंपाकघर KDS", subtitle: "Station routing (Thali, Bhakri, Sukka, Solkadhi)", icon: ChefHat };
     }
     if (pathname.startsWith("/billing")) {
-      return { title: "Cashier Billing Desk", marathi: "रोकड व बिलिंग", subtitle: "Itemized GST, multi-tender split & thermal POS", icon: Receipt };
+      return { title: "Cashier Billing Desk", shortTitle: "Billing Desk", marathi: "रोकड व बिलिंग", subtitle: "Itemized GST, multi-tender split & thermal POS", icon: Receipt };
     }
     if (pathname.startsWith("/purchases")) {
-      return { title: "Fast Purchases Entry", marathi: "खरेदी नोंद", subtitle: "Daily chicken, mutton, spices & 1-tap re-order", icon: ShoppingCart };
+      return { title: "Fast Purchases Entry", shortTitle: "Purchases", marathi: "खरेदी नोंद", subtitle: "Daily chicken, mutton, spices & 1-tap re-order", icon: ShoppingCart };
     }
     if (pathname.startsWith("/suppliers")) {
-      return { title: "Suppliers & Advances", marathi: "व्यापारी व ॲडव्हान्स", subtitle: "Directory, advance tracking & net invoice settlement", icon: Building2 };
+      return { title: "Suppliers & Advances", shortTitle: "Suppliers", marathi: "व्यापारी व ॲडव्हान्स", subtitle: "Directory, advance tracking & net invoice settlement", icon: Building2 };
     }
     if (pathname.startsWith("/expenses")) {
-      return { title: "Categorized Expenses", marathi: "दैनिक खर्च", subtitle: "Gas, electricity, repairs, kirana & review alerts", icon: Wallet };
+      return { title: "Categorized Expenses", shortTitle: "Expenses", marathi: "दैनिक खर्च", subtitle: "Gas, electricity, repairs, kirana & review alerts", icon: Wallet };
     }
     if (pathname.startsWith("/cash-upi")) {
-      return { title: "Cash Drawer & UPI Reconcile", marathi: "गल्ला व युपीआय", subtitle: "Soundbox reconciliation & variance tracking", icon: Coins };
+      return { title: "Cash Drawer & UPI Reconcile", shortTitle: "Cash & UPI", marathi: "गल्ला व युपीआय", subtitle: "Soundbox reconciliation & variance tracking", icon: Coins };
     }
     if (pathname.startsWith("/daily-closing")) {
-      return { title: "Daily Closing & Z-Report", marathi: "दिवस सांगता हिशोब", subtitle: "10-point audit, drawer balance & thermal Z-report", icon: Lock };
+      return { title: "Daily Closing & Z-Report", shortTitle: "Daily Closing", marathi: "दिवस सांगता हिशोब", subtitle: "10-point audit, drawer balance & thermal Z-report", icon: Lock };
     }
     if (pathname.startsWith("/purchase-planner")) {
-      return { title: "Morning Purchase Planner", marathi: "सकाळचे नियोजन", subtitle: "Par levels & recommended daily quantities", icon: ClipboardList };
+      return { title: "Morning Purchase Planner", shortTitle: "Planner", marathi: "सकाळचे नियोजन", subtitle: "Par levels & recommended daily quantities", icon: ClipboardList };
     }
     if (pathname.startsWith("/wastage")) {
-      return { title: "Food Loss & Scrap Logger", marathi: "अन्न नासाडी नोंद", subtitle: "Spoilage tracking & live inventory deduction", icon: Trash2 };
+      return { title: "Food Loss & Scrap Logger", shortTitle: "Wastage", marathi: "अन्न नासाडी नोंद", subtitle: "Spoilage tracking & live inventory deduction", icon: Trash2 };
     }
     if (pathname.startsWith("/staff")) {
-      return { title: "Staff Roster & Salary", marathi: "कर्मचारी हजेरी व पगार", subtitle: "1-click attendance, advances & salary slips", icon: Users };
+      return { title: "Staff Roster & Salary", shortTitle: "Staff Roster", marathi: "कर्मचारी हजेरी व पगार", subtitle: "1-click attendance, advances & salary slips", icon: Users };
     }
     if (pathname.startsWith("/tasks-maintenance")) {
-      return { title: "Tasks & Maintenance", marathi: "कामे व देखभाल", subtitle: "Deep freezer log, gas valves & equipment", icon: Wrench };
+      return { title: "Tasks & Maintenance", shortTitle: "Tasks", marathi: "कामे व देखभाल", subtitle: "Deep freezer log, gas valves & equipment", icon: Wrench };
     }
     if (pathname.startsWith("/office-orders")) {
-      return { title: "Baner IT Office Orders", marathi: "ऑफिस ऑर्डर्स", subtitle: "Bulk thali catering & group order schedule", icon: Building2 };
+      return { title: "Baner IT Office Orders", shortTitle: "Office Orders", marathi: "ऑफिस ऑर्डर्स", subtitle: "Bulk thali catering & group order schedule", icon: Building2 };
     }
     if (pathname.startsWith("/dashboard")) {
-      return { title: "Executive Operations", marathi: "कार्यकारी डॅशबोर्ड", subtitle: "Live revenue, guest count & critical stock metrics", icon: LayoutDashboard };
+      return { title: "Executive Operations", shortTitle: "Dashboard", marathi: "कार्यकारी डॅशबोर्ड", subtitle: "Live revenue, guest count & critical stock metrics", icon: LayoutDashboard };
     }
     if (pathname.startsWith("/settings")) {
-      return { title: "System Settings & POS Config", marathi: "प्रणाली सेटिंग्ज", subtitle: "Restaurant profile, thermal POS, GST policies & backups", icon: Sliders };
+      return { title: "System Settings & POS Config", shortTitle: "Settings", marathi: "प्रणाली सेटिंग्ज", subtitle: "Restaurant profile, thermal POS, GST policies & backups", icon: Sliders };
     }
     if (pathname.startsWith("/inventory")) {
-      return { title: "Inventory Stock Ledger", marathi: "साठा नोंदवही", subtitle: "Double-entry transactions & physical count audit", icon: Boxes };
+      return { title: "Inventory Stock Ledger", shortTitle: "Inventory", marathi: "साठा नोंदवही", subtitle: "Double-entry transactions & physical count audit", icon: Boxes };
     }
     if (pathname.startsWith("/recipes")) {
-      return { title: "Recipe Engine & Yields", marathi: "पाककृती व घटक", subtitle: "Bill of materials, portions & margin analysis", icon: BookOpen };
+      return { title: "Recipe Engine & Yields", shortTitle: "Recipes", marathi: "पाककृती व घटक", subtitle: "Bill of materials, portions & margin analysis", icon: BookOpen };
     }
     if (pathname.startsWith("/menu")) {
-      return { title: "Menu & Pricing Catalog", marathi: "मेनू व दर", subtitle: "Dish prices, out-of-stock toggles & thalis", icon: UtensilsCrossed };
+      return { title: "Menu & Pricing Catalog", shortTitle: "Menu Catalog", marathi: "मेनू व दर", subtitle: "Dish prices, out-of-stock toggles & thalis", icon: UtensilsCrossed };
     }
     if (pathname.startsWith("/reports")) {
-      return { title: "Stock Variance Reports", marathi: "तफावत अहवाल", subtitle: "Theoretical vs Actual formula & financial leakage", icon: BarChart3 };
+      return { title: "Stock Variance Reports", shortTitle: "Reports", marathi: "तफावत अहवाल", subtitle: "Theoretical vs Actual formula & financial leakage", icon: BarChart3 };
     }
     if (pathname.startsWith("/checklists")) {
-      return { title: "Operational Checklists", marathi: "सुरक्षा तपासणी", subtitle: "Opening safety, gas lines & night audit", icon: CheckSquare };
+      return { title: "Operational Checklists", shortTitle: "Checklists", marathi: "सुरक्षा तपासणी", subtitle: "Opening safety, gas lines & night audit", icon: CheckSquare };
     }
-    return { title: "कोल्हापुरी खानावळ", marathi: "बाणेर, पुणे", subtitle: "Authentic Maharashtrian Khanawal Operating System", icon: Sparkles };
+    return { title: "कोल्हापुरी खानावळ", shortTitle: "खानावळ POS", marathi: "बाणेर, पुणे", subtitle: "Authentic Maharashtrian Khanawal Operating System", icon: Sparkles };
   };
 
   const pageMeta = getPageMeta();
@@ -172,7 +172,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
       <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
         <button
           onClick={onOpenMobileSidebar}
-          className="lg:hidden p-2 text-stone-700 hover:text-stone-950 hover:bg-[#F5F2EC] rounded-xl transition-colors border border-[#E7E2DA] shrink-0 touch-manipulation active:scale-95"
+          className="lg:hidden w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center text-stone-700 hover:text-stone-950 hover:bg-[#F5F2EC] rounded-xl transition-colors border border-[#E7E2DA] shrink-0 touch-manipulation active:scale-95 cursor-pointer"
           aria-label="Open sidebar navigation"
         >
           <Menu className="w-5 h-5" />
@@ -251,7 +251,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
         <button
           type="button"
           onClick={() => setIsPrinterModalOpen(true)}
-          className={`flex items-center justify-center p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-xs font-black border transition-all touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
+          className={`flex items-center justify-center p-2 sm:px-2.5 sm:py-1.5 min-w-[40px] min-h-[40px] rounded-xl text-[10px] sm:text-xs font-black border transition-all touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
             isBridgeOnlineState
               ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 shadow-2xs"
               : "bg-[#FAF8F5] text-stone-700 border-[#E7E2DA] hover:bg-stone-100"
@@ -279,7 +279,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
         {/* Real-time Notification & Reminder Bell */}
         <button
           onClick={() => setIsNotificationDrawerOpen(true)}
-          className={`relative p-2 rounded-xl transition-all border touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
+          className={`relative p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl transition-all border touch-manipulation active:scale-95 cursor-pointer shrink-0 ${
             totalAlertCount > 0
               ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs"
               : "bg-[#FAF8F5] text-stone-600 border-[#E7E2DA] hover:bg-stone-100"

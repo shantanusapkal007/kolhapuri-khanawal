@@ -174,68 +174,72 @@ export default function KitchenDisplayPage() {
       )}
 
       {/* Luxury Hero Header */}
-      <div className="luxury-card rounded-2xl p-5 sm:p-6 border border-[#E7E2DA] space-y-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-600/20 border border-amber-500/30 shrink-0">
-              <ChefHat className="w-6 h-6 text-amber-100" />
+      <div className="luxury-card rounded-2xl p-4 sm:p-6 border border-[#E7E2DA] space-y-3 sm:space-y-4 bg-gradient-to-r from-white via-[#FAF8F5] to-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 text-white flex items-center justify-center shadow-md shadow-amber-600/20 border border-amber-500/30 shrink-0">
+              <ChefHat className="w-5 h-5 sm:w-6 sm:h-6 text-amber-100" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
-                  Kitchen Display System (KDS)
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h1 className="text-lg sm:text-2xl font-black text-stone-900 tracking-tight">
+                  Kitchen Display (KDS)
                 </h1>
-                <span className="bg-amber-50 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
+                <span className="bg-amber-50 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-wider">
                   Live Dispatch
                 </span>
               </div>
-              <p className="text-xs text-stone-500 font-medium mt-0.5">
-                Realtime station routing (Thali, Bhakri, Fry, Drinks), preparation timers & stock triggers.
+              <p className="text-[11px] sm:text-xs text-stone-500 font-medium mt-0.5">
+                Realtime station routing (Thali, Bhakri, Fry, Drinks) & prep timers.
               </p>
             </div>
           </div>
 
           {/* Status View Switcher & Chime Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-xl border border-[#E7E2DA] text-xs font-bold">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-[#FAF8F5] p-1 rounded-xl border border-[#E7E2DA] text-xs font-bold flex-1 sm:flex-initial overflow-x-auto">
               <button
+                type="button"
                 onClick={() => setSelectedStatus("ACTIVE")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
                   selectedStatus === "ACTIVE"
                     ? "bg-red-600 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                Active Prep ({store.kots.filter((k) => k.status !== "READY" && k.status !== "SERVED" && (k.status as any) !== "CANCELLED").length})
+                Active ({store.kots.filter((k) => k.status !== "READY" && k.status !== "SERVED" && (k.status as any) !== "CANCELLED").length})
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedStatus("READY")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
                   selectedStatus === "READY"
                     ? "bg-emerald-600 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                Ready to Serve ({store.kots.filter((k) => k.status === "READY").length})
+                Ready ({store.kots.filter((k) => k.status === "READY").length})
               </button>
               <button
+                type="button"
                 onClick={() => setSelectedStatus("SERVED")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
                   selectedStatus === "SERVED"
                     ? "bg-stone-900 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
                 }`}
               >
-                Served History
+                History
               </button>
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setAudioEnabled(!audioEnabled);
                 if (!audioEnabled) playKitchenChime();
               }}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs ${
+              className={`p-2 min-h-[38px] min-w-[38px] rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 touch-manipulation active:scale-95 ${
                 audioEnabled
                   ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
                   : "bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200"
@@ -243,7 +247,7 @@ export default function KitchenDisplayPage() {
               title={audioEnabled ? "Order chime active" : "Order chime muted"}
             >
               {audioEnabled ? <Volume2 className="w-4 h-4 text-amber-600" /> : <VolumeX className="w-4 h-4" />}
-              <span className="hidden sm:inline">{audioEnabled ? "Chime On" : "Muted"}</span>
+              <span className="hidden md:inline">{audioEnabled ? "Chime On" : "Muted"}</span>
             </button>
           </div>
         </div>
@@ -251,8 +255,9 @@ export default function KitchenDisplayPage() {
         {/* Station Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
           <button
+            type="button"
             onClick={() => setSelectedStation("ALL")}
-            className={`px-3.5 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border ${
+            className={`px-3 py-1.5 min-h-[36px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 ${
               selectedStation === "ALL"
                 ? "bg-stone-900 text-amber-200 border-stone-900 shadow-2xs"
                 : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
@@ -262,9 +267,10 @@ export default function KitchenDisplayPage() {
           </button>
           {store.kitchenStations.map((st) => (
             <button
+              type="button"
               key={st.id}
               onClick={() => setSelectedStation(st.code)}
-              className={`px-3.5 py-1.5 rounded-xl font-black whitespace-nowrap transition-all border ${
+              className={`px-3 py-1.5 min-h-[36px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 ${
                 selectedStation === st.code
                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white border-red-600 shadow-2xs"
                   : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
@@ -443,39 +449,43 @@ export default function KitchenDisplayPage() {
                 <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center gap-2">
                   {isNew ? (
                     <button
+                      type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "PREPARING")}
-                      className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all"
+                      className="flex-1 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all touch-manipulation"
                     >
                       START PREPARATION
                     </button>
                   ) : kot.status === "PREPARING" || kot.status === "ACKNOWLEDGED" ? (
                     <button
+                      type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "READY")}
-                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 touch-manipulation"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>MARK ORDER READY</span>
                     </button>
                   ) : isReady ? (
                     <button
+                      type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "SERVED")}
-                      className="flex-1 py-2.5 bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl active:scale-95 transition-all"
+                      className="flex-1 py-2.5 min-h-[44px] bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl active:scale-95 transition-all touch-manipulation"
                     >
                       MARK SERVED
                     </button>
                   ) : (
-                    <span className="flex-1 text-center text-xs font-bold text-stone-400 py-1">
+                    <span className="flex-1 text-center text-xs font-bold text-stone-400 py-2.5 min-h-[44px] flex items-center justify-center">
                       Served to Table
                     </span>
                   )}
 
                   {/* Print KOT Button */}
                   <button
+                    type="button"
                     onClick={() => {
                       printKotTicket(kot, undefined, true, store.printerSettings?.paperWidth || "80mm");
                       showToast(`Printing KOT ${kot.kotNumber} (reprint)...`);
                     }}
-                    className="p-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
+                    className="p-2.5 min-h-[44px] min-w-[44px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation"
                     title="Print KOT Ticket (Kitchen Copy / Reprint)"
                   >
                     <Printer className="w-4 h-4" />
@@ -483,11 +493,12 @@ export default function KitchenDisplayPage() {
 
                   {!isServed && (
                     <button
+                      type="button"
                       onClick={() => {
                         setCancellingKotId(kot.id);
                         setCancelReason("Customer cancelled item before preparation");
                       }}
-                      className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
+                      className="p-2.5 min-h-[44px] min-w-[44px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation"
                       title="Void / Cancel KOT Ticket"
                     >
                       <XCircle className="w-4 h-4" />
@@ -502,8 +513,8 @@ export default function KitchenDisplayPage() {
 
       {/* MODAL: VOID / CANCEL KOT */}
       {cancellingKotId && (
-        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl border border-stone-200 overflow-hidden text-xs animate-in fade-in zoom-in-95 duration-150">
             <div className="bg-rose-50 border-b border-rose-200 p-4 text-rose-900 flex items-center justify-between font-black text-sm">
               <div className="flex items-center gap-2">
                 <XCircle className="w-5 h-5 text-rose-600" />

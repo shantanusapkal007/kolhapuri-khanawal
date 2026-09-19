@@ -134,7 +134,54 @@ export default function ReportsVariancePage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Variance Cards */}
+        <div className="sm:hidden divide-y divide-stone-100 space-y-2.5">
+          {varianceRows.map((row) => (
+            <div key={row.ingredientId} className="p-3.5 bg-[#FAF8F5] rounded-xl border border-stone-200/80 space-y-2 text-xs">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-bold text-stone-900 text-xs">{row.ingredientName}</div>
+                  <span
+                    className={`inline-flex items-center text-[9px] font-bold px-2 py-0.2 rounded mt-1 ${
+                      row.varianceStatus === "LEAKAGE_RISK"
+                        ? "bg-red-100 text-red-800 border border-red-300"
+                        : row.varianceStatus === "HIGH_VARIANCE"
+                        ? "bg-amber-100 text-amber-800 border border-amber-300"
+                        : "bg-emerald-100 text-emerald-800"
+                    }`}
+                  >
+                    {row.varianceStatus.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-[10px] text-stone-400 font-medium">Leakage Value</div>
+                  <div className="font-mono font-black text-sm text-stone-900">₹{row.financialLeakageValue}</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 p-2 rounded-lg bg-white border border-stone-200/60 text-[11px]">
+                <div>
+                  <span className="text-stone-500">Expected:</span>{" "}
+                  <strong className="text-stone-800 font-mono">{row.expectedTheoreticalStock} {row.unit}</strong>
+                </div>
+                <div>
+                  <span className="text-stone-500">Physical:</span>{" "}
+                  <strong className="text-purple-900 font-mono font-bold">{row.actualPhysicalStock} {row.unit}</strong>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-200/60">
+                <span>In: <strong className="text-emerald-700">+{row.purchasesQuantity}</strong> • Sold: <strong className="text-red-600">-{row.salesConsumptionQuantity}</strong></span>
+                <span className={`font-mono font-bold ${row.varianceQuantity < 0 ? "text-rose-600" : "text-emerald-700"}`}>
+                  Var: {row.varianceQuantity > 0 ? "+" : ""}{row.varianceQuantity} ({row.variancePercentage}%)
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-[#E7E2DA] text-stone-500 bg-[#FAF8F5]/80">
