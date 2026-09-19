@@ -83,6 +83,7 @@ export default function CashierBillingPage() {
   // Thermal Print Receipt Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isQuickSettling, setIsQuickSettling] = useState<boolean>(false);
 
   // Manager Discount PIN state (>10%)
   const [discountPinModal, setDiscountPinModal] = useState<{ open: boolean; targetPct: number }>({
@@ -235,7 +236,7 @@ export default function CashierBillingPage() {
       }
       showToast(`Bill #${cancelled.billNumber} voided and party reopened!`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(`❌ एरर: ${err?.message || "Bill void failed"}`);
     }
   };
 
@@ -289,6 +290,54 @@ export default function CashierBillingPage() {
     }
   };
 
+  const handleDirectQuickSettle = async (method: "CASH" | "UPI") => {
+    if (!activeBill || isQuickSettling || activeBill.balanceDue <= 0) return;
+    setIsQuickSettling(true);
+
+    try {
+      const paymentAmount = activeBill.balanceDue;
+      const result = store.payBill(
+        activeBill.id,
+        method,
+        paymentAmount
+      );
+
+      setActiveBill(result.bill);
+      setTick((t) => t + 1);
+
+      if (result.isFullyPaid) {
+        triggerHaptic("success");
+        showToast(
+          `✅ Bill #${result.bill.billNumber} PAID IN FULL via ${method === "CASH" ? "Cash 💵" : "UPI 📱"} (₹${paymentAmount})!`
+        );
+
+        // Fire-and-forget: print receipt in background, don't block cashier UI
+        handlePrintReceipt(result.bill, false).catch(() => {});
+
+        if (method === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
+          triggerCashDrawerKick();
+        }
+
+        // Notify floor staff that table is now settled and available
+        store.addNotification({
+          type: "BILL_PAID",
+          title: `Table ${result.bill.tableNumber} Bill Settled (₹${result.bill.grandTotal})`,
+          message: `Bill #${result.bill.billNumber} paid in full via ${method}. Table ${result.bill.tableNumber} is ready for next guests.`,
+          category: "BILLING",
+          urgency: "MEDIUM",
+          targetRoles: ["WAITER", "MANAGER", "ADMIN"],
+          actionUrl: "/waiter",
+          actionLabel: "View Floor",
+          metadata: { tableNumber: result.bill.tableNumber, amount: result.bill.grandTotal },
+        });
+      }
+    } catch (err: any) {
+      showToast(`❌ Payment Error: ${err?.message || "Failed"}`);
+    } finally {
+      setIsQuickSettling(false);
+    }
+  };
+
   const handleRecordPaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeBill) return;
@@ -296,7 +345,7 @@ export default function CashierBillingPage() {
     try {
       const paymentAmount = Math.min(tenderAmount, activeBill.balanceDue);
       if (paymentAmount <= 0) {
-        alert("Payment amount must be greater than 0");
+        showToast("Payment amount must be greater than 0");
         return;
       }
       const changeReturn =
@@ -327,7 +376,6 @@ export default function CashierBillingPage() {
         if (paymentMethod === "CASH" && (store.printerSettings?.autoKickCashDrawerOnCash ?? true)) {
           triggerCashDrawerKick();
         }
-        // Direct print completed silently to physical POSIFLOW printer
 
         // Notify floor staff that table is now settled and available
         store.addNotification({
@@ -346,7 +394,7 @@ export default function CashierBillingPage() {
         setTenderAmount(result.bill.balanceDue);
       }
     } catch (err: any) {
-      alert(err.message);
+      showToast(`❌ Error: ${err?.message || "Payment failed"}`);
     }
   };
 
@@ -907,15 +955,42 @@ export default function CashierBillingPage() {
                   </div>
 
                   {activeBill.balanceDue > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsPaymentModalOpen(true)}
-                      className="w-full sm:w-auto flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs sm:text-sm px-5 py-3 min-h-[44px] rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span className="sm:hidden">Pay ₹{activeBill.balanceDue}</span>
-                      <span className="hidden sm:inline">COLLECT PAYMENT (₹{activeBill.balanceDue})</span>
-                    </button>
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                      {/* 1-Tap Cash Settlement Button */}
+                      <button
+                        type="button"
+                        disabled={isQuickSettling}
+                        onClick={() => handleDirectQuickSettle("CASH")}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs sm:text-sm px-3.5 py-3 min-h-[44px] rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer"
+                        title="Instant exact cash settlement with auto drawer kick & receipt"
+                      >
+                        <Banknote className="w-4 h-4 text-emerald-200 shrink-0" />
+                        <span>💵 रोख (₹{activeBill.balanceDue})</span>
+                      </button>
+
+                      {/* 1-Tap UPI Settlement Button */}
+                      <button
+                        type="button"
+                        disabled={isQuickSettling}
+                        onClick={() => handleDirectQuickSettle("UPI")}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-stone-900 to-stone-800 hover:from-black hover:to-stone-900 text-amber-300 font-black text-xs sm:text-sm px-3.5 py-3 min-h-[44px] rounded-xl shadow-md shadow-stone-900/20 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer"
+                        title="Instant exact UPI QR payment with auto receipt"
+                      >
+                        <QrCode className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>📱 UPI (₹{activeBill.balanceDue})</span>
+                      </button>
+
+                      {/* Custom / Split / Partial Modal Trigger */}
+                      <button
+                        type="button"
+                        onClick={() => setIsPaymentModalOpen(true)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold text-xs px-3 py-3 min-h-[44px] rounded-xl active:scale-95 transition-all touch-manipulation cursor-pointer"
+                        title="Split payment, custom tender, or change calculator"
+                      >
+                        <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                        <span>Custom / Split</span>
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <span className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-2.5 min-h-[44px] rounded-xl border border-emerald-200 text-center">

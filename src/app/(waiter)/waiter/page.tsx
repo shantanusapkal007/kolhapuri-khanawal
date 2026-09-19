@@ -21,6 +21,7 @@ import {
   Banknote,
   CreditCard,
   Check,
+  Truck,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import { DiningTable, DiningParty } from "@/types/tables";
@@ -28,11 +29,13 @@ import { printTableCheck, printBillReceipt, printKotTicket } from "@/lib/printin
 import { WaiterPrinterSettingsModal } from "@/components/waiter/WaiterPrinterSettingsModal";
 import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
 import { triggerHaptic } from "@/lib/mobile/haptics";
+import { getAllDraftCartCounts } from "@/lib/orders/draft-cart";
 
 export default function WaiterFloorPage() {
   const router = useRouter();
   const store = globalRestaurantStore;
   const [, setTick] = useState(0);
+  const [draftCartCounts, setDraftCartCounts] = useState<Record<string, number>>({});
 
   const [activeModal, setActiveModal] = useState<"ADD_PARTY" | "TRANSFER" | "MERGE" | "SPLIT" | null>(null);
   const [showPrinterModal, setShowPrinterModal] = useState<boolean>(false);
@@ -44,7 +47,7 @@ export default function WaiterFloorPage() {
   const [customerName, setCustomerName] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
-  const [floorFilter, setFloorFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED" | "PARCELS">("ALL");
+  const [floorFilter, setFloorFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED" | "PARCELS" | "DELIVERY">("ALL");
 
   // Sync with URL search params (e.g. redirected from parcel order)
   useEffect(() => {
@@ -91,18 +94,27 @@ export default function WaiterFloorPage() {
   });
 
   useEffect(() => {
+    const updateDrafts = () => {
+      setDraftCartCounts(getAllDraftCartCounts());
+    };
+    updateDrafts();
+
     const interval = setInterval(() => {
       setTick((t) => t + 1);
+      updateDrafts();
     }, 1000);
 
     const handleSync = () => {
       setTick((t) => t + 1);
+      updateDrafts();
     };
     window.addEventListener("kk-state-changed", handleSync);
+    window.addEventListener("kk-draft-carts-changed", updateDrafts);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("kk-state-changed", handleSync);
+      window.removeEventListener("kk-draft-carts-changed", updateDrafts);
     };
   }, []);
 
@@ -130,7 +142,7 @@ export default function WaiterFloorPage() {
       showToast(`Party ${party.partyCode} opened at Table ${tableNum}! Opening order screen...`);
       router.push(`/waiter/order/${party.id}`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || "Failed to open table");
     }
   };
 
@@ -153,7 +165,7 @@ export default function WaiterFloorPage() {
       // Immediately redirect to take orders
       router.push(`/waiter/order/${party.id}`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err?.message || "Failed to create party");
     }
   };
 
@@ -166,7 +178,7 @@ export default function WaiterFloorPage() {
       setActiveModal(null);
       showToast(`Party ${updated.partyCode} successfully moved to Table ${targetTableNumber}!`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err?.message || "Failed to transfer party");
     }
   };
 
@@ -179,7 +191,7 @@ export default function WaiterFloorPage() {
       setActiveModal(null);
       showToast(`Parties merged into ${merged.partyCode}!`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err?.message || "Failed to merge parties");
     }
   };
 
@@ -197,7 +209,7 @@ export default function WaiterFloorPage() {
       setSelectedOrderItemIdsForSplit([]);
       showToast(`Created new split party ${newParty.partyCode} at Table ${splitTargetTableNumber}!`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err?.message || "Failed to split party");
     }
   };
 
@@ -258,14 +270,14 @@ export default function WaiterFloorPage() {
       setTick((t) => t + 1);
       showToast(`Printed Customer Bill #${bill.billNumber} for Table ${bill.tableNumber}!`);
     } catch (err: any) {
-      alert(`Could not print bill: ${err.message}`);
+      showToast(`❌ Could not print bill: ${err?.message || "Failed"}`);
     }
   };
 
   const handlePrintKotForParty = (partyId: string) => {
     const partyKots = store.kots.filter((k) => k.partyId === partyId);
     if (partyKots.length === 0) {
-      alert("No KOT has been generated for this party yet. Tap 'Order' to select and send items first.");
+      showToast("⚠️ No KOT has been generated yet. Tap 'Order' to send items first.");
       return;
     }
     const latestKot = partyKots[partyKots.length - 1];
@@ -289,7 +301,7 @@ export default function WaiterFloorPage() {
       showToast(`✅ ${result.message}`);
     } catch (err: any) {
       triggerHaptic("error");
-      alert(err.message);
+      showToast(`❌ ${err?.message || "Quick settle failed"}`);
     }
   };
 
@@ -306,14 +318,25 @@ export default function WaiterFloorPage() {
 
   const handleTakeParcel = (name?: string) => {
     try {
-      triggerHaptic("tap");
-      const customerInput = name !== undefined ? name : prompt("Enter Customer Name / Mobile for Parcel (optional):", "");
-      const party = store.createTakeawayParty(customerInput ? customerInput.trim() : undefined);
+      triggerHaptic("success");
+      const party = store.createTakeawayParty(name ? name.trim() : undefined);
       setTick((t) => t + 1);
-      showToast(`🛍️ Created Parcel ${party.partyCode}! Redirecting to order...`);
+      showToast(`🛍️ Parcel ${party.partyCode} opened!`);
       router.push(`/waiter/order/${party.id}?isTakeaway=true`);
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message || "Failed to create parcel");
+    }
+  };
+
+  const handleTakeDelivery = (name?: string) => {
+    try {
+      triggerHaptic("success");
+      const party = store.createPartyAtTable(0, 1, "डिलिव्हरी (Delivery)", true, name ? name.trim() : "Delivery Customer", "", 20);
+      setTick((t) => t + 1);
+      showToast(`🛵 Delivery ${party.partyCode} opened!`);
+      router.push(`/waiter/order/${party.id}?isDelivery=true`);
+    } catch (err: any) {
+      showToast(err.message || "Failed to create delivery");
     }
   };
 
@@ -325,7 +348,7 @@ export default function WaiterFloorPage() {
     .reduce((sum, p) => sum + (p.guestCount || 0), 0);
 
   const displayedTables = store.tables.filter((table) => {
-    if (floorFilter === "PARCELS") return false;
+    if (floorFilter === "PARCELS" || floorFilter === "DELIVERY") return false;
     if (floorFilter === "AVAILABLE") return table.status === "AVAILABLE";
     if (floorFilter === "OCCUPIED") return table.status === "OCCUPIED";
     if (floorFilter === "SHARED") return table.status === "SHARED";
@@ -647,11 +670,25 @@ export default function WaiterFloorPage() {
               .flatMap((o) => o.items)
           );
           const totalItemsCount = tableOrderedItems.reduce((sum, it) => sum + it.quantity, 0);
+          const draftItemCount = primaryParty ? (draftCartCounts[primaryParty.id] || 0) : 0;
+
+          const handleTableCardClick = () => {
+            if (isOccupied) {
+              if (isShared) {
+                setActiveTableForDetail(table);
+              } else {
+                router.push(`/waiter/order/${primaryParty.id}`);
+              }
+            } else {
+              handleQuickSeatAndOrder(table.tableNumber, 2);
+            }
+          };
 
           return (
             <div
               key={table.id}
-              className={`min-h-[148px] sm:min-h-[185px] w-full rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between p-2.5 sm:p-3.5 relative overflow-hidden touch-manipulation select-none touch-press ${
+              onClick={handleTableCardClick}
+              className={`min-h-[148px] sm:min-h-[185px] w-full rounded-2xl sm:rounded-3xl border transition-all flex flex-col justify-between p-2.5 sm:p-3.5 relative overflow-hidden touch-manipulation select-none cursor-pointer active:scale-[0.98] ${
                 hasBillRequested
                   ? "border-amber-400 bg-gradient-to-b from-amber-50/95 via-white to-amber-50/60 shadow-lg ring-2 ring-amber-400/80 animate-bill-radar"
                   : isShared
@@ -671,7 +708,7 @@ export default function WaiterFloorPage() {
                       if (isOccupied) setActiveTableForDetail(table);
                       else handleOpenAddParty(table.tableNumber);
                     }}
-                    title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table"}
+                    title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table (Custom Guests)"}
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center shadow-xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation ${
                       hasBillRequested
                         ? "bg-amber-500 text-stone-950 ring-2 ring-amber-300 font-tabular"
@@ -687,48 +724,62 @@ export default function WaiterFloorPage() {
                   </span>
                 </div>
 
-                {/* Status Pill in top right */}
-                {hasBillRequested ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSettlePartyTarget(primaryParty);
-                      setSettleMethod("CASH");
-                    }}
-                    className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation border border-amber-400 shrink-0"
-                    title="Bill Requested — Quick Settle"
-                  >
-                    Bill 🔥
-                  </button>
-                ) : isShared ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveTableForDetail(table);
-                    }}
-                    className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation font-tabular shrink-0"
-                  >
-                    {tableParties.length}P•{totalGuests}G
-                  </button>
-                ) : isOccupied ? (
-                  <span className="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1 font-tabular shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                    {totalGuests}G
-                  </span>
-                ) : (
-                  <span className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Free
-                  </span>
-                )}
+                {/* Status Pill & Draft Badge in top right */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {draftItemCount > 0 && (
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-400 text-stone-950 flex items-center gap-0.5 shadow-2xs font-tabular animate-pulse shrink-0"
+                      title={`${draftItemCount} unsaved items in cart`}
+                    >
+                      🛒 {draftItemCount}
+                    </span>
+                  )}
+                  {hasBillRequested ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSettlePartyTarget(primaryParty);
+                        setSettleMethod("CASH");
+                      }}
+                      className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-stone-950 uppercase tracking-tight shadow-xs animate-pulse cursor-pointer touch-manipulation border border-amber-400 shrink-0"
+                      title="Bill Requested — Quick Settle"
+                    >
+                      Bill 🔥
+                    </button>
+                  ) : isShared ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveTableForDetail(table);
+                      }}
+                      className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-300 cursor-pointer touch-manipulation font-tabular shrink-0"
+                    >
+                      {tableParties.length}P•{totalGuests}G
+                    </button>
+                  ) : isOccupied ? (
+                    <span className="text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 flex items-center gap-1 font-tabular shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      {totalGuests}G
+                    </span>
+                  ) : (
+                    <span className="text-[8px] sm:text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Free
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Center Zone: Tap Area */}
               {isOccupied ? (
                 <div
-                  onClick={() => isShared ? setActiveTableForDetail(table) : router.push(`/waiter/order/${primaryParty.id}`)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isShared) setActiveTableForDetail(table);
+                    else router.push(`/waiter/order/${primaryParty.id}`);
+                  }}
                   className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer py-1.5 px-0.5 touch-manipulation"
                 >
                   <span className="text-[10px] sm:text-xs font-bold text-stone-600 truncate max-w-full leading-tight">
@@ -752,13 +803,17 @@ export default function WaiterFloorPage() {
                 </div>
               ) : (
                 <div
-                  onClick={() => handleOpenAddParty(table.tableNumber)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleQuickSeatAndOrder(table.tableNumber, 2);
+                  }}
                   className="flex-1 min-h-0 flex flex-col items-center justify-center text-center cursor-pointer group py-2 touch-manipulation"
                 >
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-200 group-hover:bg-emerald-100 transition-colors shadow-2xs">
-                    <Plus className="w-4 h-4 text-emerald-600" />
+                  <div className="w-8 h-8 rounded-full bg-emerald-100/90 flex items-center justify-center border border-emerald-300 group-hover:bg-emerald-200 transition-colors shadow-2xs">
+                    <Plus className="w-4 h-4 text-emerald-800" />
                   </div>
-                  <span className="text-[10px] sm:text-[11px] text-emerald-700 font-black leading-tight mt-1">Tap to seat</span>
+                  <span className="text-[10px] sm:text-[11px] text-emerald-800 font-black leading-tight mt-1">1-Tap Seat & Order</span>
+                  <span className="text-[9px] text-emerald-600 font-medium">2 Guests</span>
                 </div>
               )}
 
@@ -769,7 +824,10 @@ export default function WaiterFloorPage() {
                     <div className="grid grid-cols-2 gap-1.5 w-full">
                       <button
                         type="button"
-                        onClick={() => setActiveTableForDetail(table)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTableForDetail(table);
+                        }}
                         className="w-full min-h-[40px] py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation cursor-pointer flex items-center justify-center"
                       >
                         <span>{tableParties.length}P View →</span>
@@ -794,6 +852,7 @@ export default function WaiterFloorPage() {
                     <div className="grid grid-cols-2 gap-1.5 w-full">
                       <Link
                         href={`/waiter/order/${primaryParty.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="w-full min-h-[40px] py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
                       >
                         <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
@@ -823,12 +882,15 @@ export default function WaiterFloorPage() {
                 <div className="pt-2 border-t border-stone-100 shrink-0">
                   <button
                     type="button"
-                    onClick={() => handleQuickSeatAndOrder(table.tableNumber, 2)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleQuickSeatAndOrder(table.tableNumber, 2);
+                    }}
                     className="w-full min-h-[40px] py-2 px-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 text-center truncate touch-manipulation border border-emerald-500/30 cursor-pointer"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
                     <Plus className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
-                    <span>Seat 2G →</span>
+                    <span>Seat & Order →</span>
                   </button>
                 </div>
               )}
@@ -1023,15 +1085,13 @@ export default function WaiterFloorPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (confirm(`Cancel party ${party.partyCode} and free table seats?`)) {
-                              try {
-                                store.voidOrCancelParty(party.id, "Waiter cancelled empty party");
-                                setTick((t) => t + 1);
-                                setActiveTableForDetail(null);
-                                showToast(`Party ${party.partyCode} cancelled and table vacated.`);
-                              } catch (err: any) {
-                                alert(err.message);
-                              }
+                            try {
+                              store.voidOrCancelParty(party.id, "Waiter cancelled empty party");
+                              setTick((t) => t + 1);
+                              setActiveTableForDetail(null);
+                              showToast(`Party ${party.partyCode} cancelled and table vacated.`);
+                            } catch (err: any) {
+                              showToast(err?.message || "Could not cancel party");
                             }
                           }}
                           className="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center justify-center gap-1 border border-rose-200 text-[11px] active:scale-95 transition-all cursor-pointer"

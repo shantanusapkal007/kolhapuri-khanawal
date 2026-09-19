@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect, use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -30,6 +30,7 @@ import {
   Edit3,
   User,
   Phone,
+  Truck,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -46,18 +47,7 @@ import { printKotTicket, printBillReceipt, printTableCheck } from "@/lib/printin
 import { WaiterPrinterSettingsModal } from "@/components/waiter/WaiterPrinterSettingsModal";
 import { triggerHaptic } from "@/lib/mobile/haptics";
 import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
-
-interface CartItem {
-  menuItem: MenuItem;
-  variantName?: string;
-  unitPrice: number;
-  quantity: number;
-  breadOption?: BreadOption;
-  breadCounts?: Partial<Record<BreadOption, number>>;
-  notes?: string;
-  customNote?: string;
-  spiceLevel?: "MILD" | "MEDIUM" | "SPICY" | "THECHA_EXTRA_SPICY";
-}
+import { CartItem, getDraftCart, saveDraftCart, clearDraftCart, getAllDraftCartCounts } from "@/lib/orders/draft-cart";
 
 function buildItemNotes(
   breadCounts?: Partial<Record<BreadOption, number>>,
@@ -82,6 +72,32 @@ function buildItemNotes(
   return parts.join(" | ");
 }
 
+function getItemVariants(item: MenuItem): { name: string; price: number }[] | null {
+  if (item.variants && item.variants.length > 0) {
+    return item.variants;
+  }
+  const nameLower = item.name.toLowerCase();
+  const isVariantCandidate =
+    !item.isThali &&
+    (nameLower.includes("handi") ||
+      nameLower.includes("sukka") ||
+      nameLower.includes("biryani") ||
+      nameLower.includes("fry") ||
+      nameLower.includes("masala") ||
+      nameLower.includes("kadhai") ||
+      item.categoryId === "cat-chicken-main" ||
+      item.categoryId === "cat-mutton-main" ||
+      item.categoryId === "cat-biryani");
+
+  if (isVariantCandidate && item.sellingPrice >= 140) {
+    return [
+      { name: "Half", price: Math.round((item.sellingPrice * 0.6) / 5) * 5 },
+      { name: "Full", price: item.sellingPrice },
+    ];
+  }
+  return null;
+}
+
 export default function WaiterOrderClient({
   params,
 }: {
@@ -90,14 +106,33 @@ export default function WaiterOrderClient({
   const resolvedParams = use(params);
   const router = useRouter();
   const store = globalRestaurantStore;
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
-  // Core order state (Simplified: NO SEAT PARTITIONING)
+  // Core order state (Fast POS: Draft cart restored per party)
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(() => getDraftCart(resolvedParams.partyId));
   const [isSending, setIsSending] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastKotSuccess, setLastKotSuccess] = useState<{ kotNumber: string; itemCount: number } | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [draftCounts, setDraftCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    setDraftCounts(getAllDraftCartCounts());
+    const handleDrafts = () => setDraftCounts(getAllDraftCartCounts());
+    window.addEventListener("kk-draft-carts-changed", handleDrafts);
+    return () => window.removeEventListener("kk-draft-carts-changed", handleDrafts);
+  }, []);
+
+  const activeParties = useMemo(() => {
+    return store.parties.filter((p) => p.status !== "CLOSED" && p.status !== "CANCELLED");
+  }, [store.parties, tick]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   // UI Modals & Drawers
   const [isCartSheetOpen, setIsCartSheetOpen] = useState<boolean>(false);
@@ -181,6 +216,37 @@ export default function WaiterOrderClient({
       setCustNotes(party.notes || "");
     }
   }, [party?.id, party?.customerName, party?.customerPhone, party?.notes]);
+
+  // Auto-restore draft cart whenever partyId changes
+  useEffect(() => {
+    const existingDraft = getDraftCart(resolvedParams.partyId);
+    setCart(existingDraft);
+    setLastKotSuccess(null);
+  }, [resolvedParams.partyId]);
+
+  // Auto-persist active draft cart to localStorage so switching tables never loses uncommitted items
+  useEffect(() => {
+    if (party) {
+      saveDraftCart(party.id, cart);
+    }
+  }, [cart, party?.id]);
+
+  // High-volume Fast Sellers for 1-tap fast ordering
+  const popularItems = useMemo(() => {
+    return store.menuItems
+      .filter(
+        (item) =>
+          item.isDailySpecial ||
+          item.isThali ||
+          item.categoryId === "cat-chicken-thali" ||
+          item.categoryId === "cat-mutton-thali" ||
+          item.name.toLowerCase().includes("bhakri") ||
+          item.name.toLowerCase().includes("rassa") ||
+          item.name.toLowerCase().includes("sukka") ||
+          item.name.toLowerCase().includes("solkadhi")
+      )
+      .slice(0, 8);
+  }, [store.menuItems]);
 
   useEffect(() => {
     store.recalculateMenuAvailability();
@@ -273,10 +339,7 @@ export default function WaiterOrderClient({
     const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
     if (isOut && delta > 0) {
       triggerHaptic("warning");
-      const confirmAdd = confirm(
-        `"${item.name}" has 0 portions left. Add under Manager PIN override?`
-      );
-      if (!confirmAdd) return;
+      showToast(`⚠️ "${item.name}" 0 शिल्लक (Manager PIN on KOT)`);
     }
 
     triggerHaptic("tap");
@@ -344,10 +407,7 @@ export default function WaiterOrderClient({
     const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
     if (isOut && delta > 0) {
       triggerHaptic("warning");
-      const confirmAdd = confirm(
-        `"${item.name}" has 0 portions left. Add under Manager PIN override?`
-      );
-      if (!confirmAdd) return;
+      showToast(`⚠️ "${item.name}" 0 शिल्लक (Manager PIN on KOT)`);
     }
 
     triggerHaptic("tap");
@@ -409,10 +469,7 @@ export default function WaiterOrderClient({
     const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
     if (isOut) {
       triggerHaptic("warning");
-      const confirmAdd = confirm(
-        `"${item.name}" has 0 portions left. Add under Manager PIN override?`
-      );
-      if (!confirmAdd) return;
+      showToast(`⚠️ "${item.name}" 0 शिल्लक (Manager PIN on KOT)`);
     }
 
     triggerHaptic("tap");
@@ -591,11 +648,16 @@ export default function WaiterOrderClient({
         },
       });
 
-      setTick((t) => t + 1);
+      clearDraftCart(party.id);
       setCart([]);
       setIsCartSheetOpen(false);
+      setLastKotSuccess({
+        kotNumber: result.kot.kotNumber,
+        itemCount: result.kot.items.length,
+      });
+      showToast(`✅ KOT #${result.kot.kotNumber} स्वयंपाकघरात पाठवला! (${result.kot.items.length} आयटम)`);
       triggerHaptic("success");
-      router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
+      setTick((t) => t + 1);
     } catch (err: any) {
       triggerHaptic("error");
       if (err.message?.toLowerCase().includes("insufficient") || err.message?.toLowerCase().includes("deficit")) {
@@ -640,10 +702,11 @@ export default function WaiterOrderClient({
         printBillReceipt(settleResult.bill, false, store.printerSettings?.paperWidth || "80mm");
       }
 
+      clearDraftCart(party.id);
       triggerHaptic("success");
       setCart([]);
       setIsCartSheetOpen(false);
-      alert(`✅ Order placed & bill settled (₹${settleResult.bill.grandTotal}) via ${method}!`);
+      showToast(`✅ Order placed & bill settled (₹${settleResult.bill.grandTotal}) via ${method}!`);
       router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
     } catch (err: any) {
       triggerHaptic("error");
@@ -654,20 +717,14 @@ export default function WaiterOrderClient({
   };
 
   const handleCancelOrderedItem = (orderItemId: string, itemName: string, qty: number) => {
-    const reason = prompt(
-      `Cancel "${itemName}" × ${qty}?\nEnter cancellation reason (उदा. ग्राहक बदलले / रद्द केले):`,
-      "Customer changed mind"
-    );
-    if (!reason || !reason.trim()) return;
-
     try {
-      store.cancelOrderItem(orderItemId, reason.trim());
+      store.cancelOrderItem(orderItemId, "Customer cancelled item");
       triggerHaptic("warning");
       setTick((t) => t + 1);
-      alert(`Cancelled "${itemName}" × ${qty}. Stock reservation rolled back & bill updated.`);
+      showToast(`"${itemName}" × ${qty} रद्द केले (Cancelled).`);
     } catch (err: any) {
       triggerHaptic("error");
-      alert(err.message || "Failed to cancel item");
+      showToast(err.message || "Failed to cancel item");
     }
   };
 
@@ -678,9 +735,9 @@ export default function WaiterOrderClient({
       setShowCustomerModal(false);
       triggerHaptic("success");
       setTick((t) => t + 1);
-      alert(`Saved details for ${custName || party.partyCode}!`);
+      showToast(`Saved details for ${custName || party.partyCode}!`);
     } catch (err: any) {
-      alert(err.message || "Failed to save customer details");
+      showToast(err.message || "Failed to save customer details");
     }
   };
 
@@ -691,10 +748,10 @@ export default function WaiterOrderClient({
       setShowConvertToTableModal(false);
       triggerHaptic("success");
       setTick((t) => t + 1);
-      alert(`Switched Parcel to Table ${convertTargetTable}!`);
+      showToast(`Switched Parcel to Table ${convertTargetTable}!`);
       router.refresh();
     } catch (err: any) {
-      alert(err.message || "Failed to convert to table");
+      showToast(err.message || "Failed to convert to table");
     }
   };
 
@@ -739,11 +796,17 @@ export default function WaiterOrderClient({
         });
       }
 
+      clearDraftCart(party.id);
       triggerHaptic("success");
       setShowOverrideModal(false);
       setCart([]);
       setIsCartSheetOpen(false);
-      router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
+      setLastKotSuccess({
+        kotNumber: result.kot.kotNumber,
+        itemCount: result.kot.items.length,
+      });
+      showToast(`✅ Override authorized — KOT #${result.kot.kotNumber} sent!`);
+      setTick((t) => t + 1);
     } catch (err: any) {
       triggerHaptic("error");
       setOverrideError(err.message);
@@ -760,16 +823,16 @@ export default function WaiterOrderClient({
       }
       printBillReceipt(bill, false, store.printerSettings?.paperWidth || "80mm");
       setShowMoreActions(false);
-      alert(`Bill printed for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
+      showToast(`Bill printed for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
     } catch (err: any) {
-      alert(`Could not print bill: ${err.message}`);
+      showToast(`Could not print bill: ${err.message}`);
     }
   };
 
   const handlePrintLatestKot = () => {
     const kots = store.kots.filter((k) => k.partyId === party.id);
     if (kots.length === 0) {
-      alert("No KOT generated yet for this party.");
+      showToast("No KOT generated yet for this party.");
       return;
     }
     const latestKot = kots[kots.length - 1];
@@ -777,7 +840,7 @@ export default function WaiterOrderClient({
       paperWidth: store.printerSettings?.paperWidth || "80mm",
     });
     setShowMoreActions(false);
-    alert(`Reprinted KOT #${latestKot.kotNumber} for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}`);
+    showToast(`Reprinted KOT #${latestKot.kotNumber}`);
   };
 
   const handleRequestBill = () => {
@@ -801,9 +864,9 @@ export default function WaiterOrderClient({
         paperWidth: store.printerSettings?.paperWidth || "80mm",
       });
       setShowMoreActions(false);
-      alert(`Bill requested for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
+      showToast(`Bill requested for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
     } catch (err: any) {
-      alert(`Could not request bill: ${err.message}`);
+      showToast(`Could not request bill: ${err.message}`);
     }
   };
 
@@ -817,7 +880,7 @@ export default function WaiterOrderClient({
         printBillReceipt(result.bill, false, store.printerSettings?.paperWidth || "80mm");
       }
       setShowSettleModal(false);
-      alert(`✅ ${result.message}`);
+      showToast(`✅ ${result.message}`);
       if (party.isTakeaway || party.tableNumber === 0) {
         router.push("/waiter?tab=parcels");
       } else {
@@ -825,14 +888,22 @@ export default function WaiterOrderClient({
       }
     } catch (err: any) {
       triggerHaptic("error");
-      alert(err.message);
+      showToast(err.message);
     } finally {
       setIsSettling(false);
     }
   };
 
   return (
-    <div className="space-y-3.5 pb-36 max-w-5xl mx-auto">
+    <div className="space-y-3.5 pb-36 max-w-7xl mx-auto px-2 sm:px-4">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 bg-stone-900/95 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-xs sm:text-sm font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* 1. Luxury Header - Responsive & Non-Collapsing */}
       <div className="bg-white/95 backdrop-blur-xl rounded-3xl p-3 sm:p-4 border border-stone-200/90 shadow-sm flex items-center justify-between gap-2">
         {/* Left: Back Arrow & Table / Parcel Identity */}
@@ -907,7 +978,7 @@ export default function WaiterOrderClient({
                 const newParcel = store.createTakeawayParty();
                 router.push(`/waiter/order/${newParcel.id}?isTakeaway=true`);
               } catch (err: any) {
-                alert(err.message);
+                showToast(err.message);
               }
             }}
             className="hidden md:flex px-3 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-stone-950 font-black text-xs rounded-2xl shadow-xs active:scale-95 transition-all items-center gap-1.5 shrink-0 touch-manipulation cursor-pointer border border-amber-300"
@@ -962,7 +1033,7 @@ export default function WaiterOrderClient({
                       const newParcel = store.createTakeawayParty();
                       router.push(`/waiter/order/${newParcel.id}?isTakeaway=true`);
                     } catch (err: any) {
-                      alert(err.message);
+                      showToast(err.message);
                     }
                   }}
                   className="w-full text-left px-3 py-2 rounded-2xl hover:bg-amber-50 font-black text-amber-950 flex items-center gap-2 border border-amber-200 bg-amber-50/70 cursor-pointer"
@@ -992,13 +1063,13 @@ export default function WaiterOrderClient({
                     type="button"
                     onClick={() => {
                       setShowMoreActions(false);
-                      if (confirm("No orders placed yet. Cancel and vacate this table/order?")) {
-                        try {
-                          store.voidOrCancelParty(party.id, "Empty party cancelled");
-                          router.push(party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter");
-                        } catch (e: any) {
-                          alert(e.message);
-                        }
+                      try {
+                        store.voidOrCancelParty(party.id, "Empty party cancelled");
+                        clearDraftCart(party.id);
+                        showToast("टेबल रद्द केले व मोकळे केले");
+                        router.push(party.isTakeaway || party.tableNumber === 0 ? "/waiter?tab=parcels" : "/waiter");
+                      } catch (e: any) {
+                        showToast(e.message);
                       }
                     }}
                     className="w-full text-left px-3 py-2 rounded-2xl hover:bg-red-50 font-black text-red-700 flex items-center gap-2 border border-red-200 bg-red-50/50 cursor-pointer"
@@ -1016,10 +1087,10 @@ export default function WaiterOrderClient({
                       try {
                         store.convertToTakeawayParty(party.id);
                         setShowMoreActions(false);
-                        alert(`Switched Table ${party.tableNumber} to Takeaway Parcel! Physical table is now FREE.`);
+                        showToast(`Switched Table ${party.tableNumber} to Takeaway Parcel! Physical table is now FREE.`);
                         router.refresh();
                       } catch (e: any) {
-                        alert(e.message);
+                        showToast(e.message);
                       }
                     }}
                     className="w-full text-left px-3 py-2 rounded-2xl hover:bg-amber-50 font-bold text-amber-900 flex items-center gap-2 border border-amber-200 bg-amber-50/60 cursor-pointer"
@@ -1085,6 +1156,75 @@ export default function WaiterOrderClient({
           </div>
         </div>
       </div>
+
+      {/* Quick Floor Switcher Strip (All Active Tables / Parcels) */}
+      {activeParties.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+          <span className="text-[10px] font-black uppercase text-stone-500 tracking-wider shrink-0 pl-1">
+            Floor:
+          </span>
+          {activeParties.map((p) => {
+            const isCurrent = p.id === party.id;
+            const dCount = draftCounts[p.id] || 0;
+            const label = p.isTakeaway || p.tableNumber === 0 ? `🛍️ ${p.partyCode}` : `T${p.tableNumber}`;
+            return (
+              <Link
+                key={p.id}
+                href={`/waiter/order/${p.id}${p.isTakeaway ? "?isTakeaway=true" : ""}`}
+                className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all active:scale-95 touch-manipulation ${
+                  isCurrent
+                    ? "bg-stone-950 text-amber-300 ring-2 ring-amber-400/50 shadow-xs"
+                    : "bg-white border border-stone-200 text-stone-700 hover:bg-stone-50"
+                }`}
+              >
+                <span className="font-black">{label}</span>
+                {p.runningSubtotal > 0 && (
+                  <span className={`text-[10px] font-tabular ${isCurrent ? "text-emerald-400" : "text-emerald-700"}`}>
+                    ₹{p.runningSubtotal}
+                  </span>
+                )}
+                {dCount > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" title={`${dCount} draft items`} />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* KOT Success Notification Banner */}
+      {lastKotSuccess && (
+        <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 text-white p-3.5 rounded-3xl shadow-md flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 border border-emerald-500/40">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+            </div>
+            <div className="min-w-0">
+              <span className="font-black text-xs sm:text-sm block truncate">
+                KOT #{lastKotSuccess.kotNumber} स्वयंपाकघरात पाठवला!
+              </span>
+              <span className="text-[11px] text-emerald-100 font-medium block truncate">
+                {lastKotSuccess.itemCount} आयटम स्वयंपाक चालू आहे. नवीन पदार्थ खाली जोडू शकता.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setLastKotSuccess(null)}
+              className="px-2.5 py-1.5 bg-white/20 hover:bg-white/30 text-white font-bold text-xs rounded-xl transition-all cursor-pointer active:scale-95"
+            >
+              + आणखी जोडा
+            </button>
+            <Link
+              href={isTakeaway ? "/waiter?tab=parcels" : "/waiter"}
+              className="px-2.5 py-1.5 bg-white text-emerald-950 font-black text-xs rounded-xl shadow-xs transition-all active:scale-95"
+            >
+              मजला →
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Fast Table Settle Action Strip - Always unmissable when table is open */}
       <div className="bg-gradient-to-r from-emerald-50/90 via-white to-emerald-50/70 border border-emerald-400/80 rounded-3xl p-3 sm:p-4 flex items-center justify-between gap-2.5 shadow-xs">
@@ -1237,298 +1377,609 @@ export default function WaiterOrderClient({
         </div>
       )}
 
-      {/* 3. Search Bar & Horizontal Category Pills */}
-      <div className="space-y-2.5">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-4 top-3.5 text-stone-400" />
-          <input
-            type="text"
-            placeholder="Search dishes (उदा. चिकन थाळी, मटण, भाकरी, तांबडा रस्सा)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-stone-200/90 rounded-2xl pl-11 pr-10 py-3 text-xs sm:text-sm text-stone-900 font-bold focus:outline-none focus:ring-2 focus:ring-red-500 shadow-2xs"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+      {/* 3. Main Operational Section (Menu on Left, Persistent Live Cart on Right for Desktop/Tablet) */}
+      <div className="lg:grid lg:grid-cols-12 gap-5 items-start">
+        {/* Left Column: Search, Fast Sellers & Menu Cards Grid */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-3.5">
+          {/* Search Bar & Horizontal Category Pills */}
+          <div className="space-y-2.5">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-4 top-3.5 text-stone-400" />
+              <input
+                type="text"
+                placeholder="Search dishes (उदा. चिकन थाळी, मटण, भाकरी, तांबडा रस्सा)..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white border border-stone-200/90 rounded-2xl pl-11 pr-10 py-3 text-xs sm:text-sm text-stone-900 font-bold focus:outline-none focus:ring-2 focus:ring-red-500 shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600 p-1 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-          <button
-            type="button"
-            onClick={() => setSelectedCategory("ALL")}
-            className={`px-4 py-2.5 rounded-2xl font-black whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
-              selectedCategory === "ALL"
-                ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm border border-red-500/40"
-                : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
-            }`}
-          >
-            सर्व पदार्थ (All Dishes)
-          </button>
-          {store.categories.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2.5 rounded-2xl font-bold whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
-                selectedCategory === cat.id
-                  ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm font-black border border-red-500/40"
-                  : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
-              }`}
-            >
-              {cat.localName || cat.name}
-            </button>
-          ))}
-        </div>
-      </div>
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("ALL")}
+                className={`px-4 py-2.5 rounded-2xl font-black whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                  selectedCategory === "ALL"
+                    ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm border border-red-500/40"
+                    : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
+                }`}
+              >
+                सर्व पदार्थ (All Dishes)
+              </button>
+              {store.categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-4 py-2.5 rounded-2xl font-bold whitespace-nowrap transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                    selectedCategory === cat.id
+                      ? "bg-gradient-to-r from-red-600 via-red-700 to-red-800 text-white shadow-sm font-black border border-red-500/40"
+                      : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
+                  }`}
+                >
+                  {cat.localName || cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* 4. Streamlined Menu Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {filteredItems.map((item) => {
-          const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
-          const isLow = item.stockStatus === "LOW_STOCK" || item.portionAvailability <= 5;
-          const inCartTotal = getCartQuantityForItem(item.id);
-          const isThaliOrMain = isThaliOrMainCourseItem(item);
-
-          return (
-            <div
-              key={item.id}
-              className={`p-3.5 sm:p-4 rounded-3xl border transition-all flex flex-col justify-between ${
-                inCartTotal > 0
-                  ? "bg-red-50/20 border-red-300 ring-2 ring-red-200/50 shadow-xs"
-                  : isOut
-                  ? "bg-stone-50/70 border-stone-200 opacity-60"
-                  : "bg-white border-stone-200/90 hover:border-stone-300 shadow-2xs"
-              }`}
-            >
-              <div>
-                {/* Title & Price Row */}
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span
-                      className={`w-4 h-4 border-2 rounded-xs flex items-center justify-center shrink-0 mt-0.5 ${
-                        item.isVeg ? "border-emerald-600" : "border-red-700"
+          {/* Fast Sellers / वारंवार मागवले जाणारे Strip */}
+          {popularItems.length > 0 && !searchQuery && selectedCategory === "ALL" && (
+            <div className="space-y-1.5 bg-gradient-to-r from-amber-50/60 to-orange-50/40 p-3 rounded-3xl border border-amber-200/70 shadow-2xs">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-black text-amber-950 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>वारंवार मागवले जाणारे (Fast Sellers)</span>
+                </span>
+                <span className="text-[10px] text-amber-800/80 font-bold">1-टॅप जोडा</span>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {popularItems.map((popItem) => {
+                  const inCart = getCartQuantityForItem(popItem.id);
+                  const isOut = popItem.stockStatus === "OUT_OF_STOCK" || popItem.portionAvailability <= 0;
+                  return (
+                    <button
+                      key={popItem.id}
+                      type="button"
+                      disabled={isOut}
+                      onClick={() => handleAddToCart(popItem)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-2xl border text-left shrink-0 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                        inCart > 0
+                          ? "bg-red-50 border-red-300 ring-1 ring-red-300 shadow-xs"
+                          : "bg-white border-stone-200/90 hover:bg-amber-50/70 shadow-2xs"
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${item.isVeg ? "bg-emerald-600" : "bg-red-700"}`} />
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="font-black text-sm sm:text-base text-stone-900 leading-snug truncate">
-                        {item.localName || item.name}
-                      </h3>
-                      {item.localName && item.name && item.localName !== item.name && (
-                        <span className="text-[11px] font-semibold text-stone-500 block truncate mt-0.5">
-                          {item.name}
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${popItem.isVeg ? "bg-emerald-600" : "bg-red-600"}`} />
+                      <div className="min-w-0 max-w-[120px]">
+                        <span className="text-xs font-bold text-stone-900 block truncate leading-tight">
+                          {popItem.localName || popItem.name}
                         </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="font-tabular font-black text-base sm:text-lg text-stone-950 shrink-0">
-                    ₹{item.sellingPrice}
-                  </span>
-                </div>
-
-                {/* Stock warning (Only if Low/Out) */}
-                {(isOut || isLow) && (
-                  <div className="mt-1.5">
-                    <span
-                      className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
-                        isOut ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-900"
-                      }`}
-                    >
-                      {isOut ? "OUT OF STOCK" : `${item.portionAvailability} left`}
-                    </span>
-                  </div>
-                )}
-
-                {/* Thali Quantity Row (थाळी संख्या) */}
-                {isThaliOrMain && (
-                  <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-xs font-black text-stone-900 truncate">
-                        थाळी (Thali Qty):
+                        <span className="text-[10px] font-black text-stone-600 font-tabular">
+                          ₹{popItem.sellingPrice}
+                        </span>
+                      </div>
+                      <span className={`w-6 h-6 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                        inCart > 0 ? "bg-red-600 text-white" : "bg-stone-100 text-stone-800"
+                      }`}>
+                        {inCart > 0 ? inCart : "+"}
                       </span>
-                      {inCartTotal > 0 && (
-                        <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0 font-tabular">
-                          ₹{item.sellingPrice * inCartTotal}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. Streamlined Menu Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {filteredItems.map((item) => {
+              const isOut = item.stockStatus === "OUT_OF_STOCK" || item.portionAvailability <= 0;
+              const isLow = item.stockStatus === "LOW_STOCK" || item.portionAvailability <= 5;
+              const inCartTotal = getCartQuantityForItem(item.id);
+              const isThaliOrMain = isThaliOrMainCourseItem(item);
+              const variants = getItemVariants(item);
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-3.5 sm:p-4 rounded-3xl border transition-all flex flex-col justify-between ${
+                    inCartTotal > 0
+                      ? "bg-red-50/20 border-red-300 ring-2 ring-red-200/50 shadow-xs"
+                      : isOut
+                      ? "bg-stone-50/70 border-stone-200 opacity-60"
+                      : "bg-white border-stone-200/90 hover:border-stone-300 shadow-2xs"
+                  }`}
+                >
+                  <div>
+                    {/* Title & Price Row */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <span
+                          className={`w-4 h-4 border-2 rounded-xs flex items-center justify-center shrink-0 mt-0.5 ${
+                            item.isVeg ? "border-emerald-600" : "border-red-700"
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${item.isVeg ? "bg-emerald-600" : "bg-red-700"}`} />
                         </span>
-                      )}
+                        <div className="min-w-0">
+                          <h3 className="font-black text-sm sm:text-base text-stone-900 leading-snug truncate">
+                            {item.localName || item.name}
+                          </h3>
+                          {item.localName && item.name && item.localName !== item.name && (
+                            <span className="text-[11px] font-semibold text-stone-500 block truncate mt-0.5">
+                              {item.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="font-tabular font-black text-base sm:text-lg text-stone-950 shrink-0">
+                        ₹{item.sellingPrice}
+                      </span>
                     </div>
 
-                    {inCartTotal > 0 ? (
-                      <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleThaliQuantityChange(item, -1)}
-                          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                          title="कमी करा (Decrease Thali)"
+                    {/* Stock warning (Only if Low/Out) */}
+                    {(isOut || isLow) && (
+                      <div className="mt-1.5">
+                        <span
+                          className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
+                            isOut ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-900"
+                          }`}
                         >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="font-tabular font-black text-sm text-stone-900 px-1 min-w-5 text-center">
-                          {inCartTotal}
+                          {isOut ? "OUT OF STOCK" : `${item.portionAvailability} left`}
                         </span>
+                      </div>
+                    )}
+
+                    {/* Thali Quantity Row (थाळी संख्या) */}
+                    {isThaliOrMain && (
+                      <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-black text-stone-900 truncate">
+                            थाळी (Thali Qty):
+                          </span>
+                          {inCartTotal > 0 && (
+                            <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0 font-tabular">
+                              ₹{item.sellingPrice * inCartTotal}
+                            </span>
+                          )}
+                        </div>
+
+                        {inCartTotal > 0 ? (
+                          <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleThaliQuantityChange(item, -1)}
+                              className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                              title="कमी करा (Decrease Thali)"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="font-tabular font-black text-sm text-stone-900 px-1 min-w-5 text-center">
+                              {inCartTotal}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={isOut}
+                              onClick={() => handleThaliQuantityChange(item, 1)}
+                              className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                              title="वाढवा (Increase Thali)"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isOut}
+                            onClick={() => handleThaliQuantityChange(item, 1)}
+                            className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white font-black text-xs flex items-center gap-1 hover:bg-stone-800 active:scale-95 touch-manipulation cursor-pointer shadow-2xs shrink-0"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>थाळी जोडा (Add)</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Instant Bread Selector with +/- Stepper for Rotis / Bhakris in Thali */}
+                    {isThaliOrMain && (
+                      <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                            भाकरी / चपाती / रोटी (Breads):
+                          </span>
+                          {getBreadSummaryForItem(item.id) && (
+                            <span className="text-[10px] font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-[160px]">
+                              {getBreadSummaryForItem(item.id)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {BREAD_OPTIONS.map((bread) => {
+                            const breadCount = getBreadCountForItem(item.id, bread.id);
+                            return (
+                              <div
+                                key={bread.id}
+                                className={`min-h-[44px] rounded-2xl border transition-all ${
+                                  breadCount > 0
+                                    ? "bg-amber-50/90 border-amber-400 ring-1 ring-amber-300/50"
+                                    : "bg-stone-50/80 border-stone-200"
+                                }`}
+                              >
+                                {breadCount > 0 ? (
+                                  <div className="flex items-center justify-between px-2 py-1 gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBreadCountChange(item, bread.id, -1)}
+                                      className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                                      title={`कमी करा (${bread.name})`}
+                                    >
+                                      <Minus className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div className="flex flex-col items-center min-w-0 flex-1">
+                                      <span className="font-tabular font-black text-sm text-amber-900 leading-none">
+                                        {breadCount}
+                                      </span>
+                                      <span className="text-[9px] font-bold text-amber-700 truncate leading-tight">
+                                        {bread.shortCode}
+                                      </span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleBreadCountChange(item, bread.id, 1)}
+                                      className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                                      title={`वाढवा (${bread.name})`}
+                                    >
+                                      <Plus className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isOut}
+                                    onClick={() => handleBreadCountChange(item, bread.id, 1)}
+                                    className="w-full h-full min-h-[44px] px-3 py-2 rounded-2xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/70 active:scale-95 touch-manipulation cursor-pointer"
+                                  >
+                                    <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs text-stone-800">
+                                      <span className="text-sm">{bread.emoji}</span>
+                                      <span className="truncate">{bread.localName}</span>
+                                    </span>
+                                    <Plus className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Half / Full Variant Selector for Main Courses, Handi, Sukka, Biryani */}
+                  {!isThaliOrMain && variants && variants.length > 0 && (
+                    <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200 space-y-1.5">
+                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider block">
+                        प्रमाण निवडा (Half / Full):
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {variants.map((v) => {
+                          const vQty = getCartQuantityForItem(item.id, undefined, v.name);
+                          return (
+                            <div
+                              key={v.name}
+                              className={`p-2 rounded-2xl border transition-all flex items-center justify-between gap-1 ${
+                                vQty > 0
+                                  ? "bg-red-50/80 border-red-300 ring-1 ring-red-300 shadow-2xs"
+                                  : "bg-stone-50/80 border-stone-200"
+                              }`}
+                            >
+                              <div className="min-w-0 pr-1">
+                                <span className="text-xs font-black text-stone-900 block truncate leading-tight">
+                                  {v.name === "Half" ? "हाफ" : v.name === "Full" ? "फुल" : v.name}
+                                </span>
+                                <span className="text-[10px] font-tabular font-bold text-stone-600">
+                                  ₹{v.price}
+                                </span>
+                              </div>
+                              {vQty > 0 ? (
+                                <div className="flex items-center gap-1 bg-white border border-stone-300 px-1 py-0.5 rounded-xl shadow-2xs">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCardDecrement(item, undefined, v.name)}
+                                    className="w-6 h-6 flex items-center justify-center text-stone-700 font-bold active:scale-90 cursor-pointer"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="text-xs font-black font-tabular px-0.5">{vQty}</span>
+                                  <button
+                                    type="button"
+                                    disabled={isOut}
+                                    onClick={() => handleAddToCart(item, undefined, v)}
+                                    className="w-6 h-6 flex items-center justify-center bg-red-600 text-white rounded-lg font-black active:scale-90 cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={isOut}
+                                  onClick={() => handleAddToCart(item, undefined, v)}
+                                  className="px-2.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white font-black text-[11px] rounded-xl shadow-2xs active:scale-95 cursor-pointer touch-manipulation"
+                                >
+                                  + जोडा
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Standard Stepper for Non-Thalis WITHOUT variants */}
+                  {!isThaliOrMain && !variants && (
+                    <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11px] font-bold text-stone-400">
+                          {inCartTotal > 0 ? `${inCartTotal} निवडले` : "टॅप करा"}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 5].map((q) => (
+                            <button
+                              key={q}
+                              type="button"
+                              disabled={isOut}
+                              onClick={() => {
+                                for (let i = 0; i < q; i++) handleAddToCart(item);
+                              }}
+                              className="px-1.5 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600 text-[9px] font-bold active:scale-90"
+                              title={`Add ${q}`}
+                            >
+                              +{q}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {inCartTotal > 0 ? (
+                        <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl">
+                          <button
+                            type="button"
+                            onClick={() => handleCardDecrement(item)}
+                            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-tabular font-black text-sm text-red-700 px-1 min-w-5 text-center">
+                            {inCartTotal}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={isOut}
+                            onClick={() => handleAddToCart(item)}
+                            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           type="button"
                           disabled={isOut}
-                          onClick={() => handleThaliQuantityChange(item, 1)}
-                          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                          title="वाढवा (Increase Thali)"
+                          onClick={() => handleAddToCart(item)}
+                          className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation cursor-pointer ${
+                            isOut
+                              ? "bg-stone-200 text-stone-400 cursor-not-allowed"
+                              : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white"
+                          }`}
                         >
-                          <Plus className="w-4 h-4" />
+                          <Plus className="w-3.5 h-3.5 text-amber-200" />
+                          <span>जोडा (Add)</span>
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isOut}
-                        onClick={() => handleThaliQuantityChange(item, 1)}
-                        className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white font-black text-xs flex items-center gap-1 hover:bg-stone-800 active:scale-95 touch-manipulation cursor-pointer shadow-2xs shrink-0"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>थाळी जोडा (Add)</span>
-                      </button>
-                    )}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-                {/* Instant Bread Selector with +/- Stepper for Rotis / Bhakris in Thali */}
-                {isThaliOrMain && (
-                  <div className="mt-2.5 pt-2 border-t border-dashed border-stone-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
-                        भाकरी / चपाती / रोटी (Breads):
+        {/* Right Column: Sticky Persistent Live Cart for Tablet & Desktop */}
+        <div className="hidden lg:block lg:col-span-5 xl:col-span-4 sticky top-4 space-y-3.5">
+          <div className="bg-white rounded-3xl border border-stone-200 shadow-sm p-4 space-y-3 text-stone-900">
+            {/* Cart Header */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm text-stone-900">
+                  {party.isTakeaway || party.tableNumber === 0 ? `🛍️ Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}
+                </span>
+                <span className="bg-red-100 text-red-700 text-xs font-black px-2 py-0.5 rounded-lg">
+                  {totalCartCount} Items
+                </span>
+              </div>
+              {cart.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearDraftCart(party.id);
+                    setCart([]);
+                    showToast("कार्ट रिकामी केली (Cart cleared)");
+                  }}
+                  className="text-stone-400 hover:text-rose-600 text-xs font-bold cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Cart Items List */}
+            {cart.length === 0 ? (
+              <div className="py-8 text-center text-stone-400 text-xs space-y-1">
+                <ShoppingBag className="w-8 h-8 mx-auto opacity-30" />
+                <p className="font-bold">कार्ट रिकामी आहे (Cart is empty)</p>
+                <p className="text-[11px] text-stone-400">डावीकडून पदार्थ निवडून 1-टॅप जोडा</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[48vh] overflow-y-auto pr-1 no-scrollbar text-xs">
+                {cart.map((c, idx) => (
+                  <div
+                    key={idx}
+                    className="p-2.5 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-between gap-2 shadow-2xs"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="font-black text-stone-900 block truncate text-xs">
+                        {c.menuItem.localName || c.menuItem.name} {c.variantName ? `(${c.variantName === "Half" ? "हाफ" : "फुल"})` : ""}
                       </span>
-                      {getBreadSummaryForItem(item.id) && (
-                        <span className="text-[10px] font-black text-amber-900 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200 truncate max-w-[160px]">
-                          {getBreadSummaryForItem(item.id)}
+                      <div className="flex items-center gap-1.5 text-[11px] text-stone-500 font-tabular mt-0.5">
+                        <span>₹{c.unitPrice} × {c.quantity}</span>
+                        <span className="font-black text-stone-800">= ₹{c.unitPrice * c.quantity}</span>
+                      </div>
+                      {(c.notes || c.breadOption) && (
+                        <span className="text-[9.5px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded mt-1 inline-block truncate max-w-[180px]">
+                          {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {BREAD_OPTIONS.map((bread) => {
-                        const breadCount = getBreadCountForItem(item.id, bread.id);
-                        return (
-                          <div
-                            key={bread.id}
-                            className={`min-h-[44px] rounded-2xl border transition-all ${
-                              breadCount > 0
-                                ? "bg-amber-50/90 border-amber-400 ring-1 ring-amber-300/50"
-                                : "bg-stone-50/80 border-stone-200"
-                            }`}
-                          >
-                            {breadCount > 0 ? (
-                              /* Stepper mode: - breadCount + */
-                              <div className="flex items-center justify-between px-2 py-1 gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleBreadCountChange(item, bread.id, -1)}
-                                  className="w-8 h-8 rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                                  title={`कमी करा (${bread.name})`}
-                                >
-                                  <Minus className="w-3.5 h-3.5" />
-                                </button>
-                                <div className="flex flex-col items-center min-w-0 flex-1">
-                                  <span className="font-tabular font-black text-sm text-amber-900 leading-none">
-                                    {breadCount}
-                                  </span>
-                                  <span className="text-[9px] font-bold text-amber-700 truncate leading-tight">
-                                    {bread.shortCode}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleBreadCountChange(item, bread.id, 1)}
-                                  className="w-8 h-8 rounded-xl bg-amber-500 text-stone-950 font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                                  title={`वाढवा (${bread.name})`}
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              /* Add mode: single tap to set bread for this thali */
-                              <button
-                                type="button"
-                                disabled={isOut}
-                                onClick={() => handleBreadCountChange(item, bread.id, 1)}
-                                className="w-full h-full min-h-[44px] px-3 py-2 rounded-2xl text-xs font-bold flex items-center justify-between hover:bg-amber-50/70 active:scale-95 touch-manipulation cursor-pointer"
-                              >
-                                <span className="flex items-center gap-1.5 truncate text-[11px] sm:text-xs text-stone-800">
-                                  <span className="text-sm">{bread.emoji}</span>
-                                  <span className="truncate">{bread.localName}</span>
-                                </span>
-                                <Plus className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
+
+                    {/* Stepper */}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1 bg-white border border-stone-200 px-1.5 py-0.5 rounded-xl shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateCartQuantity(idx, -1)}
+                          className="w-5 h-5 flex items-center justify-center text-stone-600 active:scale-90 cursor-pointer"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="font-tabular font-black text-xs px-1 min-w-4 text-center">
+                          {c.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateCartQuantity(idx, 1)}
+                          className="w-5 h-5 flex items-center justify-center text-stone-600 active:scale-90 cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...cart];
+                          updated.splice(idx, 1);
+                          setCart(updated);
+                        }}
+                        className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-rose-600 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
-                )}
+                ))}
               </div>
+            )}
 
-              {/* Card Stepper for Non-Thalis / Standard Items */}
-              {!isThaliOrMain && (
-                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
-                  <span className="text-[11px] font-bold text-stone-400">
-                    {inCartTotal > 0 ? `${inCartTotal} निवडले` : "टॅप करा (Add)"}
+            {/* Financials & KOT Action */}
+            {cart.length > 0 && (
+              <div className="pt-2 border-t border-stone-100 space-y-2">
+                {isTakeaway && (
+                  <div className="flex items-center justify-between text-xs text-amber-900 font-bold">
+                    <span>🥡 Parcel Packaging:</span>
+                    <span className="font-tabular font-black">+₹{packagingFee}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-xs text-stone-600">
+                  <span>Items Subtotal:</span>
+                  <span className="font-tabular font-black text-stone-900">₹{cartSubtotal}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm font-black text-stone-950 pt-1 border-t border-stone-100">
+                  <span>Order Total:</span>
+                  <span className="font-tabular text-emerald-700 text-base">
+                    ₹{cartSubtotal + packagingFee}
                   </span>
+                </div>
 
-                  {inCartTotal > 0 ? (
-                    <div className="flex items-center gap-1.5 bg-red-50 border border-red-200 p-1 rounded-2xl">
-                      <button
-                        type="button"
-                        onClick={() => handleCardDecrement(item)}
-                        className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="font-tabular font-black text-sm text-red-700 px-1 min-w-5 text-center">
-                        {inCartTotal}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={isOut}
-                        onClick={() => handleAddToCart(item)}
-                        className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ) : (
+                {isTakeaway ? (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
                     <button
                       type="button"
-                      disabled={isOut}
-                      onClick={() => handleAddToCart(item)}
-                      className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation cursor-pointer ${
-                        isOut
-                          ? "bg-stone-200 text-stone-400 cursor-not-allowed"
-                          : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white"
-                      }`}
+                      disabled={isSending}
+                      onClick={handleSendKot}
+                      className="py-3 px-2 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all touch-manipulation cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5 text-amber-200" />
-                      <span>जोडा (Add)</span>
+                      <Send className="w-3.5 h-3.5 text-stone-300" />
+                      <span>{isSending ? "Sending..." : "KOT Only"}</span>
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      disabled={isSending}
+                      onClick={() => handleSendKotAndSettle("CASH")}
+                      className="py-3 px-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                    >
+                      <span>⚡ Pay & Send</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isSending}
+                    onClick={handleSendKot}
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                  >
+                    <Send className="w-4 h-4 text-emerald-200" />
+                    <span>{isSending ? "Sending..." : `KOT स्वयंपाकघरात पाठवा (₹${cartSubtotal}) →`}</span>
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Running Table Bill actions if table already has orders */}
+            {party.runningSubtotal > 0 && cart.length === 0 && (
+              <div className="pt-2 border-t border-stone-100 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-stone-500 font-bold">In-Kitchen Orders:</span>
+                  <span className="font-black text-emerald-700 text-sm">₹{party.runningSubtotal}</span>
                 </div>
-              )}
-            </div>
-          );
-        })}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleRequestBill}
+                    className="py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1 border border-stone-200 cursor-pointer"
+                  >
+                    <Receipt className="w-3.5 h-3.5 text-stone-600" />
+                    <span>Pre-Bill</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettleModal(true)}
+                    className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>Bill Paid</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* 5. Floating Bottom Bar (Clear, Prominent, Lightning-Fast KOT) */}
+      {/* 5. Floating Bottom Bar (Clear, Prominent, Lightning-Fast KOT for Mobile) */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
             {/* Cart Preview Button */}
             <button
@@ -1553,7 +2004,11 @@ export default function WaiterOrderClient({
             {/* Clear All */}
             <button
               type="button"
-              onClick={() => { if (confirm("Clear all items from cart?")) setCart([]); }}
+              onClick={() => {
+                clearDraftCart(party.id);
+                setCart([]);
+                showToast("कार्ट रिकामी केली (Cart cleared)");
+              }}
               className="text-[11px] font-bold text-stone-400 hover:text-rose-400 transition-colors px-2 py-1.5 shrink-0 touch-manipulation cursor-pointer"
             >
               Clear All
@@ -1575,7 +2030,7 @@ export default function WaiterOrderClient({
 
       {/* 5b. Floating Bottom Bar when Cart is Empty & Party Has Running Total */}
       {totalCartCount === 0 && party.runningSubtotal > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-stone-950/95 backdrop-blur-2xl border-t border-stone-800 shadow-2xl p-3.5 sm:p-4 pb-[max(0.85rem,env(safe-area-inset-bottom))] animate-in slide-in-from-bottom duration-200 text-white">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-stone-400">Bill Total:</span>
@@ -1626,7 +2081,11 @@ export default function WaiterOrderClient({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setCart([])}
+                  onClick={() => {
+                    clearDraftCart(party.id);
+                    setCart([]);
+                    showToast("कार्ट रिकामी केली (Cart cleared)");
+                  }}
                   className="text-stone-400 hover:text-rose-600 text-xs font-bold cursor-pointer"
                 >
                   Clear All
@@ -1666,43 +2125,56 @@ export default function WaiterOrderClient({
                       </span>
                     </div>
 
-                    {/* Bread Option Switcher & Custom Cooking Notes in Cart */}
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {(c.breadOption || c.notes) && (
-                        <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-2 py-0.5 rounded-md shadow-2xs">
-                          {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
-                        </span>
-                      )}
-                      {c.breadOption &&
-                        BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
-                          <button
-                            key={b.id}
-                            type="button"
-                            onClick={() => handleChangeCartItemBread(idx, b.id)}
-                            className="text-[9px] font-bold text-stone-600 bg-white border border-stone-200 px-1.5 py-0.5 rounded-md hover:bg-stone-50 cursor-pointer"
-                          >
-                            {b.shortCode}
-                          </button>
-                        ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const note = prompt("Enter kitchen instruction (उदा. कमी तिखट, झणझणीत, रस्सा वेगळा):", c.customNote || "");
-                          if (note !== null) {
-                            const updated = [...cart];
-                            const trimmed = note.trim();
-                            updated[idx] = {
-                              ...updated[idx],
-                              customNote: trimmed,
-                              notes: buildItemNotes(updated[idx].breadCounts, trimmed, updated[idx].spiceLevel)
-                            };
-                            setCart(updated);
-                          }
-                        }}
-                        className="text-[9px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-md cursor-pointer flex items-center gap-0.5"
-                      >
-                        ✏️ {c.customNote ? c.customNote : "नोंद / Note"}
-                      </button>
+                    {/* Bread Option Switcher & 1-Tap Cooking Instruction Pills in Cart */}
+                    <div className="space-y-1.5 mt-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(c.breadOption || c.notes) && (
+                          <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-2 py-0.5 rounded-md shadow-2xs">
+                            {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
+                          </span>
+                        )}
+                        {c.breadOption &&
+                          BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => handleChangeCartItemBread(idx, b.id)}
+                              className="text-[9px] font-bold text-stone-600 bg-white border border-stone-200 px-1.5 py-0.5 rounded-md hover:bg-stone-50 cursor-pointer"
+                            >
+                              {b.shortCode}
+                            </button>
+                          ))}
+                      </div>
+
+                      {/* 1-Tap Preset Instruction Pills */}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {["कमी तिखट", "झणझणीत", "रस्सा वेगळा", "गरम द्या"].map((preset) => {
+                          const isActive = c.customNote === preset;
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => {
+                                const updated = [...cart];
+                                const newNote = isActive ? "" : preset;
+                                updated[idx] = {
+                                  ...updated[idx],
+                                  customNote: newNote,
+                                  notes: buildItemNotes(updated[idx].breadCounts, newNote, updated[idx].spiceLevel),
+                                };
+                                setCart(updated);
+                              }}
+                              className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                                isActive
+                                  ? "bg-amber-600 text-white shadow-2xs"
+                                  : "bg-white text-stone-600 border border-stone-200 hover:bg-amber-50"
+                              }`}
+                            >
+                              {preset}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -1899,10 +2371,10 @@ export default function WaiterOrderClient({
                   try {
                     store.transferPartyToTable(party.id, targetTableNumber);
                     setShowTransferModal(false);
-                    alert(`Moved to Table ${targetTableNumber}!`);
+                    showToast(`Moved to Table ${targetTableNumber}!`);
                     router.push("/waiter");
                   } catch (e: any) {
-                    alert(e.message);
+                    showToast(e.message);
                   }
                 }}
                 className="px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
