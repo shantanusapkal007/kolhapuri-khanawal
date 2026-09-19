@@ -317,24 +317,24 @@ export default function KitchenDisplayPage() {
                   }`}
                 >
                   <div>
+                    {kot.isTakeaway && (
+                      <div className="bg-orange-500 text-white text-[11px] font-black px-2 py-0.5 rounded-md inline-flex items-center gap-1 mb-1 shadow-xs">
+                        <span>🥡 पार्सल (PARCEL)</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1.5 font-black text-base flex-wrap">
-                      <span>TABLE {kot.tableNumber}</span>
+                      <span>{kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल नं. ${kot.tableNumber}`}</span>
                       <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-black">
                         {kot.partyCode}
                       </span>
                       {kot.isAddOn && (
                         <span className="bg-amber-400 text-stone-950 text-[10px] px-2 py-0.5 rounded font-black shadow-2xs">
-                          ADD-ON #{kot.kotSequenceNumber || 2}
-                        </span>
-                      )}
-                      {kot.isTakeaway && (
-                        <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded font-black shadow-2xs">
-                          PARCEL
+                          रनिंग ऑर्डर #{kot.kotSequenceNumber || 2}
                         </span>
                       )}
                     </div>
                     <span className="text-[11px] text-stone-200 font-medium">
-                      Waiter: <strong>{kot.waiterName}</strong>
+                      वेटर: <strong>{kot.waiterName}</strong>
                     </span>
                   </div>
 
@@ -377,45 +377,60 @@ export default function KitchenDisplayPage() {
                         const menuItem = store.menuItems.find((m) => m.id === item.menuItemId);
                         return menuItem ? menuItem.stationCode === selectedStation : kot.stationCode === selectedStation;
                       })
-                  ).map((item) => (
-                    <div key={item.id} className="pt-1.5 first:pt-0">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-md bg-stone-900 text-white font-black text-xs flex items-center justify-center shrink-0">
-                            {item.quantity}×
-                          </span>
-                          <span className="font-extrabold text-sm text-stone-900">
-                            {item.menuItemName}
-                          </span>
-                        </div>
-                        {item.seatNumber && (
-                          <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded shrink-0">
-                            Seat {item.seatNumber}
-                          </span>
-                        )}
-                      </div>
+                  ).map((item) => {
+                    const marathiName =
+                      item.menuItemLocalName ||
+                      store.menuItems.find((m) => m.id === item.menuItemId)?.localName ||
+                      item.menuItemName;
+                    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
 
-                      <div className="flex items-center gap-2 mt-1 ml-8 flex-wrap">
-                        {item.breadOption && (
-                          <span className="text-[11px] font-black text-amber-950 bg-amber-200 border border-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
-                            <span>🍞</span>
-                            <span>{BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}</span>
-                            <span className="text-[9px] text-amber-800 font-bold">({BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en})</span>
-                          </span>
-                        )}
-                        {item.spiceLevel && (
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">
-                            {item.spiceLevel}
-                          </span>
-                        )}
-                        {item.notes && (
-                          <span className="text-[11px] font-semibold text-red-600 italic">
-                            “{item.notes}”
-                          </span>
-                        )}
+                    return (
+                      <div key={item.id} className="pt-2 first:pt-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2.5">
+                            <span className="w-6 h-6 rounded-md bg-stone-900 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                              {item.quantity}×
+                            </span>
+                            <div>
+                              <span className="font-black text-base text-stone-900 leading-snug block">
+                                {marathiName}
+                              </span>
+                              {hasEnglish && (
+                                <span className="text-xs text-stone-500 font-semibold block">
+                                  {item.menuItemName}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {item.seatNumber && (
+                            <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+                              जागा {item.seatNumber}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1.5 ml-8 flex-wrap">
+                          {item.breadOption && (
+                            <span className="text-[11px] font-black text-amber-950 bg-amber-200 border border-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+                              <span>🍞</span>
+                              <span>{BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}</span>
+                              <span className="text-[9px] text-amber-800 font-bold">({BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en})</span>
+                            </span>
+                          )}
+                          {item.spiceLevel && item.spiceLevel !== "MEDIUM" && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                              🌶️ {item.spiceLevel.replace(/_/g, " ")}
+                            </span>
+                          )}
+                          {item.notes && (
+                            <span className="text-[11px] font-semibold text-red-600 italic">
+                              📝 “{item.notes}”
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Step Action Buttons */}

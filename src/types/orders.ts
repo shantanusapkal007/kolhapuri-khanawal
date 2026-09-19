@@ -166,6 +166,7 @@ export interface OrderItem {
   partyId: string;
   menuItemId: string;
   menuItemName: string;
+  menuItemLocalName?: string; // e.g. "कोल्हापुरी स्पेशल चिकन थाळी"
   variantName?: string; // e.g. "Half", "Full"
   quantity: number;
   unitPrice: number;
@@ -215,6 +216,7 @@ export interface KotItem {
   orderItemId: string;
   menuItemId: string;
   menuItemName: string;
+  menuItemLocalName?: string; // e.g. "कोल्हापुरी स्पेशल चिकन थाळी"
   variantName?: string; // e.g. "Half", "Full"
   quantity: number;
   seatNumber?: number;

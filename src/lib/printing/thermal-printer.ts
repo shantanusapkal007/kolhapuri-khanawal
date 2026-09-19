@@ -19,6 +19,7 @@ import { WaiterCredential } from "@/types/domain";
 import { DEFAULT_PRINTER_DEVICES, globalPrinterManager } from "./printer-connection-manager";
 import { EscPosBuilder, buildCashUpiReconciliationEscPos, type CashUpiReconciliationEscPosParams } from "./escpos-builder";
 import { enqueuePrintJob } from "./cloud-print-queue";
+import { initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
 
 export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder, buildCashUpiReconciliationEscPos };
 export type { CashUpiReconciliationEscPosParams };
@@ -291,11 +292,22 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     border-bottom: 2.5px solid #000000 !important;
     padding: 3px 0;
   }
+  .kot-parcel-top {
+    background: #000000 !important;
+    color: #ffffff !important;
+    font-size: ${is58mm ? "14px" : "17px"};
+    font-weight: 900 !important;
+    text-align: center;
+    padding: 3px 0;
+    margin-bottom: 4px;
+    border: 2px solid #000000 !important;
+    letter-spacing: 0.5px;
+  }
   .kot-header {
     font-size: ${kotHeaderSize};
     font-weight: 900 !important;
     text-align: center;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     border: 2.5px solid #000000 !important;
     padding: 3px;
     margin-bottom: 4px;
@@ -319,6 +331,17 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     margin-right: 4px;
     font-weight: 900 !important;
     font-size: ${is58mm ? "13px" : "15px"};
+  }
+  .kot-item .marathi-title {
+    font-size: ${is58mm ? "14px" : "16px"};
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .kot-item .english-subtitle {
+    font-size: ${is58mm ? "9.5px" : "11px"};
+    font-weight: 600 !important;
+    color: #222222 !important;
+    margin-left: 24px;
   }
   .kot-notes {
     font-style: italic;
@@ -365,6 +388,98 @@ function formatTime(isoString: string): string {
 
 function formatDateTime(isoString: string): string {
   return `${formatDate(isoString)} ${formatTime(isoString)}`;
+}
+
+// Cached dictionary lookup for menu items Marathi Devanagari names
+let menuItemsMapCache: Map<string, string> | null = null;
+
+function getMenuItemMarathiNameMap(): Map<string, string> {
+  if (!menuItemsMapCache) {
+    menuItemsMapCache = new Map();
+    for (const item of initialKhanawalMenuItems) {
+      if (item.localName) {
+        menuItemsMapCache.set(item.id.toLowerCase(), item.localName);
+        menuItemsMapCache.set(item.name.toLowerCase().trim(), item.localName);
+        if (item.code) {
+          menuItemsMapCache.set(item.code.toLowerCase().trim(), item.localName);
+        }
+      }
+    }
+  }
+  return menuItemsMapCache;
+}
+
+/**
+ * Resolves authentic Marathi Devanagari dish name for KOT printing and KDS display
+ */
+export function getKotItemMarathiName(item: {
+  menuItemId?: string;
+  menuItemName: string;
+  menuItemLocalName?: string;
+  variantName?: string;
+}): string {
+  // 1. Explicit localName on item
+  if (item.menuItemLocalName && item.menuItemLocalName.trim().length > 0) {
+    return item.menuItemLocalName.trim();
+  }
+
+  // 2. Already contains Marathi Devanagari script
+  if (/[\u0900-\u097F]/.test(item.menuItemName)) {
+    return item.menuItemName.trim();
+  }
+
+  // 3. Look up by ID or name in menu catalog
+  const map = getMenuItemMarathiNameMap();
+  if (item.menuItemId) {
+    const byId = map.get(item.menuItemId.toLowerCase());
+    if (byId) {
+      return item.variantName ? `${byId} (${item.variantName})` : byId;
+    }
+  }
+
+  const cleanName = item.menuItemName.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
+  const byName = map.get(cleanName);
+  if (byName) {
+    return item.variantName ? `${byName} (${item.variantName})` : byName;
+  }
+
+  // 4. Common authentic Kolhapuri dishes dictionary fallback
+  const commonDict: Record<string, string> = {
+    "special mutton thali": "स्पेशल मटण थाळी",
+    "mutton thali": "मटण थाळी",
+    "special chicken thali": "स्पेशल चिकन थाळी",
+    "chicken thali": "चिकन थाळी",
+    "veg thali": "शाकाहारी थाळी",
+    "special veg thali": "स्पेशल व्हेज थाळी",
+    "kolhapuri veg thali": "कोल्हापुरी व्हेज थाळी",
+    "mutton sukka": "मटण सुक्का",
+    "chicken sukka": "चिकन सुक्का",
+    "tambda rassa": "तांबडा रस्सा",
+    "pandhra rassa": "पांढरा रस्सा",
+    "jowar bhakri": "ज्वारीची भाकरी",
+    "jwari bhakri": "ज्वारीची भाकरी",
+    "bajri bhakri": "बाजरीची भाकरी",
+    "chapati": "चपाती",
+    "roti": "रोटी",
+    "tandoori roti": "तंदूर रोटी",
+    "butter roti": "बटर रोटी",
+    "egg thali": "अंडी थाळी",
+    "fish thali": "मासे / फिश थाळी",
+    "surmai thali": "सुरमई थाळी",
+    "pomfret thali": "पापलेट थाळी",
+    "solkadhi": "सोलकढी",
+    "indrayani rice": "इंद्रायणी भात",
+    "jeera rice": "जिरा राईस",
+    "steamed rice": "साधा भात",
+    "dal khichdi": "डाळ खिचडी",
+  };
+
+  if (commonDict[cleanName]) {
+    const mr = commonDict[cleanName];
+    return item.variantName ? `${mr} (${item.variantName})` : mr;
+  }
+
+  return item.menuItemName;
 }
 
 /**
@@ -1096,6 +1211,7 @@ export function generateKotHtml(
   isReprint: boolean = false,
   paperWidth: "80mm" | "58mm" = "80mm"
 ): string {
+  const is58mm = paperWidth === "58mm";
   const kotTime = formatDateTime(kot.createdAt);
 
   const stationLabels: Record<string, string> = {
@@ -1105,7 +1221,15 @@ export function generateKotHtml(
     FRY_SECTION: "FRY / SUKKA",
     BEVERAGE_DESSERT: "DRINKS / DESSERT",
   };
+  const stationLabelsMr: Record<string, string> = {
+    MAIN_KITCHEN: "मुख्य किचन",
+    THALI_SECTION: "थाळी विभाग",
+    TANDOOR_BHAKRI: "तंदूर / भाकरी",
+    FRY_SECTION: "फ्राय / सुक्का",
+    BEVERAGE_DESSERT: "पेये / गोड",
+  };
   const stationName = stationLabels[kot.stationCode] || kot.stationCode;
+  const stationNameMr = stationLabelsMr[kot.stationCode] || stationName;
 
   const itemsToRender =
     stationFilter && stationFilter !== "ALL"
@@ -1114,30 +1238,38 @@ export function generateKotHtml(
 
   let itemsHtml = "";
   for (const item of itemsToRender) {
+    const marathiName = getKotItemMarathiName(item);
+    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
+
     itemsHtml += `
       <div class="kot-item">
-        <span class="qty-badge">${item.quantity}×</span>
-        ${item.menuItemName}
-        ${item.seatNumber ? `<span class="tiny"> [S${item.seatNumber}]</span>` : ""}
+        <div style="font-size: ${is58mm ? "14px" : "16px"}; font-weight: 900; line-height: 1.25;">
+          <span class="qty-badge">${item.quantity}×</span>
+          <span class="marathi-title">${marathiName}</span>
+          ${item.seatNumber ? `<span class="tiny"> [S${item.seatNumber}]</span>` : ""}
+        </div>
+        ${hasEnglish ? `<div class="english-subtitle">${item.menuItemName}</div>` : ""}
       </div>`;
+
     if (item.breadOption) {
       const breadObj = BREAD_OPTION_LABELS[item.breadOption as BreadOption];
       const breadText = breadObj ? `${breadObj.mr} (${breadObj.en})` : item.breadOption;
-      itemsHtml += `<div class="kot-bread" style="font-weight:bold; font-size:12px; margin-left:14px; margin-top:2px; color:#000;">🍞 ${breadText}</div>`;
+      itemsHtml += `<div class="kot-bread" style="font-weight:bold; font-size:12px; margin-left:14px; margin-top:2px; color:#000;">🍞 भाकरी / पोळी: ${breadText}</div>`;
     }
     if (item.spiceLevel && item.spiceLevel !== "MEDIUM") {
-      itemsHtml += `<div class="kot-spice">🌶️ ${item.spiceLevel.replace(/_/g, " ")}</div>`;
+      const spiceMrMap: Record<string, string> = {
+        MILD: "कमी तिखट",
+        SPICY: "तिखट",
+        VERY_SPICY: "जास्त तिखट",
+        EXTRA_SPICY: "झणझणीत तिखट",
+        THECHA_EXTRA_SPICY: "ठेचा / खूप तिखट",
+      };
+      const mrSpice = spiceMrMap[item.spiceLevel] || item.spiceLevel;
+      itemsHtml += `<div class="kot-spice">🌶️ ${item.spiceLevel.replace(/_/g, " ")} (${mrSpice})</div>`;
     }
     if (item.notes) {
       itemsHtml += `<div class="kot-notes">📝 ${item.notes}</div>`;
     }
-  }
-
-  let headerTitle = "*** K O T ***";
-  if (isReprint) {
-    headerTitle = "*** REPRINT KOT / किचन प्रत ***";
-  } else if (kot.isAddOn) {
-    headerTitle = `*** ADD-ON KOT #${kot.kotSequenceNumber || 2} (रनिंग ऑर्डर) ***`;
   }
 
   return `<!DOCTYPE html>
@@ -1148,21 +1280,44 @@ export function generateKotHtml(
   <style>${getThermalBaseCss(paperWidth)}</style>
 </head>
 <body>
-  <!-- KOT Header -->
+  ${
+    kot.isTakeaway
+      ? `
+  <!-- TOP PARCEL BANNER (पार्सल सर्वात वर) -->
+  <div class="kot-parcel-top">
+    🥡 पार्सल (PARCEL)
+  </div>
+  `
+      : ""
+  }
+
+  <!-- Header Title: Simplified as 'ऑर्डर - टेबल नं.' or 'ऑर्डर - पार्सल' -->
   <div class="kot-header">
-    ${headerTitle}
+    ${kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल नं. ${kot.tableNumber}`}
   </div>
 
   <div class="kot-table-info">
     TABLE ${kot.tableNumber} — ${kot.partyCode}
   </div>
 
+  <div class="center tiny bold" style="letter-spacing: 2px; margin-bottom: 2px;">
+    *** K O T ***
+  </div>
+
+  ${
+    isReprint
+      ? `<div style="text-align:center; font-weight:900; font-size:12px; border:1px solid #000; padding:2px; margin:2px 0;">*** REPRINT KOT / किचन प्रत (पुन्हा छपाई) ***</div>`
+      : kot.isAddOn
+      ? `<div style="text-align:center; font-weight:900; font-size:12px; border:1px solid #000; padding:2px; margin:2px 0;">*** ADD-ON KOT #${kot.kotSequenceNumber || 2} (रनिंग ऑर्डर) ***</div>`
+      : ""
+  }
+
   ${
     kot.isTakeaway
       ? `
-  <div style="text-align:center; font-weight:bold; font-size:13px; border:2px solid #000; padding:2px; margin:3px 0;">
+  <div style="text-align:center; font-weight:bold; font-size:12px; border:1.5px dashed #000; padding:2px; margin:2px 0 3px 0;">
     🥡 TAKEAWAY / PARCEL (पार्सल)
-    ${kot.customerName ? `<div class="small bold">Customer: ${kot.customerName}</div>` : ""}
+    ${kot.customerName ? `<div class="small bold" style="margin-top:2px;">ग्राहक (Customer): ${kot.customerName}</div>` : ""}
   </div>
   `
       : ""
@@ -1172,41 +1327,41 @@ export function generateKotHtml(
 
   <table>
     <tr>
-      <td class="bold">${kot.kotNumber}</td>
-      <td class="right small">${kotTime}</td>
+      <td class="bold">केओटी: ${kot.kotNumber}</td>
+      <td class="right small">वेळ: ${kotTime}</td>
     </tr>
     <tr>
-      <td class="small">Waiter: ${kot.waiterName}</td>
-      <td class="right small">Guests: ${kot.guestCount}</td>
+      <td class="small">वेटर: ${kot.waiterName} (Waiter: ${kot.waiterName})</td>
+      <td class="right small">व्यक्ती: ${kot.guestCount} (Guests: ${kot.guestCount})</td>
     </tr>
     <tr>
       <td colspan="2" class="bold" style="padding-top:2px; font-size:13px;">
-        Station: ${stationName}
+        किचन विभाग: ${stationNameMr} (Station: ${stationName})
       </td>
     </tr>
   </table>
 
   <div class="double-line"></div>
 
-  <!-- Order Items (large font for kitchen clarity) -->
+  <!-- Order Items (Large Marathi Devanagari font for kitchen clarity) -->
   ${itemsHtml}
 
   <div class="double-line"></div>
 
-  ${kot.notes ? `<div class="small" style="padding:2px 0;"><b>Order Notes:</b> ${kot.notes}</div><div class="dashed"></div>` : ""}
+  ${kot.notes ? `<div class="small" style="padding:2px 0;"><b>विशेष सूचना / Order Notes:</b> ${kot.notes}</div><div class="dashed"></div>` : ""}
 
   <!-- Summary -->
   <table>
     <tr>
-      <td class="bold">Items: ${itemsToRender.length}</td>
-      <td class="right bold">Total Qty: ${itemsToRender.reduce((s, i) => s + i.quantity, 0)}</td>
+      <td class="bold">पदार्थ: ${itemsToRender.length} (Items: ${itemsToRender.length})</td>
+      <td class="right bold">एकूण नग: ${itemsToRender.reduce((s, i) => s + i.quantity, 0)} (Total Qty: ${itemsToRender.reduce((s, i) => s + i.quantity, 0)})</td>
     </tr>
   </table>
 
   <div class="dashed"></div>
 
   <div class="center small bold" style="padding:2px 0;">
-    ${RESTAURANT_NAME_EN} — Kitchen Copy
+    ${RESTAURANT_NAME} (${RESTAURANT_NAME_EN}) — किचन प्रत / Kitchen Copy
   </div>
 
   <div style="height: 6mm;"></div>
@@ -1255,14 +1410,20 @@ export function generateCancelledKotHtml(
   cancelledBy: string = "Kitchen / Cashier",
   paperWidth: "80mm" | "58mm" = "80mm"
 ): string {
+  const is58mm = paperWidth === "58mm";
   const cancelTime = formatDateTime(new Date().toISOString());
 
   let itemsHtml = "";
   for (const item of kot.items) {
+    const marathiName = getKotItemMarathiName(item);
+    const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
     itemsHtml += `
-      <div class="kot-item" style="text-decoration: line-through;">
-        <span class="qty-badge">${item.quantity}×</span>
-        ${item.menuItemName}
+      <div class="kot-item" style="text-decoration: line-through; padding: 3px 0;">
+        <div style="font-size: ${is58mm ? "14px" : "16px"}; font-weight: 900; line-height: 1.25;">
+          <span class="qty-badge">${item.quantity}×</span>
+          <span class="marathi-title">${marathiName}</span>
+        </div>
+        ${hasEnglish ? `<div class="english-subtitle">(${item.menuItemName})</div>` : ""}
       </div>`;
   }
 
@@ -1274,12 +1435,29 @@ export function generateCancelledKotHtml(
   <style>${getThermalBaseCss(paperWidth)}</style>
 </head>
 <body>
-  <!-- Header Alert -->
+  ${
+    kot.isTakeaway
+      ? `
+  <!-- TOP PARCEL BANNER -->
+  <div class="kot-parcel-top">
+    🥡 पार्सल (PARCEL) — रद्द ऑर्डर
+  </div>
   <div class="kot-header" style="border: 2px dashed #000;">
+    रद्द ऑर्डर - पार्सल
+  </div>
+  `
+      : `
+  <div class="kot-header" style="border: 2px dashed #000;">
+    रद्द ऑर्डर - टेबल नं. ${kot.tableNumber}
+  </div>
+  `
+  }
+
+  <div class="center tiny bold" style="letter-spacing: 1px; margin-bottom: 2px;">
     *** CANCELLED KOT / रद्द पावती ***
   </div>
 
-  <div style="text-align:center; font-weight:bold; font-size:15px; padding:4px 0; border:2px solid #000; margin:4px 0;">
+  <div style="text-align:center; font-weight:bold; font-size:14px; padding:3px 0; border:2px solid #000; margin:3px 0;">
     ⛔ DO NOT PREPARE — ऑर्डर रद्द ⛔
   </div>
 
@@ -1291,18 +1469,18 @@ export function generateCancelledKotHtml(
 
   <table>
     <tr>
-      <td class="bold">Ticket: ${kot.kotNumber}</td>
+      <td class="bold">केओटी (Ticket): ${kot.kotNumber}</td>
       <td class="right small">${cancelTime}</td>
     </tr>
     <tr>
-      <td class="small">Waiter: ${kot.waiterName}</td>
-      <td class="right small">Cancelled By: ${cancelledBy}</td>
+      <td class="small">वेटर: ${kot.waiterName} (Waiter: ${kot.waiterName})</td>
+      <td class="right small">रद्द करणारे: ${cancelledBy} (Cancelled By: ${cancelledBy})</td>
     </tr>
   </table>
 
   <div class="double-line"></div>
 
-  <div class="bold small" style="padding-bottom:2px;">Items to cancel:</div>
+  <div class="bold small" style="padding-bottom:2px;">Items to cancel: (रद्द केलेले पदार्थ)</div>
   ${itemsHtml}
 
   <div class="double-line"></div>
@@ -1314,7 +1492,7 @@ export function generateCancelledKotHtml(
   <div class="dashed"></div>
 
   <div class="center small bold" style="padding:2px 0;">
-    Stock reservation released back to inventory.
+    Stock reservation released back to inventory. (स्टॉक परत जमा करण्यात आला)
   </div>
 
   <div style="height: 6mm;"></div>

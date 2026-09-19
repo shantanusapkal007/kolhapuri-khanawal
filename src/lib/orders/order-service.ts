@@ -106,12 +106,14 @@ export function placeOrderAndGenerateKot(
     const itemTotal = itemPrice * it.quantity;
     subtotal += itemTotal;
 
+    const localName = it.menuItem.localName;
     return {
       id: `item-${orderId}-${idx + 1}`,
       orderId,
       partyId: party.id,
       menuItemId: it.menuItem.id,
       menuItemName: it.variantName ? `${it.menuItem.name} (${it.variantName})` : it.menuItem.name,
+      menuItemLocalName: localName ? (it.variantName ? `${localName} (${it.variantName})` : localName) : undefined,
       variantName: it.variantName,
       quantity: it.quantity,
       unitPrice: itemPrice,
@@ -151,6 +153,7 @@ export function placeOrderAndGenerateKot(
     orderItemId: oi.id,
     menuItemId: oi.menuItemId,
     menuItemName: oi.menuItemName,
+    menuItemLocalName: oi.menuItemLocalName,
     variantName: oi.variantName,
     quantity: oi.quantity,
     seatNumber: oi.seatNumber,

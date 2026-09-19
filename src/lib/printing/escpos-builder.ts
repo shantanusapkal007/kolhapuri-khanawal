@@ -724,17 +724,28 @@ export function buildKotEscPos(
     title = `*** ADD-ON KOT #${kot.kotSequenceNumber || 2} ***`;
   }
 
+  if (kot.isTakeaway) {
+    p.align("CENTER")
+      .bold(true)
+      .size("DOUBLE_HEIGHT")
+      .line(">> PARCEL (TAKEAWAY) <<")
+      .size("NORMAL")
+      .line(">> TAKEAWAY / PARCEL <<")
+      .bold(false);
+  }
+
+  const orderHeader = kot.isTakeaway
+    ? "ORDER - PARCEL"
+    : `ORDER - TABLE NO. ${kot.tableNumber}`;
+
   p.align("CENTER")
     .bold(true)
     .line(title)
     .size("DOUBLE_HEIGHT")
-    .line(`TABLE ${kot.tableNumber} - ${kot.partyCode}`)
+    .line(orderHeader)
     .size("NORMAL")
+    .line(`TABLE ${kot.tableNumber} - ${kot.partyCode}`)
     .bold(false);
-
-  if (kot.isTakeaway) {
-    p.align("CENTER").bold(true).line(">> TAKEAWAY / PARCEL <<").bold(false);
-  }
 
   p.separator();
   p.align("LEFT");

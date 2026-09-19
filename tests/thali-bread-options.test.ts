@@ -183,6 +183,79 @@ describe("Instant Bread Options for Thali & Main Course Orders", () => {
       expect(text).toContain("Bread:");
       expect(text).toContain("Chapati");
     });
+
+    it("should render authentic Marathi Devanagari dish names and simplified header 'ऑर्डर - टेबल नं.' on KOT", () => {
+      const party = store.createPartyAtTable(3, 2, "Bhosale");
+      const chickenThali = store.menuItems.find((m) => m.name.toLowerCase().includes("chicken thali")) || store.menuItems[0];
+      const muttonSukka = store.menuItems.find((m) => m.name.toLowerCase().includes("mutton sukka")) || store.menuItems[1];
+
+      const { kot } = store.placeOrder(party.id, [
+        {
+          menuItemId: chickenThali.id,
+          quantity: 2,
+          breadOption: "JWARI_BHAKRI",
+        },
+        {
+          menuItemId: muttonSukka.id,
+          quantity: 1,
+        },
+      ]);
+
+      const kotHtml = generateKotHtml(kot);
+
+      // 1. Header is simplified: 'ऑर्डर - टेबल नं. 3'
+      expect(kotHtml).toContain("ऑर्डर - टेबल नं. 3");
+
+      // 2. Dishes names are in Marathi Devanagari
+      expect(kotHtml).toContain("marathi-title");
+      if (chickenThali.localName) {
+        expect(kotHtml).toContain(chickenThali.localName);
+      }
+      if (muttonSukka.localName) {
+        expect(kotHtml).toContain(muttonSukka.localName);
+      }
+
+      // 3. Metadata in Marathi
+      expect(kotHtml).toContain("केओटी:");
+      expect(kotHtml).toContain("वेळ:");
+      expect(kotHtml).toContain("वेटर:");
+      expect(kotHtml).toContain("व्यक्ती:");
+      expect(kotHtml).toContain("किचन विभाग:");
+    });
+
+    it("should render '🥡 पार्सल (PARCEL)' on top and 'ऑर्डर - पार्सल' for takeaway orders", () => {
+      const party = store.createPartyAtTable(8, 1, "Deshmukh");
+      const thali = store.menuItems.find((m) => m.isThali) || store.menuItems[0];
+
+      const { kot } = store.placeOrder(party.id, [
+        {
+          menuItemId: thali.id,
+          quantity: 1,
+          breadOption: "ROTI",
+        },
+      ]);
+
+      // Mark KOT as takeaway/parcel
+      const parcelKot = {
+        ...kot,
+        isTakeaway: true,
+        customerName: "Sanjay Deshmukh",
+      };
+
+      const kotHtml = generateKotHtml(parcelKot);
+
+      // Verify Parcel banner is on top
+      expect(kotHtml).toContain("kot-parcel-top");
+      expect(kotHtml).toContain("🥡 पार्सल (PARCEL)");
+      expect(kotHtml).toContain("ऑर्डर - पार्सल");
+      expect(kotHtml).toContain("ग्राहक (Customer): Sanjay Deshmukh");
+
+      // Verify ESC/POS builder also puts parcel on top and simplified header
+      const bytes = buildKotEscPos(parcelKot);
+      const text = new TextDecoder().decode(bytes);
+      expect(text).toContain(">> PARCEL (TAKEAWAY) <<");
+      expect(text).toContain("ORDER - PARCEL");
+    });
   });
 
   describe("4. Billing & Customer Receipt Integration", () => {
