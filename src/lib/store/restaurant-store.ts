@@ -54,7 +54,7 @@ import {
 } from "@/types/domain";
 import { refreshTableOccupancy } from "@/lib/tables/table-service";
 import { openDiningParty, transferParty, mergeParties, splitPartyItems } from "@/lib/tables/party-service";
-import { placeOrderAndGenerateKot, transitionKotStatus } from "@/lib/orders/order-service";
+import { placeOrderAndGenerateKot, transitionKotStatus, getBusinessDateKey } from "@/lib/orders/order-service";
 import { generatePartyBill, recordBillPayment } from "@/lib/billing/billing-service";
 import { requirePermission } from "@/lib/auth/rbac";
 import { calculateRecipeAvailability } from "@/lib/inventory/recipes";
@@ -1733,9 +1733,15 @@ export class RestaurantStore {
     const table = this.tables.find((t) => t.tableNumber === tableNumber);
     if (!table) throw new Error(`Table ${tableNumber} not found`);
 
+    const bizDate = getBusinessDateKey(new Date());
     const existingParties = this.parties.filter(
-      (p) => p.tableNumber === tableNumber && p.openedAt.startsWith(new Date().toISOString().split("T")[0])
+      (p) => p.tableNumber === tableNumber && getBusinessDateKey(p.openedAt) === bizDate
     );
+
+    const todayDineInParties = this.parties.filter(
+      (p) => !p.isTakeaway && getBusinessDateKey(p.openedAt) === bizDate
+    );
+    const dailyOrderNumber = todayDineInParties.length + 1;
 
     const { party, seats } = openDiningParty({
       table,
@@ -1745,6 +1751,8 @@ export class RestaurantStore {
       assignedWaiterName: this.currentUser.name,
       descriptor,
     });
+
+    party.dailyOrderNumber = dailyOrderNumber;
 
     if (isTakeaway) {
       party.isTakeaway = true;
@@ -1770,13 +1778,13 @@ export class RestaurantStore {
     packagingCharges: number = 20,
     notes?: string
   ): DiningParty {
-    const todayStr = new Date().toISOString().split("T")[0];
+    const now = new Date().toISOString();
+    const bizDate = getBusinessDateKey(now);
     const todayParcels = this.parties.filter(
-      (p) => p.isTakeaway && p.openedAt.startsWith(todayStr)
+      (p) => p.isTakeaway && getBusinessDateKey(p.openedAt) === bizDate
     );
     const parcelNum = todayParcels.length + 1;
     const partyCode = `PARCEL-${String(parcelNum).padStart(2, "0")}`;
-    const now = new Date().toISOString();
     const partyId = `party-parcel-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
     const party: DiningParty = {
@@ -1795,6 +1803,7 @@ export class RestaurantStore {
       lastActivityAt: now,
       notes,
       isTakeaway: true,
+      dailyParcelNumber: parcelNum,
       customerName: customerName || `Parcel #${parcelNum}`,
       customerPhone: customerPhone || "",
       packagingCharges,
@@ -1827,11 +1836,13 @@ export class RestaurantStore {
     if (customerName) party.customerName = customerName.trim();
     if (customerPhone) party.customerPhone = customerPhone.trim();
     if (!party.partyCode.startsWith("PARCEL-")) {
-      const todayStr = new Date().toISOString().split("T")[0];
+      const bizDate = getBusinessDateKey(new Date());
       const todayParcels = this.parties.filter(
-        (p) => p.isTakeaway && p.openedAt.startsWith(todayStr)
+        (p) => p.isTakeaway && getBusinessDateKey(p.openedAt) === bizDate
       );
-      party.partyCode = `PARCEL-${String(todayParcels.length + 1).padStart(2, "0")}`;
+      const parcelNum = todayParcels.length + 1;
+      party.partyCode = `PARCEL-${String(parcelNum).padStart(2, "0")}`;
+      party.dailyParcelNumber = parcelNum;
     }
     party.lastActivityAt = new Date().toISOString();
 
@@ -1884,6 +1895,13 @@ export class RestaurantStore {
         (p) => p.tableId === targetTable.id && p.id !== partyId && p.status !== "CLOSED" && p.status !== "CANCELLED"
       );
       party.partyCode = `T${toTableNumber}-P${String(existingParties.length + 1).padStart(2, "0")}`;
+      if (!party.dailyOrderNumber) {
+        const bizDate = getBusinessDateKey(new Date());
+        const todayDineInParties = this.parties.filter(
+          (p) => !p.isTakeaway && getBusinessDateKey(p.openedAt) === bizDate
+        );
+        party.dailyOrderNumber = todayDineInParties.length + 1;
+      }
     }
 
     // Update ongoing orders and KOTs tableNumber

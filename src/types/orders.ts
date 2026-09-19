@@ -94,6 +94,8 @@ export interface Order {
   idempotencyKey: string;
   items: OrderItem[];
   subtotal: number;
+  dailyOrderNumber?: number; // Sequential dine-in order of the business day (starts at 10:00 AM)
+  dailyParcelNumber?: number; // Sequential parcel order of the business day (starts at 10:00 AM)
   createdAt: string;
   updatedAt: string;
 }
@@ -201,6 +203,8 @@ export interface Kot {
   elapsedSeconds: number;
   urgencyLevel: "NORMAL" | "MEDIUM" | "URGENT"; // <5min, 5-12min, >12min
   kotSequenceNumber?: number; // 1, 2, 3...
+  dailyOrderNumber?: number; // Sequential dine-in order of the business day (starts at 10:00 AM)
+  dailyParcelNumber?: number; // Sequential parcel order of the business day (starts at 10:00 AM)
   isAddOn?: boolean; // true if this is an add-on order for an existing table
   isTakeaway?: boolean; // true if parcel order
   customerName?: string;

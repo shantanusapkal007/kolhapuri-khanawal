@@ -153,6 +153,8 @@ export function placeOrderAndGenerateKot(
     idempotencyKey,
     items: orderItems,
     subtotal,
+    dailyOrderNumber: party.dailyOrderNumber,
+    dailyParcelNumber: party.dailyParcelNumber,
     createdAt: now,
     updatedAt: now,
   };
@@ -204,6 +206,8 @@ export function placeOrderAndGenerateKot(
     elapsedSeconds: 0,
     urgencyLevel: "NORMAL",
     kotSequenceNumber,
+    dailyOrderNumber: party.dailyOrderNumber,
+    dailyParcelNumber: party.dailyParcelNumber,
     isAddOn,
     isTakeaway: party.isTakeaway,
     customerName: party.customerName,
@@ -309,3 +313,6 @@ export function transitionKotStatus(
 
   return { updatedKot, event, stockTransactions, updatedIngredientsMap };
 }
+
+export { getBusinessDateKey, resolveKotOrderNumber } from "./order-numbering";
+

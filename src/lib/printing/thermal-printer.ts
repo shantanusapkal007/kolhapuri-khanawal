@@ -20,6 +20,7 @@ import { DEFAULT_PRINTER_DEVICES, globalPrinterManager } from "./printer-connect
 import { EscPosBuilder, buildCashUpiReconciliationEscPos, type CashUpiReconciliationEscPosParams, getKotItemMarathiName, getMenuItemMarathiNameMap } from "./escpos-builder";
 import { enqueuePrintJob } from "./cloud-print-queue";
 import { initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
+import { resolveKotOrderNumber } from "@/lib/orders/order-numbering";
 
 export { globalPrinterManager, DEFAULT_PRINTER_DEVICES, EscPosBuilder, buildCashUpiReconciliationEscPos, getKotItemMarathiName, getMenuItemMarathiNameMap };
 export type { CashUpiReconciliationEscPosParams };
@@ -293,6 +294,17 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     padding: 3px 0;
   }
   .kot-parcel-top {
+    background: #000000 !important;
+    color: #ffffff !important;
+    font-size: ${is58mm ? "14px" : "17px"};
+    font-weight: 900 !important;
+    text-align: center;
+    padding: 3px 0;
+    margin-bottom: 4px;
+    border: 2px solid #000000 !important;
+    letter-spacing: 0.5px;
+  }
+  .kot-order-top {
     background: #000000 !important;
     color: #ffffff !important;
     font-size: ${is58mm ? "14px" : "17px"};
@@ -1167,6 +1179,7 @@ export function generateKotHtml(
 ): string {
   const is58mm = paperWidth === "58mm";
   const kotTime = formatDateTime(kot.createdAt);
+  const orderNumInfo = resolveKotOrderNumber(kot);
 
   const stationLabels: Record<string, string> = {
     MAIN_KITCHEN: "MAIN KITCHEN",
@@ -1251,15 +1264,20 @@ export function generateKotHtml(
       ? `
   <!-- TOP PARCEL BANNER (पार्सल सर्वात वर) -->
   <div class="kot-parcel-top">
-    🥡 पार्सल (PARCEL)
+    🥡 पार्सल (PARCEL) — #${orderNumInfo.orderNumber}
   </div>
   `
-      : ""
+      : `
+  <!-- TOP DINE-IN ORDER NUMBER BANNER -->
+  <div class="kot-order-top">
+    ORDER #${orderNumInfo.orderNumber} (ऑर्डर क्र. ${orderNumInfo.orderNumber})
+  </div>
+  `
   }
 
   <!-- Header Title: Simplified as 'ऑर्डर - टेबल नं.' or 'ऑर्डर - पार्सल' -->
   <div class="kot-header">
-    ${kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल नं. ${kot.tableNumber}`}
+    ${kot.isTakeaway ? `ऑर्डर - पार्सल #${orderNumInfo.orderNumber}` : `ORDER #${orderNumInfo.orderNumber} — ऑर्डर - टेबल नं. ${kot.tableNumber}`}
   </div>
 
   <div class="kot-table-info">

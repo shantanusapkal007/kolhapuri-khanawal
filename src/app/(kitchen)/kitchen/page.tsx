@@ -20,6 +20,7 @@ import { printKotTicket, printCancelledKot } from "@/lib/printing/thermal-printe
 import { useScreenWakeLock } from "@/lib/mobile/useScreenWakeLock";
 import { useAndroidBackButton } from "@/lib/mobile/useAndroidBackButton";
 import { triggerHaptic } from "@/lib/mobile/haptics";
+import { resolveKotOrderNumber } from "@/lib/orders/order-numbering";
 
 export default function KitchenDisplayPage() {
   const store = globalRestaurantStore;
@@ -323,6 +324,9 @@ export default function KitchenDisplayPage() {
                       </div>
                     )}
                     <div className="flex items-center gap-1.5 font-black text-base flex-wrap">
+                      <span className="bg-amber-300 text-stone-950 text-xs px-2 py-0.5 rounded font-black tracking-wide shadow-2xs">
+                        {resolveKotOrderNumber(kot).orderTitle}
+                      </span>
                       <span>{kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल नं. ${kot.tableNumber}`}</span>
                       <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-black">
                         {kot.partyCode}

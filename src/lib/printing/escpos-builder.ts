@@ -22,6 +22,7 @@ import {
   RESTAURANT_UPI_TERMINAL,
 } from "./restaurant-profile";
 import { initialKhanawalMenuItems } from "@/lib/store/kolhapuri-menu-data";
+import { resolveKotOrderNumber } from "@/lib/orders/order-numbering";
 
 export const ESC = 0x1b;
 export const FS = 0x1c;
@@ -941,6 +942,8 @@ export function buildKotEscPos(
   // Pre-rendered Marathi Devanagari header raster bitmap ("कोल्हापुरी खानावळ")
   p.align("CENTER").rawBase64(MARATHI_HEADER_RASTER_B64).line("");
 
+  const orderNumInfo = resolveKotOrderNumber(kot);
+
   let title = "*** K O T ***";
   if (isReprint) {
     title = "*** REPRINT KOT - KITCHEN COPY ***";
@@ -953,14 +956,22 @@ export function buildKotEscPos(
       .bold(true)
       .size("DOUBLE_HEIGHT")
       .line(">> PARCEL (TAKEAWAY) <<")
+      .line(`>> PARCEL ORDER #${orderNumInfo.orderNumber} <<`)
       .size("NORMAL")
       .line(">> TAKEAWAY / PARCEL <<")
+      .bold(false);
+  } else {
+    p.align("CENTER")
+      .bold(true)
+      .size("DOUBLE_HEIGHT")
+      .line(`>> ORDER #${orderNumInfo.orderNumber} <<`)
+      .size("NORMAL")
       .bold(false);
   }
 
   const orderHeader = kot.isTakeaway
-    ? "ORDER - PARCEL"
-    : `ORDER - TABLE NO. ${kot.tableNumber}`;
+    ? `ORDER - PARCEL #${orderNumInfo.orderNumber}`
+    : `ORDER #${orderNumInfo.orderNumber} - TABLE NO. ${kot.tableNumber}`;
 
   p.align("CENTER")
     .bold(true)

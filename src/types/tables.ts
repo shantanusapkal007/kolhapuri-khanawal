@@ -55,6 +55,8 @@ export interface DiningParty {
   customerName?: string;
   customerPhone?: string;
   packagingCharges?: number;
+  dailyOrderNumber?: number; // Sequential dine-in order of the business day (starts at 10:00 AM)
+  dailyParcelNumber?: number; // Sequential parcel order of the business day (starts at 10:00 AM)
 }
 
 export interface PartySeat {
