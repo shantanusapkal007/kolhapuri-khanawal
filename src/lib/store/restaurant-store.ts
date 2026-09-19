@@ -2339,16 +2339,17 @@ export class RestaurantStore {
 
     // 1. Release reserved ingredients in stock reservations
     const recipe = this.recipes.find((r) => r.menuItemId === item.menuItemId);
-    if (recipe) {
-      for (const itemIng of recipe.ingredients) {
-        const qtyToRelease = itemIng.quantity * item.quantity;
+    if (recipe && recipe.components) {
+      for (const comp of recipe.components) {
+        if (!comp.ingredientId) continue;
+        const qtyToRelease = comp.quantity * item.quantity;
         const res = this.stockReservations.find(
-          (r) => r.orderId === order.id && r.ingredientId === itemIng.ingredientId && r.status === "RESERVED"
+          (r) => r.orderId === order.id && r.ingredientId === comp.ingredientId && r.status === "RESERVED"
         );
         if (res) {
           res.status = "RELEASED";
         }
-        const ing = this.ingredients.find((i) => i.id === itemIng.ingredientId);
+        const ing = this.ingredients.find((i) => i.id === comp.ingredientId);
         if (ing) {
           ing.reservedStock = Math.max(0, Number((ing.reservedStock - qtyToRelease).toFixed(4)));
           ing.availableStock = Math.max(0, Number((ing.physicalStock - ing.reservedStock).toFixed(4)));

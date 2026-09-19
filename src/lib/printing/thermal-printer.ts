@@ -1065,6 +1065,7 @@ export interface TableCheckParams {
   subtotal: number;
   taxEstimate: number;
   grandTotal: number;
+  packagingCharges?: number;
   cashierName?: string;
   paperWidth?: "80mm" | "58mm";
 }

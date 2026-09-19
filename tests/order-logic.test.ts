@@ -19,7 +19,7 @@ describe("Comprehensive Order Logic for Tables and Parcels", () => {
       {
         menuItemId: thaliItem.id,
         quantity: 2,
-        breadOption: "JOWAR_BHAKRI",
+        breadOption: "JWARI_BHAKRI",
         notes: "2 ज्वारी भाकरी",
         unitPrice: thaliItem.sellingPrice,
       },
