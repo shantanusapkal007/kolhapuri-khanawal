@@ -454,19 +454,29 @@ export function getKotItemMarathiName(item: {
     return item.menuItemName.trim();
   }
 
+  const formatKotVariantMr = (v?: string) => {
+    if (!v) return "";
+    const clean = v.toLowerCase().trim();
+    if (clean === "half") return "हाफ";
+    if (clean === "full") return "फुल";
+    return v;
+  };
+
+  const vTag = item.variantName ? ` (${formatKotVariantMr(item.variantName)})` : "";
+
   // 3. Look up by ID or name in menu catalog
   const map = getMenuItemMarathiNameMap();
   if (item.menuItemId) {
     const byId = map.get(item.menuItemId.toLowerCase());
     if (byId) {
-      return item.variantName ? `${byId} (${item.variantName})` : byId;
+      return `${byId}${vTag}`;
     }
   }
 
   const cleanName = item.menuItemName.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
   const byName = map.get(cleanName);
   if (byName) {
-    return item.variantName ? `${byName} (${item.variantName})` : byName;
+    return `${byName}${vTag}`;
   }
 
   // 4. Common authentic Kolhapuri dishes dictionary fallback
@@ -475,6 +485,8 @@ export function getKotItemMarathiName(item: {
     "mutton thali": "मटण थाळी",
     "special chicken thali": "स्पेशल चिकन थाळी",
     "chicken thali": "चिकन थाळी",
+    "chicken curry": "चिकन करी",
+    "mutton curry": "मटण करी",
     "veg thali": "शाकाहारी थाळी",
     "special veg thali": "स्पेशल व्हेज थाळी",
     "kolhapuri veg thali": "कोल्हापुरी व्हेज थाळी",
@@ -502,7 +514,7 @@ export function getKotItemMarathiName(item: {
 
   if (commonDict[cleanName]) {
     const mr = commonDict[cleanName];
-    return item.variantName ? `${mr} (${item.variantName})` : mr;
+    return `${mr}${vTag}`;
   }
 
   return item.menuItemName;

@@ -384,7 +384,7 @@ export default function MenuManagementPage() {
                     : "text-stone-600 hover:text-stone-900 bg-white border border-[#E7E2DA] hover:bg-[#FAF8F5]"
                 }`}
               >
-                {cat.name} {count > 0 ? `(${count})` : ""}
+                {cat.localName || cat.name} {count > 0 ? `(${count})` : ""}
               </button>
             );
           })}
@@ -433,9 +433,11 @@ export default function MenuManagementPage() {
                       </span>
 
                       <div>
-                        <h2 className="font-black text-stone-900 text-base leading-snug">{item.name}</h2>
-                        {item.localName && (
-                          <p className="text-xs font-bold text-stone-500 mt-0.5">{item.localName}</p>
+                        <h2 className="font-black text-stone-900 text-base leading-snug">
+                          {item.localName || item.name}
+                        </h2>
+                        {item.localName && item.name && item.localName !== item.name && (
+                          <p className="text-xs font-semibold text-stone-500 mt-0.5">{item.name}</p>
                         )}
                       </div>
                     </div>
@@ -589,10 +591,24 @@ export default function MenuManagementPage() {
 
             {/* Modal Form */}
             <form onSubmit={handleFormSubmit} className="p-5 sm:p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
+              {/* Dish Local Marathi Name */}
+              <div>
+                <label className="block font-black text-stone-700 uppercase tracking-wider text-[10px] mb-1">
+                  मराठी नाव (Marathi Dish Name)
+                </label>
+                <input
+                  type="text"
+                  placeholder="उदा. स्पेशल चिकन थाळी (तांबडा-पांढरा रस्सा)"
+                  value={formData.localName}
+                  onChange={(e) => setFormData({ ...formData, localName: e.target.value })}
+                  className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+
               {/* Dish English Name */}
               <div>
                 <label className="block font-black text-stone-700 uppercase tracking-wider text-[10px] mb-1">
-                  Dish English Name *
+                  इंग्रजी नाव (English Dish Name) *
                 </label>
                 <input
                   type="text"
@@ -600,20 +616,6 @@ export default function MenuManagementPage() {
                   placeholder="e.g. Special Chicken Thali"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-
-              {/* Dish Local Marathi Name */}
-              <div>
-                <label className="block font-black text-stone-700 uppercase tracking-wider text-[10px] mb-1">
-                  Marathi Local Name (मराठी नाव)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. स्पेशल चिकन थाळी (तांबडा-पांढरा रस्सा)"
-                  value={formData.localName}
-                  onChange={(e) => setFormData({ ...formData, localName: e.target.value })}
                   className="w-full bg-[#FAF8F5] border border-[#E7E2DA] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>

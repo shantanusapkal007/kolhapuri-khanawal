@@ -681,7 +681,12 @@ export default function CashierBillingPage() {
                       {activeBill.items.map((it) => (
                         <tr key={it.id} className="py-2">
                           <td className="py-2 font-bold text-stone-900">
-                            {it.menuItemName}
+                            {(it as any).menuItemLocalName || it.menuItemName}
+                            {(it as any).menuItemLocalName && (it as any).menuItemLocalName !== it.menuItemName && (
+                              <span className="text-[10px] text-stone-500 block">
+                                {it.menuItemName}
+                              </span>
+                            )}
                             {it.seatNumber && (
                               <span className="text-[10px] text-stone-400 font-normal ml-1">
                                 (Seat {it.seatNumber})
@@ -722,7 +727,9 @@ export default function CashierBillingPage() {
                             <tbody className="divide-y divide-stone-100">
                               {seatItems.map((it) => (
                                 <tr key={it.id} className="py-1">
-                                  <td className="py-1 font-medium text-stone-900">{it.menuItemName}</td>
+                                  <td className="py-1 font-medium text-stone-900">
+                                    {(it as any).menuItemLocalName || it.menuItemName}
+                                  </td>
                                   <td className="py-1 text-center font-bold text-stone-600">{it.quantity}×</td>
                                   <td className="py-1 text-right text-stone-500">₹{it.unitPrice}</td>
                                   <td className="py-1 text-right font-bold text-stone-900">₹{it.totalPrice}</td>

@@ -577,7 +577,7 @@ export default function WaiterOrderClient({
       store.addNotification({
         type: "KOT_NEW",
         title: isTakeaway ? `KOT #${result.kot.kotNumber} (Parcel ${party.partyCode})` : `KOT #${result.kot.kotNumber} (Table ${party.tableNumber})`,
-        message: `${result.kot.items.map((i) => `${i.menuItemName} × ${i.quantity}`).join(", ")} dispatched to kitchen.`,
+        message: `${result.kot.items.map((i) => `${i.menuItemLocalName || i.menuItemName} × ${i.quantity}`).join(", ")} स्वयंपाकघरात पाठवले (Dispatched to kitchen).`,
         category: "KITCHEN",
         urgency: "HIGH",
         targetRoles: ["CHEF", "MANAGER", "ADMIN"],
@@ -1171,8 +1171,13 @@ export default function WaiterOrderClient({
                   >
                     <div className="min-w-0 flex-1">
                       <span className={`font-bold block truncate text-xs ${isCancelled ? "line-through text-stone-400" : "text-stone-900"}`}>
-                        {item.quantity}× {item.menuItemName}
+                        {item.quantity}× {item.menuItemLocalName || item.menuItemName}
                       </span>
+                      {item.menuItemLocalName && item.menuItemName && item.menuItemLocalName !== item.menuItemName && (
+                        <span className="text-[10px] text-stone-500 block truncate">
+                          ({item.menuItemName})
+                        </span>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                         <span
                           className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${
@@ -1265,7 +1270,7 @@ export default function WaiterOrderClient({
                 : "bg-white text-stone-700 border border-stone-200/90 hover:bg-stone-50 shadow-2xs"
             }`}
           >
-            All Dishes (सर्व)
+            सर्व पदार्थ (All Dishes)
           </button>
           {store.categories.map((cat) => (
             <button
@@ -1315,12 +1320,12 @@ export default function WaiterOrderClient({
                       <span className={`w-1.5 h-1.5 rounded-full ${item.isVeg ? "bg-emerald-600" : "bg-red-700"}`} />
                     </span>
                     <div className="min-w-0">
-                      <h3 className="font-black text-sm text-stone-900 leading-snug truncate">
-                        {item.name}
+                      <h3 className="font-black text-sm sm:text-base text-stone-900 leading-snug truncate">
+                        {item.localName || item.name}
                       </h3>
-                      {item.localName && (
-                        <span className="text-xs font-bold text-amber-850 block truncate mt-0.5">
-                          {item.localName}
+                      {item.localName && item.name && item.localName !== item.name && (
+                        <span className="text-[11px] font-semibold text-stone-500 block truncate mt-0.5">
+                          {item.name}
                         </span>
                       )}
                     </div>
@@ -1475,7 +1480,7 @@ export default function WaiterOrderClient({
               {!isThaliOrMain && (
                 <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-stone-100">
                   <span className="text-[11px] font-bold text-stone-400">
-                    {inCartTotal > 0 ? `${inCartTotal} in draft` : "Tap to add"}
+                    {inCartTotal > 0 ? `${inCartTotal} निवडले` : "टॅप करा (Add)"}
                   </span>
 
                   {inCartTotal > 0 ? (
@@ -1511,7 +1516,7 @@ export default function WaiterOrderClient({
                       }`}
                     >
                       <Plus className="w-3.5 h-3.5 text-amber-200" />
-                      <span>Add</span>
+                      <span>जोडा (Add)</span>
                     </button>
                   )}
                 </div>
@@ -1644,8 +1649,13 @@ export default function WaiterOrderClient({
                 >
                   <div className="min-w-0 flex-1">
                     <span className="font-black text-stone-900 block truncate text-xs sm:text-sm">
-                      {c.menuItem.name} {c.variantName ? `(${c.variantName})` : ""}
+                      {c.menuItem.localName || c.menuItem.name} {c.variantName ? `(${c.variantName === "Half" ? "हाफ" : c.variantName === "Full" ? "फुल" : c.variantName})` : ""}
                     </span>
+                    {c.menuItem.localName && c.menuItem.name && c.menuItem.localName !== c.menuItem.name && (
+                      <span className="text-[10px] font-semibold text-stone-500 block truncate">
+                        {c.menuItem.name}
+                      </span>
+                    )}
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] text-stone-500 font-tabular">
                         ₹{c.unitPrice} × {c.quantity} {isThaliOrMainCourseItem(c.menuItem) ? "थाळी" : ""}

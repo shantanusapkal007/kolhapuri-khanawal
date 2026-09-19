@@ -717,6 +717,9 @@ export function buildKotEscPos(
 ): Uint8Array {
   const p = new EscPosBuilder(paperWidth);
 
+  // Pre-rendered Marathi Devanagari header raster bitmap ("कोल्हापुरी खानावळ")
+  p.align("CENTER").rawBase64(MARATHI_HEADER_RASTER_B64).line("");
+
   let title = "*** K O T ***";
   if (isReprint) {
     title = "*** REPRINT KOT - KITCHEN COPY ***";

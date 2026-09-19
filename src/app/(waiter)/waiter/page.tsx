@@ -929,7 +929,7 @@ export default function WaiterFloorPage() {
                             {orderedItems.map((item, idx) => (
                               <div key={idx} className="flex items-center justify-between py-1 text-[11px]">
                                 <span className="font-bold text-stone-800 truncate">
-                                  {item.quantity}× {item.menuItemName}
+                                  {item.quantity}× {item.menuItemLocalName || item.menuItemName}
                                 </span>
                                 <span className="font-tabular font-black text-stone-700 shrink-0 ml-2">
                                   ₹{item.totalPrice}
@@ -1529,7 +1529,7 @@ export default function WaiterFloorPage() {
                                 className="accent-rose-600 w-4 h-4"
                               />
                               <span className="font-black text-stone-900">
-                                {it.quantity}× {it.menuItemName}
+                                {it.quantity}× {it.menuItemLocalName || it.menuItemName}
                               </span>
                               {it.seatNumber && (
                                 <span className="text-[10px] bg-stone-200 text-stone-700 font-bold px-1.5 py-0.5 rounded">
