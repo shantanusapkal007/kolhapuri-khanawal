@@ -590,7 +590,18 @@ export class RestaurantStore {
       const raw = localStorage.getItem("kk_menu_categories");
       if (!raw) return [...initialKhanawalCategories];
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 10) return parsed;
+      if (Array.isArray(parsed) && parsed.length >= 10) {
+        const existingIds = new Set(parsed.map((c: MenuCategory) => c.id));
+        const missing = initialKhanawalCategories.filter((c) => !existingIds.has(c.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          try {
+            localStorage.setItem("kk_menu_categories", JSON.stringify(merged));
+          } catch {}
+          return merged;
+        }
+        return parsed;
+      }
       return [...initialKhanawalCategories];
     } catch {
       return [...initialKhanawalCategories];
@@ -613,7 +624,18 @@ export class RestaurantStore {
       const raw = localStorage.getItem("kk_menu_items");
       if (!raw) return [...initialKhanawalMenuItems];
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length >= 50) return parsed;
+      if (Array.isArray(parsed) && parsed.length >= 50) {
+        const existingIds = new Set(parsed.map((m: MenuItem) => m.id));
+        const missing = initialKhanawalMenuItems.filter((m) => !existingIds.has(m.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          try {
+            localStorage.setItem("kk_menu_items", JSON.stringify(merged));
+          } catch {}
+          return merged;
+        }
+        return parsed;
+      }
       return [...initialKhanawalMenuItems];
     } catch {
       return [...initialKhanawalMenuItems];

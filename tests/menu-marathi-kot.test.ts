@@ -14,15 +14,15 @@ describe("Marathi First Menu & KOT Printing Verification", () => {
 
   describe("1. Menu in Marathi First", () => {
     it("all categories must have authentic Marathi localName defined", () => {
-      expect(initialKhanawalCategories.length).toBe(20);
+      expect(initialKhanawalCategories.length).toBe(21);
       for (const cat of initialKhanawalCategories) {
         expect(cat.localName, `Category ${cat.name} must have a Marathi localName`).toBeTruthy();
         expect(/[\u0900-\u097F]/.test(cat.localName!)).toBe(true);
       }
     });
 
-    it("all 188 menu items must have authentic Marathi localName defined", () => {
-      expect(initialKhanawalMenuItems.length).toBe(188);
+    it("all 190 menu items must have authentic Marathi localName defined", () => {
+      expect(initialKhanawalMenuItems.length).toBe(190);
       for (const item of initialKhanawalMenuItems) {
         expect(item.localName, `Item ${item.name} (${item.id}) must have a Marathi localName`).toBeTruthy();
         expect(/[\u0900-\u097F]/.test(item.localName!)).toBe(true);

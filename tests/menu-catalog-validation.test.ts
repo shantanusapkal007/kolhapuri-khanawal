@@ -9,8 +9,8 @@ describe("Kolhapuri Khanawal Complete Authentic Menu Catalog Validation", () => 
     store = new RestaurantStore();
   });
 
-  it("should contain all 20 authentic restaurant menu categories", () => {
-    expect(store.categories.length).toBe(20);
+  it("should contain all 21 authentic restaurant menu categories", () => {
+    expect(store.categories.length).toBe(21);
 
     const expectedCategories = [
       "Veg Soup",
@@ -33,6 +33,7 @@ describe("Kolhapuri Khanawal Complete Authentic Menu Catalog Validation", () => 
       "Seafood Thali",
       "Veg Kebab",
       "Non-Veg Kebab",
+      "Beverages & Drinks",
     ];
 
     for (const catName of expectedCategories) {
@@ -43,9 +44,9 @@ describe("Kolhapuri Khanawal Complete Authentic Menu Catalog Validation", () => 
     }
   });
 
-  it("should contain the complete catalog of ~188 menu items", () => {
+  it("should contain the complete catalog of ~190 menu items", () => {
     expect(store.menuItems.length).toBeGreaterThanOrEqual(185);
-    expect(initialKhanawalMenuItems.length).toBe(188);
+    expect(initialKhanawalMenuItems.length).toBe(190);
   });
 
   it("should enforce valid taxonomy (foodType, isVeg, pricing, station) on every menu item", () => {

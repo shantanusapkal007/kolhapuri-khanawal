@@ -243,9 +243,10 @@ export default function WaiterOrderClient({
           item.name.toLowerCase().includes("bhakri") ||
           item.name.toLowerCase().includes("rassa") ||
           item.name.toLowerCase().includes("sukka") ||
-          item.name.toLowerCase().includes("solkadhi")
+          item.name.toLowerCase().includes("solkadhi") ||
+          item.name.toLowerCase().includes("water bottle")
       )
-      .slice(0, 8);
+      .slice(0, 10);
   }, [store.menuItems]);
 
   useEffect(() => {
