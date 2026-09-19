@@ -27,7 +27,7 @@ describe("Restaurant Settings & System Configuration Persistence", () => {
 
     expect(settings.dining.sharedSeatingEnabled).toBe(true);
     expect(settings.dining.autoVacateOnPayment).toBe(true);
-    expect(settings.dining.totalTables).toBe(12);
+    expect(settings.dining.totalTables).toBe(11);
   });
 
   it("should update restaurant brand profile and persist changes", () => {
@@ -105,7 +105,7 @@ describe("Restaurant Settings & System Configuration Persistence", () => {
     expect(parsed.version).toBe("1.0");
     expect(parsed.exportedAt).toBeDefined();
     expect(Array.isArray(parsed.tables)).toBe(true);
-    expect(parsed.tables.length).toBe(12);
+    expect(parsed.tables.length).toBe(11);
     expect(Array.isArray(parsed.parties)).toBe(true);
     expect(Array.isArray(parsed.bills)).toBe(true);
     expect(Array.isArray(parsed.payments)).toBe(true);
@@ -130,7 +130,7 @@ describe("Restaurant Settings & System Configuration Persistence", () => {
 
     // Verify settings restored
     expect(store.settings.profile.nameEn).toBe("KOLHAPURI KHANAWAL");
-    expect(store.tables.length).toBe(12);
+    expect(store.tables.length).toBe(11);
 
     // Active bills total ₹2,960 (strictly dish items without tax)
     const activeTodaySales = store.bills.reduce((sum, b) => sum + b.grandTotal, 0);

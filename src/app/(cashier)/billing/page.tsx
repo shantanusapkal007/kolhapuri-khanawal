@@ -281,9 +281,9 @@ export default function CashierBillingPage() {
         paperWidth: store.printerSettings?.paperWidth || "80mm",
       });
       if (res?.success) {
-        showToast(`✅ Table ${bill.tableNumber} कच्चा बिल प्रिंट झाले!`);
+        showToast(`✅ Table ${store.getTableName(bill.tableNumber)} कच्चा बिल प्रिंट झाले!`);
       } else {
-        showToast(`⚠️ Table ${bill.tableNumber}: ${res?.message || "कच्चा बिल पाठवले"}`);
+        showToast(`⚠️ Table ${store.getTableName(bill.tableNumber)}: ${res?.message || "कच्चा बिल पाठवले"}`);
       }
     } catch (err: any) {
       showToast(`❌ एरर: ${err?.message || "Pre-bill failed"}`);
@@ -321,8 +321,8 @@ export default function CashierBillingPage() {
         // Notify floor staff that table is now settled and available
         store.addNotification({
           type: "BILL_PAID",
-          title: `Table ${result.bill.tableNumber} Bill Settled (₹${result.bill.grandTotal})`,
-          message: `Bill #${result.bill.billNumber} paid in full via ${method}. Table ${result.bill.tableNumber} is ready for next guests.`,
+          title: `Table ${store.getTableName(result.bill.tableNumber)} Bill Settled (₹${result.bill.grandTotal})`,
+          message: `Bill #${result.bill.billNumber} paid in full via ${method}. Table ${store.getTableName(result.bill.tableNumber)} is ready for next guests.`,
           category: "BILLING",
           urgency: "MEDIUM",
           targetRoles: ["WAITER", "MANAGER", "ADMIN"],
@@ -380,8 +380,8 @@ export default function CashierBillingPage() {
         // Notify floor staff that table is now settled and available
         store.addNotification({
           type: "BILL_PAID",
-          title: `Table ${result.bill.tableNumber} Bill Settled (₹${result.bill.grandTotal})`,
-          message: `Bill #${result.bill.billNumber} paid in full. Table ${result.bill.tableNumber} is ready for next guests.`,
+          title: `Table ${store.getTableName(result.bill.tableNumber)} Bill Settled (₹${result.bill.grandTotal})`,
+          message: `Bill #${result.bill.billNumber} paid in full. Table ${store.getTableName(result.bill.tableNumber)} is ready for next guests.`,
           category: "BILLING",
           urgency: "MEDIUM",
           targetRoles: ["WAITER", "MANAGER", "ADMIN"],
@@ -525,7 +525,7 @@ export default function CashierBillingPage() {
                             {party.partyCode}
                           </span>
                           <span className="font-black text-sm text-stone-900">
-                            {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${party.tableNumber}`}
+                            {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${store.getTableName(party.tableNumber)}`}
                           </span>
                         </div>
                         <span className="font-black text-sm text-emerald-800">
@@ -579,7 +579,7 @@ export default function CashierBillingPage() {
                         >
                           {b.billNumber}
                         </span>
-                        <span className="font-black text-sm">Table {b.tableNumber}</span>
+                        <span className="font-black text-sm">Table {store.getTableName(b.tableNumber)}</span>
                       </div>
                       <span
                         className={`font-black text-sm ${
@@ -639,7 +639,7 @@ export default function CashierBillingPage() {
                 <span>← Back to Table List</span>
               </button>
               <span className="text-xs font-black bg-stone-800 px-2 py-0.5 rounded text-amber-200">
-                Table {activeBill.tableNumber} • {activeBill.partyCode}
+                Table {store.getTableName(activeBill.tableNumber)} • {activeBill.partyCode}
               </span>
             </div>
           )}
@@ -660,7 +660,7 @@ export default function CashierBillingPage() {
                   <div className="flex items-center gap-2 font-black text-base text-stone-900">
                     <span>{activeBill.billNumber}</span>
                     <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded font-black shadow-2xs">
-                      {activeBill.partyCode} (Table {activeBill.tableNumber})
+                      {activeBill.partyCode} (Table {store.getTableName(activeBill.tableNumber)})
                     </span>
                   </div>
                   <span className="text-xs text-stone-500 font-medium">

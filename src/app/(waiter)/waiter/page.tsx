@@ -47,7 +47,9 @@ export default function WaiterFloorPage() {
   const [customerName, setCustomerName] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
 
-  const [floorFilter, setFloorFilter] = useState<"ALL" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED" | "PARCELS" | "DELIVERY">("ALL");
+  const [floorFilter, setFloorFilter] = useState<
+    "ALL" | "SECTION_A" | "SECTION_B" | "SECTION_C" | "AVAILABLE" | "OCCUPIED" | "SHARED" | "BILL_REQUESTED" | "PARCELS" | "DELIVERY"
+  >("ALL");
 
   // Sync with URL search params (e.g. redirected from parcel order)
   useEffect(() => {
@@ -349,6 +351,9 @@ export default function WaiterFloorPage() {
 
   const displayedTables = store.tables.filter((table) => {
     if (floorFilter === "PARCELS" || floorFilter === "DELIVERY") return false;
+    if (floorFilter === "SECTION_A") return table.section === "SECTION_A" || table.name.startsWith("A");
+    if (floorFilter === "SECTION_B") return table.section === "SECTION_B" || table.name.startsWith("B");
+    if (floorFilter === "SECTION_C") return table.section === "SECTION_C" || table.name.startsWith("C");
     if (floorFilter === "AVAILABLE") return table.status === "AVAILABLE";
     if (floorFilter === "OCCUPIED") return table.status === "OCCUPIED";
     if (floorFilter === "SHARED") return table.status === "SHARED";
@@ -380,10 +385,10 @@ export default function WaiterFloorPage() {
           <div>
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl font-black tracking-tight text-white font-sans">
-                Dining Floor & 12 Tables
+                Dining Floor & {store.tables.length} Tables
               </h1>
               <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-xs border border-amber-300">
-                १२ टेबल मजला
+                {store.tables.length} टेबल (A1–C4)
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs font-semibold mt-1.5 flex-wrap">
@@ -437,7 +442,7 @@ export default function WaiterFloorPage() {
       {/* Mobile Fast Action Strip (sm:hidden) */}
       <div className="flex sm:hidden items-center justify-between gap-2 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-2.5 rounded-2xl shadow-md border border-stone-800/90">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-          <span className="text-xs font-black text-amber-400">12 Tables</span>
+          <span className="text-xs font-black text-amber-400">{store.tables.length} Tables</span>
           <span className="bg-emerald-600/90 text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white">
             {availableCount} Free
           </span>
@@ -486,7 +491,37 @@ export default function WaiterFloorPage() {
         >
           <span className="xs:hidden">All</span>
           <span className="hidden xs:inline">All Tables</span>
-          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "ALL" ? "bg-stone-800 text-amber-300" : "bg-stone-100 text-stone-600"}`}>12</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-tabular ${floorFilter === "ALL" ? "bg-stone-800 text-amber-300" : "bg-stone-100 text-stone-600"}`}>{store.tables.length}</span>
+        </button>
+        <button
+          onClick={() => setFloorFilter("SECTION_A")}
+          className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1 cursor-pointer ${
+            floorFilter === "SECTION_A"
+              ? "bg-stone-900 text-amber-300 border-stone-900 shadow-md ring-1 ring-amber-400/30"
+              : "bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50 shadow-2xs"
+          }`}
+        >
+          <span>Sec A (A1–A3)</span>
+        </button>
+        <button
+          onClick={() => setFloorFilter("SECTION_B")}
+          className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1 cursor-pointer ${
+            floorFilter === "SECTION_B"
+              ? "bg-stone-900 text-amber-300 border-stone-900 shadow-md ring-1 ring-amber-400/30"
+              : "bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50 shadow-2xs"
+          }`}
+        >
+          <span>Sec B (B1–B4)</span>
+        </button>
+        <button
+          onClick={() => setFloorFilter("SECTION_C")}
+          className={`px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 text-[11px] sm:text-xs flex items-center gap-1 cursor-pointer ${
+            floorFilter === "SECTION_C"
+              ? "bg-stone-900 text-amber-300 border-stone-900 shadow-md ring-1 ring-amber-400/30"
+              : "bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50 shadow-2xs"
+          }`}
+        >
+          <span>Sec C (C1–C4)</span>
         </button>
         <button
           onClick={() => setFloorFilter("AVAILABLE")}
@@ -708,7 +743,7 @@ export default function WaiterFloorPage() {
                       if (isOccupied) setActiveTableForDetail(table);
                       else handleOpenAddParty(table.tableNumber);
                     }}
-                    title={isOccupied ? "Manage Table / Move / Merge / Split" : "Seat Table (Custom Guests)"}
+                    title={isOccupied ? `Manage Table ${table.name}` : `Seat Table ${table.name}`}
                     className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-black text-xs sm:text-sm flex items-center justify-center shadow-xs shrink-0 cursor-pointer active:scale-95 transition-all touch-manipulation ${
                       hasBillRequested
                         ? "bg-amber-500 text-stone-950 ring-2 ring-amber-300 font-tabular"
@@ -717,10 +752,10 @@ export default function WaiterFloorPage() {
                         : "bg-emerald-600 text-white shadow-emerald-600/20 font-tabular"
                     }`}
                   >
-                    T{table.tableNumber}
-                  </button>
-                  <span className="font-black text-[10px] sm:text-xs text-stone-700 hidden md:inline truncate">
                     {table.name}
+                  </button>
+                  <span className="font-black text-[11px] sm:text-xs text-stone-800 hidden md:inline truncate">
+                    Table {table.name}
                   </span>
                 </div>
 
@@ -904,15 +939,15 @@ export default function WaiterFloorPage() {
         <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-3.5 sm:p-4 animate-in fade-in duration-150">
           <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl border border-stone-200 overflow-hidden text-xs max-h-[90vh] flex flex-col">
             <div className="bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 text-white p-4 sm:p-5 flex items-center justify-between border-b border-stone-800">
-              <div className="flex items-center gap-3 font-black text-sm sm:text-base">
-                <span className="w-9 h-9 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center text-sm font-black font-tabular shadow-sm">
-                  T{activeTableForDetail.tableNumber}
-                </span>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 font-black text-sm sm:text-base flex items-center justify-center font-tabular shadow-sm">
+                  {activeTableForDetail.name}
+                </div>
                 <div>
-                  <h2 className="leading-tight text-white">{activeTableForDetail.name}</h2>
-                  <span className="text-[11px] text-amber-300 font-medium">
-                    Capacity: {activeTableForDetail.maxCapacity} Seats • Unified Dining Room
-                  </span>
+                  <h2 className="leading-tight text-white font-black text-base">Table {activeTableForDetail.name}</h2>
+                  <p className="text-[11px] text-stone-400 font-medium">
+                    Section {activeTableForDetail.name.charAt(0)} • {activeTableForDetail.maxCapacity} Seats
+                  </p>
                 </div>
               </div>
               <button

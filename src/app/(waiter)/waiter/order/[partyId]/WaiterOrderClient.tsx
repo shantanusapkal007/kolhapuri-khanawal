@@ -937,7 +937,7 @@ export default function WaiterOrderClient({
             ) : (
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="bg-stone-950 text-amber-300 font-black text-xs sm:text-sm px-2.5 py-1 rounded-xl shadow-xs border border-stone-800 font-tabular shrink-0">
-                  Table {party.tableNumber}
+                  Table {store.getTableName(party.tableNumber)}
                 </span>
                 <button
                   type="button"
@@ -1166,7 +1166,7 @@ export default function WaiterOrderClient({
           {activeParties.map((p) => {
             const isCurrent = p.id === party.id;
             const dCount = draftCounts[p.id] || 0;
-            const label = p.isTakeaway || p.tableNumber === 0 ? `🛍️ ${p.partyCode}` : `T${p.tableNumber}`;
+            const label = p.isTakeaway || p.tableNumber === 0 ? `🛍️ ${p.partyCode}` : store.getTableName(p.tableNumber);
             return (
               <Link
                 key={p.id}
@@ -1235,7 +1235,7 @@ export default function WaiterOrderClient({
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-black text-xs sm:text-sm text-stone-900 truncate">
-                {party.isTakeaway || party.tableNumber === 0 ? "🛍️ Takeaway Parcel" : `Table ${party.tableNumber}`}
+                {party.isTakeaway || party.tableNumber === 0 ? `🛍️ Parcel ${party.partyCode}` : `Table ${store.getTableName(party.tableNumber)}`}
               </span>
               <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                 ACTIVE
@@ -2352,7 +2352,7 @@ export default function WaiterOrderClient({
                   .filter((t) => t.tableNumber !== party.tableNumber)
                   .map((t) => (
                     <option key={t.id} value={t.tableNumber}>
-                      Table {t.tableNumber} — {t.status}
+                      Table {t.name} — {t.status}
                     </option>
                   ))}
               </select>
@@ -2622,7 +2622,7 @@ export default function WaiterOrderClient({
                 >
                   {store.tables.map((t) => (
                     <option key={t.id} value={t.tableNumber}>
-                      Table {t.tableNumber} — {t.status}
+                      Table {t.name} — {t.status}
                     </option>
                   ))}
                 </select>

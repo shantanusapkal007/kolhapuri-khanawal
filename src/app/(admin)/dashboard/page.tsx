@@ -119,7 +119,7 @@ export default function AdminDashboardPage() {
               <Utensils className="w-3.5 h-3.5 text-amber-200" />
             </div>
             <div className="truncate">
-              <span className="block font-black text-stone-900 leading-tight">12 Tables</span>
+              <span className="block font-black text-stone-900 leading-tight">{store.tables.length} Tables</span>
               <span className="text-[10px] text-stone-500 font-medium">Floor & KOT</span>
             </div>
           </Link>
@@ -234,10 +234,10 @@ export default function AdminDashboardPage() {
             <Utensils className="w-4 h-4 text-red-700" />
           </div>
           <div className="mt-1 text-2xl font-black text-stone-900">
-            {Math.round((occupiedTables.length / 12) * 100)}%
+            {Math.round((occupiedTables.length / (store.tables.length || 1)) * 100)}%
           </div>
           <div className="text-[11px] text-stone-500 font-medium">
-            {occupiedTables.length} of 12 Tables Occupied
+            {occupiedTables.length} of {store.tables.length} Tables Occupied
           </div>
         </div>
 

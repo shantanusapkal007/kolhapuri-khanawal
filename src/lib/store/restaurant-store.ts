@@ -83,6 +83,20 @@ import {
 import { initialKhanawalExpenses } from "./expense-master-data";
 import { MasterExpenseCategory, ExpenseFrequency } from "@/types/expenses";
 
+export const KHANAWAL_TABLE_CONFIGS = [
+  { tableNumber: 1, name: "A1", section: "SECTION_A" as const },
+  { tableNumber: 2, name: "A2", section: "SECTION_A" as const },
+  { tableNumber: 3, name: "A3", section: "SECTION_A" as const },
+  { tableNumber: 4, name: "B1", section: "SECTION_B" as const },
+  { tableNumber: 5, name: "B2", section: "SECTION_B" as const },
+  { tableNumber: 6, name: "B3", section: "SECTION_B" as const },
+  { tableNumber: 7, name: "B4", section: "SECTION_B" as const },
+  { tableNumber: 8, name: "C1", section: "SECTION_C" as const },
+  { tableNumber: 9, name: "C2", section: "SECTION_C" as const },
+  { tableNumber: 10, name: "C3", section: "SECTION_C" as const },
+  { tableNumber: 11, name: "C4", section: "SECTION_C" as const },
+];
+
 export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
   profile: {
     nameMr: "कोल्हापुरी खानावळ",
@@ -106,7 +120,7 @@ export const DEFAULT_RESTAURANT_SETTINGS: RestaurantSettings = {
     maxDiscountWithoutPinPercent: 10,
   },
   dining: {
-    totalTables: 12,
+    totalTables: 11,
     sharedSeatingEnabled: true,
     maxGuestsPerTable: 4,
     autoVacateOnPayment: true,
@@ -368,7 +382,10 @@ export class RestaurantStore {
       const data = JSON.parse(raw);
       if (!data || typeof data !== "object") return false;
 
-      if (Array.isArray(data.tables) && data.tables.length > 0) this.tables = data.tables;
+      if (Array.isArray(data.tables) && data.tables.length > 0) {
+        this.tables = data.tables;
+      }
+      this.ensureKhanawalTableNames();
       if (Array.isArray(data.parties)) this.parties = data.parties;
       if (Array.isArray(data.seats)) this.seats = data.seats;
       if (Array.isArray(data.orders)) this.orders = data.orders;
@@ -985,15 +1002,74 @@ export class RestaurantStore {
     this.updatePrinterSettings({ devices });
   }
 
+  getTableName(tableNumber: number): string {
+    if (!tableNumber) return "";
+    const table = this.tables.find((t) => t.tableNumber === tableNumber);
+    if (table?.name) return table.name;
+    const fallbackMap: Record<number, string> = {
+      1: "A1", 2: "A2", 3: "A3",
+      4: "B1", 5: "B2", 6: "B3", 7: "B4",
+      8: "C1", 9: "C2", 10: "C3", 11: "C4",
+    };
+    return fallbackMap[tableNumber] || String(tableNumber);
+  }
+
+  findTable(identifier: number | string): DiningTable | undefined {
+    if (typeof identifier === "number") {
+      return this.tables.find((t) => t.tableNumber === identifier);
+    }
+    const clean = String(identifier).trim().toUpperCase();
+    return this.tables.find(
+      (t) =>
+        t.name.toUpperCase() === clean ||
+        t.id.toUpperCase() === clean ||
+        `TABLE ${t.name}`.toUpperCase() === clean ||
+        `T${t.tableNumber}`.toUpperCase() === clean ||
+        String(t.tableNumber) === clean
+    );
+  }
+
+  ensureKhanawalTableNames(): void {
+    const needsMigration =
+      this.tables.length !== 11 ||
+      !this.tables.some((t) => t.name === "A1") ||
+      this.tables.some((t) => t.tableNumber > 11);
+
+    if (needsMigration) {
+      this.tables = KHANAWAL_TABLE_CONFIGS.map((cfg) => {
+        const existing = this.tables.find((t) => t.tableNumber === cfg.tableNumber);
+        return {
+          id: existing?.id || `tbl-${cfg.tableNumber}`,
+          tableNumber: cfg.tableNumber,
+          name: cfg.name,
+          minCapacity: existing?.minCapacity || 1,
+          maxCapacity: existing?.maxCapacity || 4,
+          section: cfg.section,
+          status: existing?.status || "AVAILABLE",
+          activePartiesCount: existing?.activePartiesCount || 0,
+          totalActiveGuests: existing?.totalActiveGuests || 0,
+          updatedAt: existing?.updatedAt || new Date().toISOString(),
+        };
+      });
+      this.settings.dining.totalTables = 11;
+      this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+    } else {
+      this.tables = this.tables.map((t) => {
+        const cfg = KHANAWAL_TABLE_CONFIGS.find((c) => c.tableNumber === t.tableNumber);
+        return cfg ? { ...t, name: cfg.name, section: cfg.section } : t;
+      });
+    }
+  }
+
   seedInitialState() {
-    // 12 Physical Tables in unified Khanawal Dining Hall (all same type, same 4-seat capacity)
-    this.tables = Array.from({ length: 12 }, (_, i) => ({
-      id: `tbl-${i + 1}`,
-      tableNumber: i + 1,
-      name: `Table ${i + 1}`,
+    // 11 Physical Tables: Section A (A1..A3), Section B (B1..B4), Section C (C1..C4)
+    this.tables = KHANAWAL_TABLE_CONFIGS.map((cfg) => ({
+      id: `tbl-${cfg.tableNumber}`,
+      tableNumber: cfg.tableNumber,
+      name: cfg.name,
       minCapacity: 1,
       maxCapacity: 4,
-      section: "MAIN_HALL", // All 12 tables situated in the unified Khanawal dining room
+      section: cfg.section,
       status: "AVAILABLE",
       activePartiesCount: 0,
       totalActiveGuests: 0,
@@ -1753,6 +1829,7 @@ export class RestaurantStore {
     });
 
     party.dailyOrderNumber = dailyOrderNumber;
+    party.tableName = table.name;
 
     if (isTakeaway) {
       party.isTakeaway = true;

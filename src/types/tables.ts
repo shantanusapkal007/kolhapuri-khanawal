@@ -20,13 +20,21 @@ export type DiningPartyStatus =
   | "TRANSFERRED"
   | "CANCELLED";
 
+export type TableSection =
+  | "SECTION_A"
+  | "SECTION_B"
+  | "SECTION_C"
+  | "MAIN_HALL"
+  | "FAMILY_SECTION"
+  | "OUTDOOR_VERANDA";
+
 export interface DiningTable {
   id: string;
-  tableNumber: number; // 1..12
-  name: string;        // e.g. "Table 1", "Table 6 (Window)"
+  tableNumber: number; // 1..11
+  name: string;        // e.g. "A1", "A2", "B1", "C1"
   minCapacity: number;
   maxCapacity: number;
-  section: "MAIN_HALL" | "FAMILY_SECTION" | "OUTDOOR_VERANDA";
+  section: TableSection | string;
   status: PhysicalTableStatus;
   activePartiesCount: number;
   totalActiveGuests: number;
@@ -37,9 +45,10 @@ export interface DiningTable {
 
 export interface DiningParty {
   id: string;
-  partyCode: string; // e.g. "T4-P01", "T6-P02"
+  partyCode: string; // e.g. "T4-P01", "A1-P01"
   tableId: string;
   tableNumber: number;
+  tableName?: string; // e.g. "A1", "B2", "C4"
   guestCount: number;
   assignedWaiterId: string;
   assignedWaiterName: string;

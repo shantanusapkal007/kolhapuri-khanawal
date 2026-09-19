@@ -333,7 +333,7 @@ export default function KitchenDisplayPage() {
                       <span className="bg-amber-300 text-stone-950 text-xs px-2 py-0.5 rounded font-black tracking-wide shadow-2xs">
                         {resolveKotOrderNumber(kot).orderTitle}
                       </span>
-                      <span>{kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल नं. ${kot.tableNumber}`}</span>
+                      <span>{kot.isTakeaway ? "ऑर्डर - पार्सल" : `ऑर्डर - टेबल ${store.getTableName(kot.tableNumber)}`}</span>
                       <span className="bg-white/20 text-white text-xs px-2 py-0.5 rounded font-black">
                         {kot.partyCode}
                       </span>

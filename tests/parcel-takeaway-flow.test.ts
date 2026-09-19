@@ -11,7 +11,7 @@ describe("Parcel / Takeaway Flow & Bill Paid Table Vacating", () => {
   it("creates a takeaway parcel with tableNumber 0 and does not occupy tables 1–12", () => {
     // Check initial table states (all 12 available)
     const initialAvailable = store.tables.filter((t) => t.status === "AVAILABLE").length;
-    expect(initialAvailable).toBe(12);
+    expect(initialAvailable).toBe(11);
 
     // Create a takeaway parcel
     const parcelParty = store.createTakeawayParty("Mahesh Shinde", "9876543210", 20);
@@ -22,9 +22,9 @@ describe("Parcel / Takeaway Flow & Bill Paid Table Vacating", () => {
     expect(parcelParty.customerName).toBe("Mahesh Shinde");
     expect(parcelParty.packagingCharges).toBe(20);
 
-    // Verify all 12 physical tables are STILL AVAILABLE!
+    // Verify all 11 physical tables are STILL AVAILABLE!
     const availableAfterParcel = store.tables.filter((t) => t.status === "AVAILABLE").length;
-    expect(availableAfterParcel).toBe(12);
+    expect(availableAfterParcel).toBe(11);
   });
 
   it("converts a dining table party to a takeaway parcel and frees the physical table immediately", () => {
@@ -67,8 +67,8 @@ describe("Parcel / Takeaway Flow & Bill Paid Table Vacating", () => {
     const updatedParty = store.parties.find((p) => p.id === parcelParty.id);
     expect(updatedParty?.status).toBe("CLOSED");
 
-    // Tables 1-12 must remain 100% available
+    // Tables A1-C4 (all 11) must remain 100% available
     const availableTables = store.tables.filter((t) => t.status === "AVAILABLE").length;
-    expect(availableTables).toBe(12);
+    expect(availableTables).toBe(11);
   });
 });

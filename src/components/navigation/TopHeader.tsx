@@ -207,7 +207,7 @@ export function TopHeader({ onOpenMobileSidebar }: TopHeaderProps) {
         <div className="hidden xl:flex items-center gap-2 bg-[#FAF8F5] border border-[#E7E2DA] px-3 py-1.5 rounded-xl text-xs shadow-2xs">
           <div className="w-2 h-2 rounded-full bg-emerald-500 ring-3 ring-emerald-100 animate-pulse" />
           <span className="font-bold text-stone-800">
-            {occupiedTables}/12 Tables
+            {occupiedTables}/{store.tables.length} Tables
           </span>
         </div>
 

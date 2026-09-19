@@ -49,6 +49,7 @@ export function openDiningParty(params: CreatePartyParams): {
     partyCode,
     tableId: table.id,
     tableNumber: table.tableNumber,
+    tableName: table.name || `Table ${table.tableNumber}`,
     guestCount,
     assignedWaiterId,
     assignedWaiterName,

@@ -129,10 +129,10 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
       items: [
         {
           href: "/waiter",
-          label: "Floor & 12 Tables",
+          label: `Floor & ${store.tables.length} Tables`,
           subtitle: "Parties & Quick KOT",
           icon: Utensils,
-          badge: `${occupiedTables}/12 Tables`,
+          badge: `${occupiedTables}/${store.tables.length} Tables`,
           badgeColor: occupiedTables > 0 ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-stone-100 text-stone-500",
         },
         {
@@ -157,10 +157,10 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
         },
         {
           href: "/waiter",
-          label: "Floor & 12 Tables",
+          label: `Floor & ${store.tables.length} Tables`,
           subtitle: "Parties & Quick KOT",
           icon: Utensils,
-          badge: `${occupiedTables}/12 Tables`,
+          badge: `${occupiedTables}/${store.tables.length} Tables`,
           badgeColor: occupiedTables > 0 ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-stone-100 text-stone-500",
         },
         {
