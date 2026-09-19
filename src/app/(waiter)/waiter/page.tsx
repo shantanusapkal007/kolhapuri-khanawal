@@ -212,10 +212,13 @@ export default function WaiterFloorPage() {
     // Auto-generate and print interim Table Check / Pre-Bill with UPI QR
     const partyOrders = store.orders.filter((o) => o.partyId === partyId);
     const partyItems = partyOrders.flatMap((o) => o.items);
+    const isTakeaway = Boolean(targetParty.isTakeaway || targetParty.tableNumber === 0);
+    const packagingFee = isTakeaway ? (targetParty.packagingCharges ?? 20) : 0;
+    const subtotal = partyItems.reduce((s, i) => s + i.totalPrice, 0);
+    const taxEstimate = 0;
+    const grandTotal = Math.round(subtotal + (isTakeaway && subtotal > 0 ? packagingFee : 0));
+
     if (partyItems.length > 0) {
-      const subtotal = partyItems.reduce((s, i) => s + i.totalPrice, 0);
-      const taxEstimate = 0;
-      const grandTotal = Math.round(subtotal);
       printTableCheck({
         party: targetParty,
         items: partyItems,
@@ -231,14 +234,14 @@ export default function WaiterFloorPage() {
     const tableNum = table ? table.tableNumber : 1;
     store.addNotification({
       type: "BILL_REQUESTED",
-      title: `Table ${tableNum} Requested Bill 🔥`,
-      message: `${targetParty.partyCode} (${targetParty.customerName || "Walk-in"}) is ready for billing. Running subtotal: ₹${targetParty.runningSubtotal}.`,
+      title: isTakeaway ? `Parcel ${targetParty.partyCode} Requested Bill 🔥` : `Table ${tableNum} Requested Bill 🔥`,
+      message: `${targetParty.partyCode} (${targetParty.customerName || "Walk-in"}) is ready for billing. Total: ₹${grandTotal}.`,
       category: "BILLING",
       urgency: "HIGH",
       targetRoles: ["CASHIER", "ADMIN", "MANAGER"],
       actionUrl: "/billing",
       actionLabel: "Settle Bill",
-      metadata: { tableNumber: tableNum, partyId: targetParty.id, amount: targetParty.runningSubtotal },
+      metadata: { tableNumber: tableNum, partyId: targetParty.id, amount: grandTotal },
     });
 
     setTick((t) => t + 1);
@@ -304,7 +307,8 @@ export default function WaiterFloorPage() {
   const handleTakeParcel = (name?: string) => {
     try {
       triggerHaptic("tap");
-      const party = store.createTakeawayParty(name);
+      const customerInput = name !== undefined ? name : prompt("Enter Customer Name / Mobile for Parcel (optional):", "");
+      const party = store.createTakeawayParty(customerInput ? customerInput.trim() : undefined);
       setTick((t) => t + 1);
       showToast(`🛍️ Created Parcel ${party.partyCode}! Redirecting to order...`);
       router.push(`/waiter/order/${party.id}?isTakeaway=true`);
@@ -1097,89 +1101,104 @@ export default function WaiterFloorPage() {
               </button>
             </div>
 
-            {/* Bill Summary */}
-            <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFE6] border border-[#E7E2DA] rounded-2xl p-4 text-center space-y-1 shadow-2xs">
-              <div className="text-xs text-stone-600 font-semibold">
-                Party {settlePartyTarget.partyCode}
-                {settlePartyTarget.customerName ? ` • ${settlePartyTarget.customerName}` : ""}
-              </div>
-              <div className="text-3xl sm:text-4xl font-tabular font-black text-emerald-700 tracking-tight">
-                ₹{settlePartyTarget.runningSubtotal}
-              </div>
-              <div className="text-[11px] text-stone-500 font-medium">
-                {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
-                  ? "Mark parcel as paid and ready for takeaway"
-                  : `Full payment to close & free Table ${settlePartyTarget.tableNumber}`}
-              </div>
-            </div>
+            {/* Bill Summary & Packaging Breakdown */}
+            {(() => {
+              const targetIsTakeaway = settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0;
+              const targetPackagingFee = targetIsTakeaway ? (settlePartyTarget.packagingCharges ?? 20) : 0;
+              const targetGrandTotal = settlePartyTarget.runningSubtotal + (targetIsTakeaway && settlePartyTarget.runningSubtotal > 0 ? targetPackagingFee : 0);
 
-            {/* Payment Method Selector */}
-            <div className="space-y-2">
-              <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
-                Payment Mode (पैसे कसे मिळाले?):
-              </span>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setSettleMethod("CASH")}
-                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
-                    settleMethod === "CASH"
-                      ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
-                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
-                  }`}
-                >
-                  <Banknote className="w-5 h-5 text-emerald-600" />
-                  <span>💵 Cash (रोख)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSettleMethod("UPI")}
-                  className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
-                    settleMethod === "UPI"
-                      ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
-                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5 text-blue-600" />
-                  <span>📱 UPI / QR</span>
-                </button>
-              </div>
-            </div>
+              return (
+                <>
+                  <div className="bg-gradient-to-b from-[#FAF8F5] to-[#F5EFE6] border border-[#E7E2DA] rounded-2xl p-4 text-center space-y-1 shadow-2xs">
+                    <div className="text-xs text-stone-600 font-semibold">
+                      Party {settlePartyTarget.partyCode}
+                      {settlePartyTarget.customerName ? ` • ${settlePartyTarget.customerName}` : ""}
+                    </div>
+                    <div className="text-3xl sm:text-4xl font-tabular font-black text-emerald-700 tracking-tight">
+                      ₹{targetGrandTotal}
+                    </div>
+                    {targetIsTakeaway && settlePartyTarget.runningSubtotal > 0 && (
+                      <div className="text-[11px] text-amber-800 font-bold">
+                        Items: ₹{settlePartyTarget.runningSubtotal} + Packaging: ₹{targetPackagingFee}
+                      </div>
+                    )}
+                    <div className="text-[11px] text-stone-500 font-medium">
+                      {targetIsTakeaway
+                        ? "Mark parcel as paid and ready for takeaway"
+                        : `Full payment to close & free Table ${settlePartyTarget.tableNumber}`}
+                    </div>
+                  </div>
 
-            {/* Print Receipt Toggle */}
-            <label className="flex items-center gap-2.5 text-xs font-bold text-stone-700 cursor-pointer select-none bg-stone-50 p-3 rounded-2xl border border-stone-200">
-              <input
-                type="checkbox"
-                checked={autoPrintOnSettle}
-                onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-              />
-              <Printer className="w-4 h-4 text-stone-600" />
-              <span>Print Customer Bill Receipt (पावती छापा)</span>
-            </label>
+                  {/* Payment Method Selector */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-black uppercase text-stone-500 tracking-wider block">
+                      Payment Mode (पैसे कसे मिळाले?):
+                    </span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setSettleMethod("CASH")}
+                        className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                          settleMethod === "CASH"
+                            ? "border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-400/20"
+                            : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                        }`}
+                      >
+                        <Banknote className="w-5 h-5 text-emerald-600" />
+                        <span>💵 Cash (रोख)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSettleMethod("UPI")}
+                        className={`py-3.5 px-3 rounded-2xl border-2 font-black text-xs sm:text-sm flex flex-col items-center justify-center gap-1.5 transition-all touch-manipulation active:scale-95 cursor-pointer ${
+                          settleMethod === "UPI"
+                            ? "border-blue-600 bg-blue-50/80 text-blue-950 shadow-xs ring-2 ring-blue-400/20"
+                            : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                        }`}
+                      >
+                        <CreditCard className="w-5 h-5 text-blue-600" />
+                        <span>📱 UPI / QR</span>
+                      </button>
+                    </div>
+                  </div>
 
-            {/* Confirm Settle & Close Table Button */}
-            <div className="pt-1 space-y-2">
-              <button
-                type="button"
-                onClick={() => handleQuickSettleParty(settlePartyTarget.id, settleMethod)}
-                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                <span>
-                  {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
-                    ? `Confirm Paid & Complete Parcel (₹${settlePartyTarget.runningSubtotal}) →`
-                    : `Confirm Paid & Free Table (₹${settlePartyTarget.runningSubtotal}) →`}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettlePartyTarget(null)}
-                className="w-full py-2 text-stone-500 hover:text-stone-800 font-bold text-xs text-center cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
+                  {/* Print Receipt Toggle */}
+                  <label className="flex items-center gap-2.5 text-xs font-bold text-stone-700 cursor-pointer select-none bg-stone-50 p-3 rounded-2xl border border-stone-200">
+                    <input
+                      type="checkbox"
+                      checked={autoPrintOnSettle}
+                      onChange={(e) => setAutoPrintOnSettle(e.target.checked)}
+                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                    />
+                    <Printer className="w-4 h-4 text-stone-600" />
+                    <span>Print Customer Bill Receipt (पावती छापा)</span>
+                  </label>
+
+                  {/* Confirm Settle & Close Table Button */}
+                  <div className="pt-1 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickSettleParty(settlePartyTarget.id, settleMethod)}
+                      className="w-full py-3.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                      <span>
+                        {targetIsTakeaway
+                          ? `Confirm Paid & Complete Parcel (₹${targetGrandTotal}) →`
+                          : `Confirm Paid & Free Table (₹${targetGrandTotal}) →`}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettlePartyTarget(null)}
+                      className="w-full py-2 text-stone-500 hover:text-stone-800 font-bold text-xs text-center cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

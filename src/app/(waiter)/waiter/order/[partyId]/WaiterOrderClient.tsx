@@ -27,6 +27,9 @@ import {
   Banknote,
   CreditCard,
   ShoppingBag,
+  Edit3,
+  User,
+  Phone,
 } from "lucide-react";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 import {
@@ -52,6 +55,31 @@ interface CartItem {
   breadOption?: BreadOption;
   breadCounts?: Partial<Record<BreadOption, number>>;
   notes?: string;
+  customNote?: string;
+  spiceLevel?: "MILD" | "MEDIUM" | "SPICY" | "THECHA_EXTRA_SPICY";
+}
+
+function buildItemNotes(
+  breadCounts?: Partial<Record<BreadOption, number>>,
+  customNote?: string,
+  spiceLevel?: string
+): string {
+  const parts: string[] = [];
+  if (breadCounts && Object.keys(breadCounts).length > 0) {
+    parts.push(formatBreadNotes(breadCounts));
+  }
+  if (spiceLevel && spiceLevel !== "MEDIUM") {
+    const spiceMrMap: Record<string, string> = {
+      MILD: "कमी तिखट",
+      SPICY: "तिखट",
+      THECHA_EXTRA_SPICY: "ठेचा झणझणीत",
+    };
+    parts.push(spiceMrMap[spiceLevel] || spiceLevel);
+  }
+  if (customNote && customNote.trim()) {
+    parts.push(customNote.trim());
+  }
+  return parts.join(" | ");
 }
 
 export default function WaiterOrderClient({
@@ -79,6 +107,16 @@ export default function WaiterOrderClient({
   const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
   const [targetTableNumber, setTargetTableNumber] = useState<number>(1);
 
+  // Customer Info Edit Modal state (for parcel & table diners)
+  const [showCustomerModal, setShowCustomerModal] = useState<boolean>(false);
+  const [custName, setCustName] = useState<string>("");
+  const [custPhone, setCustPhone] = useState<string>("");
+  const [custNotes, setCustNotes] = useState<string>("");
+
+  // Parcel-to-Table conversion state
+  const [showConvertToTableModal, setShowConvertToTableModal] = useState<boolean>(false);
+  const [convertTargetTable, setConvertTargetTable] = useState<number>(1);
+
   // Manager Override Modal state
   const [showOverrideModal, setShowOverrideModal] = useState<boolean>(false);
   const [overridePin, setOverridePin] = useState<string>("");
@@ -92,7 +130,15 @@ export default function WaiterOrderClient({
   const [isSettling, setIsSettling] = useState<boolean>(false);
 
   // Android Back Button Trap: Dismiss open modals or sheets before exiting app
-  const isAnyModalOpen = isCartSheetOpen || showMoreActions || showPrinterModal || showTransferModal || showOverrideModal || showSettleModal;
+  const isAnyModalOpen =
+    isCartSheetOpen ||
+    showMoreActions ||
+    showPrinterModal ||
+    showTransferModal ||
+    showOverrideModal ||
+    showSettleModal ||
+    showCustomerModal ||
+    showConvertToTableModal;
   useAndroidBackButton(isAnyModalOpen, () => {
     setIsCartSheetOpen(false);
     setShowMoreActions(false);
@@ -100,9 +146,41 @@ export default function WaiterOrderClient({
     setShowTransferModal(false);
     setShowOverrideModal(false);
     setShowSettleModal(false);
+    setShowCustomerModal(false);
+    setShowConvertToTableModal(false);
   });
 
-  const party = store.parties.find((p) => p.id === resolvedParams.partyId);
+  // Resilient party resolution: Check direct ID, or auto-heal table number pattern
+  let party = store.parties.find((p) => p.id === resolvedParams.partyId);
+  if (!party) {
+    const tableMatch = resolvedParams.partyId.match(/(?:party-tbl-|table-)?(\d+)/i);
+    if (tableMatch) {
+      const tblNum = parseInt(tableMatch[1], 10);
+      const existingTableParty = store.parties.find(
+        (p) => p.tableNumber === tblNum && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
+      );
+      if (existingTableParty) {
+        party = existingTableParty;
+      } else {
+        const tableObj = store.tables.find((t) => t.tableNumber === tblNum);
+        if (tableObj) {
+          try {
+            party = store.createPartyAtTable(tblNum, 2, `Table ${tblNum}`);
+          } catch {
+            // fallback
+          }
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (party) {
+      setCustName(party.customerName || "");
+      setCustPhone(party.customerPhone || "");
+      setCustNotes(party.notes || "");
+    }
+  }, [party?.id, party?.customerName, party?.customerPhone, party?.notes]);
 
   useEffect(() => {
     store.recalculateMenuAvailability();
@@ -181,6 +259,12 @@ export default function WaiterOrderClient({
     return notes.join(" | ");
   };
 
+  const isTakeaway = Boolean(party.isTakeaway || party.tableNumber === 0);
+  const packagingFee = isTakeaway ? (party.packagingCharges ?? 20) : 0;
+  const totalCartCount = cart.reduce((sum, it) => sum + it.quantity, 0);
+  const cartSubtotal = cart.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
+  const runningGrandTotal = party.runningSubtotal + (isTakeaway && party.runningSubtotal > 0 ? packagingFee : 0);
+
   const handleBreadCountChange = (
     item: MenuItem,
     breadId: BreadOption,
@@ -204,7 +288,7 @@ export default function WaiterOrderClient({
       if (delta <= 0) return;
       const initialPortion = DEFAULT_BREAD_PORTIONS[breadId] || 2;
       const counts: Partial<Record<BreadOption, number>> = { [breadId]: initialPortion };
-      const notes = formatBreadNotes(counts);
+      const notes = buildItemNotes(counts);
       setCart([
         ...cart,
         {
@@ -247,7 +331,7 @@ export default function WaiterOrderClient({
 
     target.breadCounts = counts;
     target.breadOption = primaryBread;
-    target.notes = formatBreadNotes(counts);
+    target.notes = buildItemNotes(counts, target.customNote, target.spiceLevel);
 
     updated[existingIndex] = target;
     setCart(updated);
@@ -284,7 +368,7 @@ export default function WaiterOrderClient({
           quantity: 1,
           breadOption: defaultBread,
           breadCounts: counts,
-          notes: formatBreadNotes(counts),
+          notes: buildItemNotes(counts),
         },
       ]);
       return;
@@ -311,7 +395,7 @@ export default function WaiterOrderClient({
 
     target.quantity = newQty;
     target.breadCounts = counts;
-    target.notes = formatBreadNotes(counts);
+    target.notes = buildItemNotes(counts, target.customNote, target.spiceLevel);
 
     updated[existingIndex] = target;
     setCart(updated);
@@ -425,7 +509,7 @@ export default function WaiterOrderClient({
         }
       }
       target.breadCounts = counts;
-      target.notes = formatBreadNotes(counts);
+      target.notes = buildItemNotes(counts, target.customNote, target.spiceLevel);
     }
 
     target.quantity = newQty;
@@ -442,16 +526,13 @@ export default function WaiterOrderClient({
       ...current,
       breadOption: newBread,
       breadCounts: newCounts,
-      notes: formatBreadNotes(newCounts),
+      notes: buildItemNotes(newCounts, current.customNote, current.spiceLevel),
     };
     setCart(updated);
   };
 
-  const totalCartCount = cart.reduce((sum, it) => sum + it.quantity, 0);
-  const cartSubtotal = cart.reduce((sum, it) => sum + it.unitPrice * it.quantity, 0);
-
   const handleSendKot = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || isSending) return;
     setIsSending(true);
     setErrorMessage(null);
 
@@ -465,13 +546,13 @@ export default function WaiterOrderClient({
               menuItemId: c.menuItem.id,
               quantity: c.quantity,
               breadOption: c.breadOption,
-              notes: c.notes || formatBreadNotes(c.breadCounts),
+              notes: c.notes || buildItemNotes(c.breadCounts, c.customNote, c.spiceLevel),
               variantName: c.variantName,
               unitPrice: c.unitPrice,
             })),
           },
           { partyCode: party.partyCode, tableNumber: party.tableNumber }
-        ).catch(() => {}); // Fire-and-forget: offline sync is background work
+        ).catch(() => {});
       }
 
       const result = store.placeOrder(
@@ -480,7 +561,7 @@ export default function WaiterOrderClient({
           menuItemId: c.menuItem.id,
           quantity: c.quantity,
           breadOption: c.breadOption,
-          notes: c.notes || formatBreadNotes(c.breadCounts),
+          notes: c.notes || buildItemNotes(c.breadCounts, c.customNote, c.spiceLevel),
           variantName: c.variantName,
           unitPrice: c.unitPrice,
         })),
@@ -495,7 +576,7 @@ export default function WaiterOrderClient({
 
       store.addNotification({
         type: "KOT_NEW",
-        title: `KOT #${result.kot.kotNumber} (Table ${party.tableNumber})`,
+        title: isTakeaway ? `KOT #${result.kot.kotNumber} (Parcel ${party.partyCode})` : `KOT #${result.kot.kotNumber} (Table ${party.tableNumber})`,
         message: `${result.kot.items.map((i) => `${i.menuItemName} × ${i.quantity}`).join(", ")} dispatched to kitchen.`,
         category: "KITCHEN",
         urgency: "HIGH",
@@ -514,7 +595,7 @@ export default function WaiterOrderClient({
       setCart([]);
       setIsCartSheetOpen(false);
       triggerHaptic("success");
-      router.push("/waiter");
+      router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
     } catch (err: any) {
       triggerHaptic("error");
       if (err.message?.toLowerCase().includes("insufficient") || err.message?.toLowerCase().includes("deficit")) {
@@ -526,6 +607,94 @@ export default function WaiterOrderClient({
       }
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSendKotAndSettle = async (method: "CASH" | "UPI" = "CASH") => {
+    if (cart.length === 0 || isSending) return;
+    setIsSending(true);
+    setErrorMessage(null);
+
+    try {
+      const result = store.placeOrder(
+        party.id,
+        cart.map((c) => ({
+          menuItemId: c.menuItem.id,
+          quantity: c.quantity,
+          breadOption: c.breadOption,
+          notes: c.notes || buildItemNotes(c.breadCounts, c.customNote, c.spiceLevel),
+          variantName: c.variantName,
+          unitPrice: c.unitPrice,
+        })),
+        false
+      );
+
+      if (store.printerSettings?.autoPrintKotOnOrder ?? true) {
+        printKotTicket(result.kot, {
+          paperWidth: store.printerSettings?.paperWidth || "80mm",
+        });
+      }
+
+      const settleResult = store.quickSettleBill(party.id, method);
+      if (autoPrintOnSettle) {
+        printBillReceipt(settleResult.bill, false, store.printerSettings?.paperWidth || "80mm");
+      }
+
+      triggerHaptic("success");
+      setCart([]);
+      setIsCartSheetOpen(false);
+      alert(`✅ Order placed & bill settled (₹${settleResult.bill.grandTotal}) via ${method}!`);
+      router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
+    } catch (err: any) {
+      triggerHaptic("error");
+      setErrorMessage(err.message || "Failed to place & settle order");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCancelOrderedItem = (orderItemId: string, itemName: string, qty: number) => {
+    const reason = prompt(
+      `Cancel "${itemName}" × ${qty}?\nEnter cancellation reason (उदा. ग्राहक बदलले / रद्द केले):`,
+      "Customer changed mind"
+    );
+    if (!reason || !reason.trim()) return;
+
+    try {
+      store.cancelOrderItem(orderItemId, reason.trim());
+      triggerHaptic("warning");
+      setTick((t) => t + 1);
+      alert(`Cancelled "${itemName}" × ${qty}. Stock reservation rolled back & bill updated.`);
+    } catch (err: any) {
+      triggerHaptic("error");
+      alert(err.message || "Failed to cancel item");
+    }
+  };
+
+  const handleSaveCustomerInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      store.updatePartyCustomerInfo(party.id, custName, custPhone, custNotes);
+      setShowCustomerModal(false);
+      triggerHaptic("success");
+      setTick((t) => t + 1);
+      alert(`Saved details for ${custName || party.partyCode}!`);
+    } catch (err: any) {
+      alert(err.message || "Failed to save customer details");
+    }
+  };
+
+  const handleConvertToTableSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      store.convertToTableParty(party.id, convertTargetTable);
+      setShowConvertToTableModal(false);
+      triggerHaptic("success");
+      setTick((t) => t + 1);
+      alert(`Switched Parcel to Table ${convertTargetTable}!`);
+      router.refresh();
+    } catch (err: any) {
+      alert(err.message || "Failed to convert to table");
     }
   };
 
@@ -574,7 +743,7 @@ export default function WaiterOrderClient({
       setShowOverrideModal(false);
       setCart([]);
       setIsCartSheetOpen(false);
-      router.push("/waiter");
+      router.push(isTakeaway ? "/waiter?tab=parcels" : "/waiter");
     } catch (err: any) {
       triggerHaptic("error");
       setOverrideError(err.message);
@@ -591,7 +760,7 @@ export default function WaiterOrderClient({
       }
       printBillReceipt(bill, false, store.printerSettings?.paperWidth || "80mm");
       setShowMoreActions(false);
-      alert(`Bill printed for Table ${party.tableNumber}!`);
+      alert(`Bill printed for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
     } catch (err: any) {
       alert(`Could not print bill: ${err.message}`);
     }
@@ -608,7 +777,7 @@ export default function WaiterOrderClient({
       paperWidth: store.printerSettings?.paperWidth || "80mm",
     });
     setShowMoreActions(false);
-    alert(`Reprinted KOT #${latestKot.kotNumber} for Table ${party.tableNumber}`);
+    alert(`Reprinted KOT #${latestKot.kotNumber} for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}`);
   };
 
   const handleRequestBill = () => {
@@ -616,21 +785,23 @@ export default function WaiterOrderClient({
       store.parties = store.parties.map((p) =>
         p.id === party.id ? { ...p, status: "WAITING_FOR_BILL", lastActivityAt: new Date().toISOString() } : p
       );
-      const partyOrders = store.orders.filter((o) => o.partyId === party.id);
-      const partyItems = partyOrders.flatMap((o) => o.items);
+      const partyOrders = store.orders.filter((o) => o.partyId === party.id && o.status !== "CANCELLED");
+      const partyItems = partyOrders.flatMap((o) => o.items.filter((i) => !i.isCancelled));
       const subtotal = partyItems.reduce((s, i) => s + (i.totalPrice || 0), 0);
       const taxEstimate = 0;
-      const grandTotal = Math.round(subtotal);
+      const pkg = isTakeaway ? packagingFee : 0;
+      const grandTotal = Math.round(subtotal + pkg);
       printTableCheck({
         party,
         items: partyItems,
         subtotal,
         taxEstimate,
         grandTotal,
+        packagingCharges: pkg,
         paperWidth: store.printerSettings?.paperWidth || "80mm",
       });
       setShowMoreActions(false);
-      alert(`Bill requested for Table ${party.tableNumber}!`);
+      alert(`Bill requested for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
     } catch (err: any) {
       alert(`Could not request bill: ${err.message}`);
     }
@@ -681,20 +852,31 @@ export default function WaiterOrderClient({
                   <ShoppingBag className="w-3.5 h-3.5 text-stone-950 shrink-0" />
                   <span>{party.partyCode}</span>
                 </span>
-                {party.customerName && (
-                  <span className="text-[11px] font-bold text-amber-900 bg-amber-50 px-2 py-0.5 rounded-xl border border-amber-200 truncate max-w-[100px] xs:max-w-[140px]">
-                    {party.customerName}
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(true)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 px-2 py-0.5 rounded-xl border border-amber-200 truncate max-w-[120px] xs:max-w-[170px] cursor-pointer touch-manipulation active:scale-95 transition-all shadow-2xs"
+                  title="Edit Customer Name & Phone"
+                >
+                  <User className="w-3 h-3 text-amber-700 shrink-0" />
+                  <span className="truncate">{party.customerName || "+ Add Name"}</span>
+                  <Edit3 className="w-2.5 h-2.5 text-amber-600 shrink-0 opacity-70" />
+                </button>
               </div>
             ) : (
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="bg-stone-950 text-amber-300 font-black text-xs sm:text-sm px-2.5 py-1 rounded-xl shadow-xs border border-stone-800 font-tabular shrink-0">
                   Table {party.tableNumber}
                 </span>
-                <span className="text-[11px] font-bold text-stone-500 truncate">
-                  {party.guestCount}G • {party.assignedWaiterName.split(" ")[0]}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(true)}
+                  className="flex items-center gap-1 text-[11px] font-bold text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded-xl border border-stone-200 truncate max-w-[120px] xs:max-w-[170px] cursor-pointer touch-manipulation active:scale-95 transition-all"
+                  title="Edit Customer / Guest Details"
+                >
+                  <span className="truncate">{party.customerName || `${party.guestCount}G • ${party.assignedWaiterName.split(" ")[0]}`}</span>
+                  <Edit3 className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                </button>
               </div>
             )}
           </div>
@@ -705,11 +887,16 @@ export default function WaiterOrderClient({
           {/* Running Bill Amount Tile */}
           <div className="text-right px-2.5 sm:px-3 py-1 sm:py-1.5 bg-stone-950 text-amber-300 border border-stone-800 rounded-xl sm:rounded-2xl font-tabular shadow-2xs shrink-0">
             <span className="text-[8px] sm:text-[9px] uppercase font-bold text-stone-400 block leading-none">
-              Bill
+              {isTakeaway ? "Parcel Total" : "Bill"}
             </span>
             <span className="font-black text-xs sm:text-sm md:text-base text-amber-300 leading-tight">
-              ₹{party.runningSubtotal}
+              ₹{runningGrandTotal}
             </span>
+            {isTakeaway && packagingFee > 0 && party.runningSubtotal > 0 && (
+              <span className="text-[7.5px] sm:text-[8px] text-amber-400/80 block leading-none font-sans font-semibold">
+                (₹{party.runningSubtotal}+₹{packagingFee}pkg)
+              </span>
+            )}
           </div>
 
           {/* Desktop Only: 1-Tap Take Parcel Button */}
@@ -752,7 +939,20 @@ export default function WaiterOrderClient({
             </button>
 
             {showMoreActions && (
-              <div className="absolute right-0 mt-2 w-60 bg-white border border-stone-200/90 rounded-3xl shadow-2xl p-2 z-40 text-xs space-y-1 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-stone-200/90 rounded-3xl shadow-2xl p-2 z-40 text-xs space-y-1 animate-in fade-in zoom-in-95">
+                {/* Edit Customer Info Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMoreActions(false);
+                    setShowCustomerModal(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-amber-50 font-bold text-amber-950 flex items-center gap-2 border border-amber-200 bg-amber-50/50 cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Edit Name / Phone (ग्राहक माहिती)</span>
+                </button>
+
                 {/* 1-Tap Take New Parcel inside dropdown */}
                 <button
                   type="button"
@@ -770,6 +970,21 @@ export default function WaiterOrderClient({
                   <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
                   <span>🛍️ Take New Parcel (नवीन पार्सल)</span>
                 </button>
+
+                {/* If Parcel: Option to Convert to Dining Table */}
+                {isTakeaway && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMoreActions(false);
+                      setShowConvertToTableModal(true);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-2xl hover:bg-emerald-50 font-bold text-emerald-950 flex items-center gap-2 border border-emerald-200 bg-emerald-50/70 cursor-pointer"
+                  >
+                    <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>🪑 Assign Table (डायनिंग टेबल द्या)</span>
+                  </button>
+                )}
 
                 {/* Cancel & Free Table if empty */}
                 {party.runningSubtotal === 0 && (
@@ -848,19 +1063,23 @@ export default function WaiterOrderClient({
                   <Sliders className="w-3.5 h-3.5 text-stone-500" />
                   <span>Printer Settings</span>
                 </button>
-                <div className="border-t border-stone-100 my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMoreActions(false);
-                    setTargetTableNumber(party.tableNumber === 12 ? 1 : party.tableNumber + 1);
-                    setShowTransferModal(true);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2 cursor-pointer"
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 text-stone-500" />
-                  <span>Move Table</span>
-                </button>
+                {!isTakeaway && (
+                  <>
+                    <div className="border-t border-stone-100 my-1" />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMoreActions(false);
+                        setTargetTableNumber(party.tableNumber === 12 ? 1 : party.tableNumber + 1);
+                        setShowTransferModal(true);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-2xl hover:bg-stone-50 font-bold text-stone-700 flex items-center gap-2 cursor-pointer"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-stone-500" />
+                      <span>Move Table</span>
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -925,7 +1144,7 @@ export default function WaiterOrderClient({
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-black text-emerald-950">
-                In Kitchen ({previouslyOrderedItems.length} items ordered)
+                In Kitchen ({previouslyOrderedItems.filter((i) => !i.isCancelled).length} items ordered)
               </span>
             </div>
             <button
@@ -942,30 +1161,69 @@ export default function WaiterOrderClient({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-emerald-200/60 text-xs">
               {previouslyOrderedItems.map((item, idx) => {
                 const menuItem = store.menuItems.find((m) => m.id === item.menuItemId);
+                const isCancelled = item.isCancelled;
                 return (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-2xl bg-white border border-emerald-200/90 flex items-center justify-between gap-2 shadow-2xs"
+                    className={`p-2.5 rounded-2xl bg-white border flex items-center justify-between gap-2 shadow-2xs ${
+                      isCancelled ? "border-red-200 bg-red-50/40 opacity-70" : "border-emerald-200/90"
+                    }`}
                   >
                     <div className="min-w-0 flex-1">
-                      <span className="font-bold text-stone-900 truncate block">
+                      <span className={`font-bold block truncate text-xs ${isCancelled ? "line-through text-stone-400" : "text-stone-900"}`}>
                         {item.quantity}× {item.menuItemName}
                       </span>
-                      <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                        {item.kotStatus}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span
+                          className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${
+                            isCancelled
+                              ? "bg-red-100 text-red-700"
+                              : item.kotStatus === "READY"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : item.kotStatus === "PREPARING"
+                              ? "bg-amber-100 text-amber-900"
+                              : "bg-blue-50 text-blue-800"
+                          }`}
+                        >
+                          {item.kotStatus}
+                        </span>
+                        {item.notes && (
+                          <span className="text-[9.5px] text-stone-500 truncate max-w-[120px]">
+                            {item.notes}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {menuItem && (
-                      <button
-                        type="button"
-                        onClick={() => handleAddToCart(menuItem, item.breadOption, item.variantName ? { name: item.variantName, price: item.unitPrice } : undefined)}
-                        className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-xl flex items-center gap-1 shadow-2xs active:scale-95 transition-all shrink-0 cursor-pointer"
-                        title="Add this item again to current order"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Again</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {!isCancelled && (
+                        <button
+                          type="button"
+                          onClick={() => handleCancelOrderedItem(item.id, item.menuItemName, item.quantity)}
+                          className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold text-[10px] rounded-xl flex items-center gap-0.5 active:scale-95 transition-all cursor-pointer"
+                          title="Cancel this item from kitchen order"
+                        >
+                          <X className="w-3 h-3" />
+                          <span>रद्द</span>
+                        </button>
+                      )}
+                      {menuItem && !isCancelled && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAddToCart(
+                              menuItem,
+                              item.breadOption,
+                              item.variantName ? { name: item.variantName, price: item.unitPrice } : undefined
+                            )
+                          }
+                          className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white font-black text-[10px] rounded-xl flex items-center gap-1 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                          title="Add this item again to current order"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Again</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1397,13 +1655,15 @@ export default function WaiterOrderClient({
                       </span>
                     </div>
 
-                    {/* Bread Option Switcher in Cart */}
-                    {(c.breadOption || c.notes) && (
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {/* Bread Option Switcher & Custom Cooking Notes in Cart */}
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {(c.breadOption || c.notes) && (
                         <span className="text-[10px] font-black bg-amber-200 text-stone-950 px-2 py-0.5 rounded-md shadow-2xs">
                           {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
                         </span>
-                        {BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
+                      )}
+                      {c.breadOption &&
+                        BREAD_OPTIONS.filter((b) => b.id !== c.breadOption).map((b) => (
                           <button
                             key={b.id}
                             type="button"
@@ -1413,8 +1673,26 @@ export default function WaiterOrderClient({
                             {b.shortCode}
                           </button>
                         ))}
-                      </div>
-                    )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const note = prompt("Enter kitchen instruction (उदा. कमी तिखट, झणझणीत, रस्सा वेगळा):", c.customNote || "");
+                          if (note !== null) {
+                            const updated = [...cart];
+                            const trimmed = note.trim();
+                            updated[idx] = {
+                              ...updated[idx],
+                              customNote: trimmed,
+                              notes: buildItemNotes(updated[idx].breadCounts, trimmed, updated[idx].spiceLevel)
+                            };
+                            setCart(updated);
+                          }
+                        }}
+                        className="text-[9px] font-bold text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-md cursor-pointer flex items-center gap-0.5"
+                      >
+                        ✏️ {c.customNote ? c.customNote : "नोंद / Note"}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Quantity Stepper + Trash */}
@@ -1455,17 +1733,68 @@ export default function WaiterOrderClient({
               ))}
             </div>
 
-            {/* Send KOT Button inside sheet */}
-            <div className="pt-2 border-t border-stone-100">
-              <button
-                type="button"
-                disabled={isSending}
-                onClick={handleSendKot}
-                className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
-              >
-                <Send className="w-4 h-4 text-emerald-200" />
-                <span>{isSending ? "Sending..." : `Send KOT to Kitchen (₹${cartSubtotal})`}</span>
-              </button>
+            {/* Packaging Breakdown & Totals */}
+            <div className="space-y-2 pt-2 border-t border-stone-100">
+              {isTakeaway && (
+                <div className="bg-amber-50/90 border border-amber-200/90 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-amber-900 font-bold">
+                    <span>🥡</span>
+                    <span>Parcel Packaging (पॅकिंग शुल्क):</span>
+                  </div>
+                  <span className="font-tabular font-black text-amber-900">
+                    +₹{packagingFee}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between px-1 text-xs">
+                <span className="text-stone-500 font-bold">Items Total:</span>
+                <span className="font-tabular font-black text-stone-900">₹{cartSubtotal}</span>
+              </div>
+
+              {isTakeaway && (
+                <div className="flex items-center justify-between px-1 text-xs border-t border-stone-100 pt-1">
+                  <span className="text-stone-700 font-black">Estimated Bill:</span>
+                  <span className="font-tabular font-black text-emerald-700 text-sm">
+                    ₹{cartSubtotal + packagingFee}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Send KOT Button(s) inside sheet */}
+            <div className="pt-1">
+              {isTakeaway ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={isSending}
+                    onClick={handleSendKot}
+                    className="py-3.5 px-2 bg-stone-900 hover:bg-stone-800 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all touch-manipulation cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5 text-stone-300" />
+                    <span>{isSending ? "Sending..." : "Send KOT Only"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSending}
+                    onClick={() => handleSendKotAndSettle("CASH")}
+                    className="py-3.5 px-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs rounded-2xl flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                  >
+                    <span>⚡ Pay & Send (₹{cartSubtotal + packagingFee})</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={isSending}
+                  onClick={handleSendKot}
+                  className="w-full py-4 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-700/25 active:scale-95 transition-all touch-manipulation cursor-pointer border border-emerald-500/40"
+                >
+                  <Send className="w-4 h-4 text-emerald-200" />
+                  <span>{isSending ? "Sending..." : `Send KOT to Kitchen (₹${cartSubtotal})`}</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1606,8 +1935,13 @@ export default function WaiterOrderClient({
                 {party.customerName ? ` • ${party.customerName}` : ""}
               </div>
               <div className="text-3xl sm:text-4xl font-tabular font-black text-emerald-700 tracking-tight">
-                ₹{party.runningSubtotal}
+                ₹{runningGrandTotal}
               </div>
+              {isTakeaway && party.runningSubtotal > 0 && (
+                <div className="text-[11px] text-amber-800 font-bold">
+                  Items: ₹{party.runningSubtotal} + Packaging: ₹{packagingFee}
+                </div>
+              )}
               <div className="text-[11px] text-stone-500 font-medium">
                 {party.isTakeaway || party.tableNumber === 0
                   ? "Mark parcel as paid and ready for takeaway"
@@ -1673,8 +2007,8 @@ export default function WaiterOrderClient({
                   {isSettling
                     ? (party.isTakeaway || party.tableNumber === 0 ? "Completing Parcel..." : "Closing Table...")
                     : (party.isTakeaway || party.tableNumber === 0
-                        ? `Confirm Paid & Complete Parcel (₹${party.runningSubtotal}) →`
-                        : `Confirm Paid & Close Table (₹${party.runningSubtotal}) →`)}
+                        ? `Confirm Paid & Complete Parcel (₹${runningGrandTotal}) →`
+                        : `Confirm Paid & Close Table (₹${runningGrandTotal}) →`)}
                 </span>
               </button>
               <button
@@ -1685,6 +2019,148 @@ export default function WaiterOrderClient({
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 11. Customer Details Modal */}
+      {showCustomerModal && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">👤</span>
+                <h3 className="font-black text-sm text-stone-900">
+                  {isTakeaway ? "Customer Details (पार्सल ग्राहक)" : `Table ${party.tableNumber} Diner Info`}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomerModal(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomerInfo} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-stone-600 mb-1 block">
+                  Customer Name (ग्राहकाचे नाव)
+                </label>
+                <input
+                  type="text"
+                  placeholder="उदा. राहुल कदम, सचिन सर"
+                  value={custName}
+                  onChange={(e) => setCustName(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-stone-600 mb-1 block">
+                  Phone Number (फोन नंबर)
+                </label>
+                <input
+                  type="tel"
+                  placeholder="उदा. 9876543210"
+                  value={custPhone}
+                  onChange={(e) => setCustPhone(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-stone-600 mb-1 block">
+                  Order / Pickup Note (नोंद)
+                </label>
+                <input
+                  type="text"
+                  placeholder="उदा. 15 मिनिटांनी घेणार, कारमध्ये द्या"
+                  value={custNotes}
+                  onChange={(e) => setCustNotes(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerModal(false)}
+                  className="px-3.5 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
+                >
+                  Save Details (जतन करा)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 12. Convert Parcel to Dining Table Modal */}
+      {showConvertToTableModal && (
+        <div className="fixed inset-0 z-50 bg-stone-950/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 text-stone-900 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🍽️</span>
+                <h3 className="font-black text-sm text-stone-900">
+                  Assign Parcel to Dining Table
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConvertToTableModal(false)}
+                className="text-stone-400 hover:text-stone-700 p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-stone-600 leading-relaxed">
+              Customer decided to dine in. This will remove packaging charges and bind existing KOT items to the selected table.
+            </p>
+
+            <form onSubmit={handleConvertToTableSubmit} className="space-y-3">
+              <div>
+                <label className="text-[11px] font-bold text-stone-500 mb-1 block">
+                  Select Dining Table (टेबल निवडा)
+                </label>
+                <select
+                  value={convertTargetTable}
+                  onChange={(e) => setConvertTargetTable(Number(e.target.value))}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs font-bold"
+                >
+                  {store.tables.map((t) => (
+                    <option key={t.id} value={t.tableNumber}>
+                      Table {t.tableNumber} — {t.status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowConvertToTableModal(false)}
+                  className="px-3.5 py-2 text-xs font-bold text-stone-500 hover:text-stone-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer"
+                >
+                  Confirm Table Assignment
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

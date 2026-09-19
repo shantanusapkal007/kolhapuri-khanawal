@@ -179,7 +179,7 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     text-rendering: geometricPrecision;
   }
   body {
-    font-family: 'Courier New', 'Courier', 'Lucida Console', Monaco, monospace;
+    font-family: 'Noto Sans Devanagari', 'Nirmala UI', 'Mukta', 'Mangal', 'Lohit Devanagari', 'Courier New', monospace;
     font-size: ${baseFontSize};
     font-weight: 700 !important;
     line-height: 1.35;
@@ -309,52 +309,78 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     text-align: center;
     letter-spacing: 0.5px;
     border: 2.5px solid #000000 !important;
-    padding: 3px;
-    margin-bottom: 4px;
+    padding: 3.5px;
+    margin-bottom: 3px;
+    text-transform: uppercase;
   }
   .kot-table-info {
-    font-size: ${is58mm ? "14px" : "17px"};
+    font-size: ${is58mm ? "15px" : "18px"};
     font-weight: 900 !important;
     text-align: center;
     padding: 2px;
   }
-  .kot-item {
-    font-size: ${is58mm ? "13px" : "15px"};
-    font-weight: 900 !important;
-    padding: 3px 0;
-    border-bottom: 1.5px dotted #000000 !important;
+  .kot-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 4px 0;
   }
-  .kot-item .qty-badge {
-    display: inline-block;
-    border: 1.5px solid #000000 !important;
-    padding: 1px 5px;
-    margin-right: 4px;
-    font-weight: 900 !important;
-    font-size: ${is58mm ? "13px" : "15px"};
-  }
-  .kot-item .marathi-title {
-    font-size: ${is58mm ? "14px" : "16px"};
+  .kot-items-table th {
+    border-top: 2.5px solid #000000 !important;
+    border-bottom: 2.5px solid #000000 !important;
+    padding: 3.5px 0;
+    font-size: ${is58mm ? "11px" : "12.5px"};
     font-weight: 900 !important;
     color: #000000 !important;
   }
-  .kot-item .english-subtitle {
+  .kot-items-table td {
+    padding: 4px 0 5px 0;
+    vertical-align: top;
+    border-bottom: 1.5px dashed #000000 !important;
+  }
+  .qty-badge, .kot-qty-badge {
+    display: inline-block;
+    border: 2px solid #000000 !important;
+    padding: 1.5px 4px;
+    font-weight: 900 !important;
+    font-size: ${is58mm ? "14px" : "17px"};
+    text-align: center;
+    line-height: 1.1;
+    min-width: ${is58mm ? "22px" : "28px"};
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .marathi-title, .kot-marathi-name {
+    font-size: ${is58mm ? "15px" : "17.5px"};
+    font-weight: 900 !important;
+    color: #000000 !important;
+    line-height: 1.3;
+    font-family: 'Noto Sans Devanagari', 'Nirmala UI', 'Mukta', 'Mangal', sans-serif;
+  }
+  .english-subtitle, .kot-english-subtitle {
     font-size: ${is58mm ? "9.5px" : "11px"};
     font-weight: 600 !important;
     color: #222222 !important;
-    margin-left: 24px;
+    margin-top: 1px;
+  }
+  .kot-bread {
+    font-weight: 800 !important;
+    font-size: ${is58mm ? "11px" : "12.5px"};
+    margin-top: 2px;
+    color: #000000 !important;
   }
   .kot-notes {
     font-style: italic;
-    font-size: ${is58mm ? "10px" : "11.5px"};
-    padding-left: 8mm;
+    font-size: ${is58mm ? "11px" : "12px"};
     color: #000000 !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
+    margin-top: 2px;
   }
   .kot-spice {
-    font-size: ${is58mm ? "10px" : "11.5px"};
-    padding-left: 8mm;
+    font-size: ${is58mm ? "11px" : "12.5px"};
     font-weight: 900 !important;
     color: #000000 !important;
+    margin-top: 2px;
   }
   .footer-msg {
     text-align: center;
@@ -862,7 +888,7 @@ export function generateBillReceiptHtml(
       <td class="right small">${billTime}</td>
     </tr>
     <tr>
-      <td class="small">Table: ${bill.tableNumber} | ${bill.partyCode}</td>
+      <td class="small">${bill.isTakeaway ? `Parcel: ${bill.partyCode}` : `Table: ${bill.tableNumber} | ${bill.partyCode}`}</td>
       <td class="right small">${bill.isTakeaway ? "Type: PARCEL" : "Dine-in"}</td>
     </tr>
     <tr>
@@ -1047,8 +1073,17 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
     typeof params.taxEstimate === "number"
       ? params.taxEstimate
       : (params.cgstAmount || 0) + (params.sgstAmount || 0) || 0;
+  const isTakeaway = Boolean(params.party?.isTakeaway || params.isTakeaway || tableNumber === 0);
+  const packagingCharges =
+    typeof params.packagingCharges === "number"
+      ? params.packagingCharges
+      : params.party?.packagingCharges ?? (isTakeaway ? 20 : 0);
+  const customerName = params.party?.customerName || params.customerName;
+  const customerPhone = params.party?.customerPhone || params.customerPhone;
   const grandTotal =
-    typeof params.grandTotal === "number" ? params.grandTotal : subtotal;
+    typeof params.grandTotal === "number"
+      ? params.grandTotal
+      : Math.round(subtotal + taxEstimate + (isTakeaway ? packagingCharges : 0));
   const rawItems = params.items || [];
   const paperWidth =
     typeof params.paperWidth === "string"
@@ -1112,12 +1147,12 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
   <!-- Table Details -->
   <table>
     <tr>
-      <td class="bold">TABLE ${tableNumber}</td>
+      <td class="bold">${isTakeaway ? `🥡 PARCEL — ${partyCode}` : `TABLE ${tableNumber}`}</td>
       <td class="right small">${printTime}</td>
     </tr>
     <tr>
-      <td class="small">Party: ${partyCode}</td>
-      <td class="right small">Guests: ${guestCount}</td>
+      <td class="small">${isTakeaway ? (customerName ? `Customer: ${customerName}` : `Type: TAKEAWAY`) : `Party: ${partyCode}`}</td>
+      <td class="right small">${isTakeaway && customerPhone ? `Ph: ${customerPhone}` : `Guests: ${guestCount}`}</td>
     </tr>
     <tr>
       <td class="small">Waiter: ${waiterName}</td>
@@ -1150,6 +1185,14 @@ export function generateTableCheckHtml(params: TableCheckParams | Bill | any): s
       <td colspan="3">Subtotal:</td>
       <td colspan="2" class="right bold">₹${subtotal.toFixed(2)}</td>
     </tr>
+    ${
+      isTakeaway && packagingCharges > 0
+        ? `<tr class="totals-row">
+            <td colspan="3">Packaging / पार्सल शुल्क:</td>
+            <td colspan="2" class="right bold">₹${packagingCharges.toFixed(2)}</td>
+          </tr>`
+        : ""
+    }
     ${
       hasGst
         ? `<tr class="totals-row">
@@ -1241,21 +1284,11 @@ export function generateKotHtml(
     const marathiName = getKotItemMarathiName(item);
     const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
 
-    itemsHtml += `
-      <div class="kot-item">
-        <div style="font-size: ${is58mm ? "14px" : "16px"}; font-weight: 900; line-height: 1.25;">
-          <span class="qty-badge">${item.quantity}×</span>
-          <span class="marathi-title">${marathiName}</span>
-          ${item.seatNumber ? `<span class="tiny"> [S${item.seatNumber}]</span>` : ""}
-        </div>
-        ${hasEnglish ? `<div class="english-subtitle">${item.menuItemName}</div>` : ""}
-      </div>`;
+    const breadTag = item.breadOption
+      ? `<div class="kot-bread">🍞 भाकरी / पोळी: ${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption} (${BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en || item.breadOption})</div>`
+      : "";
 
-    if (item.breadOption) {
-      const breadObj = BREAD_OPTION_LABELS[item.breadOption as BreadOption];
-      const breadText = breadObj ? `${breadObj.mr} (${breadObj.en})` : item.breadOption;
-      itemsHtml += `<div class="kot-bread" style="font-weight:bold; font-size:12px; margin-left:14px; margin-top:2px; color:#000;">🍞 भाकरी / पोळी: ${breadText}</div>`;
-    }
+    let spiceTag = "";
     if (item.spiceLevel && item.spiceLevel !== "MEDIUM") {
       const spiceMrMap: Record<string, string> = {
         MILD: "कमी तिखट",
@@ -1265,11 +1298,27 @@ export function generateKotHtml(
         THECHA_EXTRA_SPICY: "ठेचा / खूप तिखट",
       };
       const mrSpice = spiceMrMap[item.spiceLevel] || item.spiceLevel;
-      itemsHtml += `<div class="kot-spice">🌶️ ${item.spiceLevel.replace(/_/g, " ")} (${mrSpice})</div>`;
+      spiceTag = `<div class="kot-spice">🌶️ ${item.spiceLevel.replace(/_/g, " ")} (${mrSpice})</div>`;
     }
-    if (item.notes) {
-      itemsHtml += `<div class="kot-notes">📝 ${item.notes}</div>`;
-    }
+
+    const notesTag = item.notes ? `<div class="kot-notes">📝 ${item.notes}</div>` : "";
+    const seatTag = item.seatNumber ? `<span class="tiny" style="background:#000; color:#fff; padding:1px 4px; border-radius:3px; font-weight:900; margin-left:4px;">[S${item.seatNumber}]</span>` : "";
+
+    itemsHtml += `
+      <tr>
+        <td style="width:${is58mm ? "22%" : "18%"}; text-align:center; vertical-align:top; padding:5px 2px;">
+          <span class="qty-badge kot-qty-badge">${item.quantity}×</span>
+        </td>
+        <td style="width:${is58mm ? "78%" : "82%"}; vertical-align:top; padding:4px 2px 6px 6px; word-break:break-word;">
+          <div class="kot-marathi-name">
+            <span class="marathi-title">${marathiName}</span>${seatTag}
+          </div>
+          ${hasEnglish ? `<div class="english-subtitle kot-english-subtitle">${item.menuItemName}</div>` : ""}
+          ${breadTag}
+          ${spiceTag}
+          ${notesTag}
+        </td>
+      </tr>`;
   }
 
   return `<!DOCTYPE html>
@@ -1280,6 +1329,10 @@ export function generateKotHtml(
   <style>${getThermalBaseCss(paperWidth)}</style>
 </head>
 <body>
+  <div class="center bold" style="font-size:${is58mm ? "13px" : "15px"}; margin-bottom:2px; letter-spacing:0.5px;">
+    ${RESTAURANT_NAME}
+  </div>
+
   ${
     kot.isTakeaway
       ? `
@@ -1297,7 +1350,7 @@ export function generateKotHtml(
   </div>
 
   <div class="kot-table-info">
-    TABLE ${kot.tableNumber} — ${kot.partyCode}
+    ${kot.isTakeaway ? `🥡 पार्सल (PARCEL) — ${kot.partyCode}` : `TABLE ${kot.tableNumber} — ${kot.partyCode}`}
   </div>
 
   <div class="center tiny bold" style="letter-spacing: 2px; margin-bottom: 2px;">
@@ -1315,9 +1368,9 @@ export function generateKotHtml(
   ${
     kot.isTakeaway
       ? `
-  <div style="text-align:center; font-weight:bold; font-size:12px; border:1.5px dashed #000; padding:2px; margin:2px 0 3px 0;">
-    🥡 TAKEAWAY / PARCEL (पार्सल)
-    ${kot.customerName ? `<div class="small bold" style="margin-top:2px;">ग्राहक (Customer): ${kot.customerName}</div>` : ""}
+  <div style="text-align:center; font-weight:bold; font-size:12px; border:1.5px dashed #000; padding:3px; margin:2px 0 3px 0;">
+    🥡 TAKEAWAY / PARCEL (पार्सल) — टोकन: ${kot.partyCode}
+    ${kot.customerName ? `<div class="small bold" style="margin-top:2px; font-size:13px;">ग्राहक (Customer): ${kot.customerName}</div>` : ""}
   </div>
   `
       : ""
@@ -1341,17 +1394,23 @@ export function generateKotHtml(
     </tr>
   </table>
 
-  <div class="double-line"></div>
+  <!-- Order Items (Large Marathi Devanagari font with structured grid alignment) -->
+  <table class="kot-items-table">
+    <thead>
+      <tr>
+        <th style="width:${is58mm ? "22%" : "18%"}; text-align:center;">नग (Qty)</th>
+        <th style="width:${is58mm ? "78%" : "82%"}; text-align:left; padding-left:6px;">पदार्थ तपशील (Dish Details)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml}
+    </tbody>
+  </table>
 
-  <!-- Order Items (Large Marathi Devanagari font for kitchen clarity) -->
-  ${itemsHtml}
-
-  <div class="double-line"></div>
-
-  ${kot.notes ? `<div class="small" style="padding:2px 0;"><b>विशेष सूचना / Order Notes:</b> ${kot.notes}</div><div class="dashed"></div>` : ""}
+  ${kot.notes ? `<div class="small" style="padding:4px 0; border-top: 1.5px dashed #000; border-bottom: 1.5px dashed #000;"><b>विशेष सूचना / Order Notes:</b> ${kot.notes}</div>` : ""}
 
   <!-- Summary -->
-  <table>
+  <table style="margin-top: 4px;">
     <tr>
       <td class="bold">पदार्थ: ${itemsToRender.length} (Items: ${itemsToRender.length})</td>
       <td class="right bold">एकूण नग: ${itemsToRender.reduce((s, i) => s + i.quantity, 0)} (Total Qty: ${itemsToRender.reduce((s, i) => s + i.quantity, 0)})</td>
@@ -1418,13 +1477,17 @@ export function generateCancelledKotHtml(
     const marathiName = getKotItemMarathiName(item);
     const hasEnglish = item.menuItemName && item.menuItemName.trim() !== marathiName.trim();
     itemsHtml += `
-      <div class="kot-item" style="text-decoration: line-through; padding: 3px 0;">
-        <div style="font-size: ${is58mm ? "14px" : "16px"}; font-weight: 900; line-height: 1.25;">
-          <span class="qty-badge">${item.quantity}×</span>
-          <span class="marathi-title">${marathiName}</span>
-        </div>
-        ${hasEnglish ? `<div class="english-subtitle">(${item.menuItemName})</div>` : ""}
-      </div>`;
+      <tr style="text-decoration: line-through; opacity: 0.85;">
+        <td style="width:${is58mm ? "22%" : "18%"}; text-align:center; vertical-align:top; padding:5px 2px;">
+          <span class="qty-badge kot-qty-badge">${item.quantity}×</span>
+        </td>
+        <td style="width:${is58mm ? "78%" : "82%"}; vertical-align:top; padding:4px 2px 6px 6px; word-break:break-word;">
+          <div class="kot-marathi-name">
+            <span class="marathi-title">${marathiName}</span>
+          </div>
+          ${hasEnglish ? `<div class="english-subtitle kot-english-subtitle">(${item.menuItemName})</div>` : ""}
+        </td>
+      </tr>`;
   }
 
   return `<!DOCTYPE html>
@@ -1478,10 +1541,19 @@ export function generateCancelledKotHtml(
     </tr>
   </table>
 
-  <div class="double-line"></div>
-
-  <div class="bold small" style="padding-bottom:2px;">Items to cancel: (रद्द केलेले पदार्थ)</div>
-  ${itemsHtml}
+  <!-- Order Items (Large Marathi Devanagari font with structured grid alignment) -->
+  <div class="bold small" style="padding-top:4px; padding-bottom:2px;">Items to cancel: (रद्द केलेले पदार्थ)</div>
+  <table class="kot-items-table">
+    <thead>
+      <tr>
+        <th style="width:${is58mm ? "22%" : "18%"}; text-align:center;">नग (Qty)</th>
+        <th style="width:${is58mm ? "78%" : "82%"}; text-align:left; padding-left:6px;">रद्द पदार्थ (Cancelled Dishes)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml}
+    </tbody>
+  </table>
 
   <div class="double-line"></div>
 

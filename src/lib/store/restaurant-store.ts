@@ -1751,6 +1751,9 @@ export class RestaurantStore {
       party.customerName = customerName;
       party.customerPhone = customerPhone;
       party.packagingCharges = packagingCharges ?? 20;
+    } else {
+      party.isTakeaway = false;
+      party.packagingCharges = 0;
     }
 
     this.parties.push(party);
@@ -1808,15 +1811,21 @@ export class RestaurantStore {
     return party;
   }
 
-  convertToTakeawayParty(partyId: string, customerName?: string, customerPhone?: string): DiningParty {
+  convertToTakeawayParty(
+    partyId: string,
+    customerName?: string,
+    customerPhone?: string,
+    packagingCharges = 20
+  ): DiningParty {
     const party = this.parties.find((p) => p.id === partyId);
     if (!party) throw new Error(`Party ${partyId} not found`);
 
     party.isTakeaway = true;
     party.tableNumber = 0;
     party.tableId = "table-takeaway";
-    if (customerName) party.customerName = customerName;
-    if (customerPhone) party.customerPhone = customerPhone;
+    party.packagingCharges = packagingCharges;
+    if (customerName) party.customerName = customerName.trim();
+    if (customerPhone) party.customerPhone = customerPhone.trim();
     if (!party.partyCode.startsWith("PARCEL-")) {
       const todayStr = new Date().toISOString().split("T")[0];
       const todayParcels = this.parties.filter(
@@ -1826,6 +1835,22 @@ export class RestaurantStore {
     }
     party.lastActivityAt = new Date().toISOString();
 
+    // Update ongoing orders and KOTs
+    this.orders = this.orders.map((o) =>
+      o.partyId === partyId ? { ...o, tableNumber: 0, partyCode: party.partyCode } : o
+    );
+    this.kots = this.kots.map((k) =>
+      k.partyId === partyId
+        ? {
+            ...k,
+            tableNumber: 0,
+            partyCode: party.partyCode,
+            isTakeaway: true,
+            customerName: party.customerName,
+          }
+        : k
+    );
+
     // Release physical table occupancy immediately
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
 
@@ -1833,9 +1858,88 @@ export class RestaurantStore {
       "CONVERT_TO_TAKEAWAY",
       "DINING_PARTY",
       party.id,
-      `Converted party to Takeaway Parcel ${party.partyCode}`
+      `Converted party to Takeaway Parcel ${party.partyCode} (Packaging: ₹${packagingCharges})`
     );
     this.notifyStateChange("convertToTakeawayParty");
+    return party;
+  }
+
+  convertToTableParty(partyId: string, toTableNumber: number): DiningParty {
+    const party = this.parties.find((p) => p.id === partyId);
+    if (!party) throw new Error(`Party ${partyId} not found`);
+
+    const targetTable = this.tables.find((t) => t.tableNumber === toTableNumber);
+    if (!targetTable) throw new Error(`Table ${toTableNumber} not found`);
+
+    party.isTakeaway = false;
+    party.tableNumber = toTableNumber;
+    party.tableId = targetTable.id;
+    party.packagingCharges = 0;
+    party.descriptor = `Table ${toTableNumber}`;
+    party.lastActivityAt = new Date().toISOString();
+
+    // If partyCode was PARCEL-XX, format as T{tableNumber}-P01
+    if (party.partyCode.startsWith("PARCEL-")) {
+      const existingParties = this.parties.filter(
+        (p) => p.tableId === targetTable.id && p.id !== partyId && p.status !== "CLOSED" && p.status !== "CANCELLED"
+      );
+      party.partyCode = `T${toTableNumber}-P${String(existingParties.length + 1).padStart(2, "0")}`;
+    }
+
+    // Update ongoing orders and KOTs tableNumber
+    this.orders = this.orders.map((o) =>
+      o.partyId === partyId ? { ...o, tableNumber: toTableNumber, partyCode: party.partyCode } : o
+    );
+    this.kots = this.kots.map((k) =>
+      k.partyId === partyId
+        ? {
+            ...k,
+            tableNumber: toTableNumber,
+            partyCode: party.partyCode,
+            isTakeaway: false,
+          }
+        : k
+    );
+
+    // Refresh table occupancy
+    this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+
+    this.recordAuditLog(
+      "CONVERT_TO_TABLE",
+      "DINING_PARTY",
+      party.id,
+      `Converted Takeaway Parcel to Dine-in at Table ${toTableNumber} (${party.partyCode})`
+    );
+    this.notifyStateChange("convertToTableParty");
+    return party;
+  }
+
+  updatePartyCustomerInfo(
+    partyId: string,
+    customerName: string,
+    customerPhone?: string,
+    notes?: string
+  ): DiningParty {
+    const party = this.parties.find((p) => p.id === partyId);
+    if (!party) throw new Error(`Party ${partyId} not found`);
+
+    party.customerName = customerName.trim();
+    if (customerPhone !== undefined) party.customerPhone = customerPhone.trim();
+    if (notes !== undefined) party.notes = notes.trim();
+    party.lastActivityAt = new Date().toISOString();
+
+    // Update ongoing KOTs customerName
+    this.kots = this.kots.map((k) =>
+      k.partyId === partyId ? { ...k, customerName: party.customerName } : k
+    );
+
+    this.recordAuditLog(
+      "UPDATE_PARTY_CUSTOMER",
+      "DINING_PARTY",
+      party.id,
+      `Updated customer details: ${party.customerName} (${party.customerPhone || "No Phone"})`
+    );
+    this.notifyStateChange("updatePartyCustomerInfo");
     return party;
   }
 
@@ -2226,6 +2330,88 @@ export class RestaurantStore {
     return updatedKot;
   }
 
+  cancelOrderItem(orderItemId: string, reason: string = "Customer changed mind"): { order: Order; cancelledItem: OrderItem } {
+    const order = this.orders.find((o) => o.items.some((it) => it.id === orderItemId));
+    if (!order) throw new Error(`Order item ${orderItemId} not found`);
+
+    const item = order.items.find((it) => it.id === orderItemId)!;
+    if (item.isCancelled) throw new Error(`Item "${item.menuItemName}" is already cancelled`);
+
+    // 1. Release reserved ingredients in stock reservations
+    const recipe = this.recipes.find((r) => r.menuItemId === item.menuItemId);
+    if (recipe) {
+      for (const itemIng of recipe.ingredients) {
+        const qtyToRelease = itemIng.quantity * item.quantity;
+        const res = this.stockReservations.find(
+          (r) => r.orderId === order.id && r.ingredientId === itemIng.ingredientId && r.status === "RESERVED"
+        );
+        if (res) {
+          res.status = "RELEASED";
+        }
+        const ing = this.ingredients.find((i) => i.id === itemIng.ingredientId);
+        if (ing) {
+          ing.reservedStock = Math.max(0, Number((ing.reservedStock - qtyToRelease).toFixed(4)));
+          ing.availableStock = Math.max(0, Number((ing.physicalStock - ing.reservedStock).toFixed(4)));
+        }
+      }
+    }
+
+    // 2. Mark item cancelled on order and update order subtotal
+    item.isCancelled = true;
+    item.kotStatus = "CANCELLED";
+    (item as any).cancellationReason = reason;
+    const activeItems = order.items.filter((it) => !it.isCancelled);
+    order.subtotal = activeItems.reduce((sum, it) => sum + it.totalPrice, 0);
+    if (activeItems.length === 0) {
+      order.status = "CANCELLED";
+    }
+
+    // 3. Mark item cancelled on KOT
+    if (item.kotId) {
+      this.kots = this.kots.map((kot) => {
+        if (kot.id === item.kotId) {
+          const updatedKotItems = kot.items.map((ki) =>
+            ki.orderItemId === orderItemId ? { ...ki, status: "CANCELLED" as any } : ki
+          );
+          const activeKotItems = updatedKotItems.filter((ki) => ki.status !== "CANCELLED");
+          return {
+            ...kot,
+            items: updatedKotItems,
+            status: activeKotItems.length === 0 ? "CANCELLED" : kot.status,
+          };
+        }
+        return kot;
+      });
+    }
+
+    // 4. Update dining party running subtotal
+    this.parties = this.parties.map((p) => {
+      if (p.id === order.partyId) {
+        const newSubtotal = Math.max(0, p.runningSubtotal - item.totalPrice);
+        const hasOtherActiveOrders = this.orders.some(
+          (o) => o.partyId === p.id && o.status !== "CANCELLED" && o.items.some((it) => !it.isCancelled)
+        );
+        return {
+          ...p,
+          runningSubtotal: newSubtotal,
+          status: !hasOtherActiveOrders ? "OPEN" : p.status,
+          lastActivityAt: new Date().toISOString(),
+        };
+      }
+      return p;
+    });
+
+    this.recordAuditLog(
+      "CANCEL_ORDER_ITEM",
+      "ORDER_ITEM",
+      orderItemId,
+      `Cancelled "${item.menuItemName}" × ${item.quantity} (₹${item.totalPrice}) from ${order.orderNumber}: ${reason}`
+    );
+    this.recalculateMenuAvailability();
+    this.notifyStateChange("cancelOrderItem");
+    return { order, cancelledItem: item };
+  }
+
   // --- BILLING & PAYMENT ---
 
   generateBillForParty(partyId: string, discountPercent = 0): Bill {
@@ -2434,6 +2620,7 @@ export class RestaurantStore {
     const billsToday = this.bills.filter((b) => b.createdAt.startsWith(dateStr));
     const settledBills = billsToday.filter((b) => b.status === "PAID");
     const cancelledBills = billsToday.filter((b) => b.status === "CANCELLED");
+    const cancelledKots = this.kots.filter((k) => k.createdAt.startsWith(dateStr) && k.status === "CANCELLED");
 
     const grossSalesSubtotal = settledBills.reduce((sum, b) => sum + b.subtotal, 0);
     const totalDiscountAmount = settledBills.reduce((sum, b) => sum + b.discountAmount, 0);
@@ -2519,7 +2706,7 @@ export class RestaurantStore {
       sgstTotal: Number(sgstAmount.toFixed(2)),
       topDishes: topSellingDishes.map((d) => ({ name: d.name, qty: d.quantity, revenue: d.revenue })),
       auditDiscrepancyCount: auditDiscrepanciesCount,
-      cancelledKotsCount: cancelledBills.length,
+      cancelledKotsCount: cancelledKots.length,
     };
   }
 
