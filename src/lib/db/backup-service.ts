@@ -5,6 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { DatabaseSync } from "node:sqlite";
 
 export class BackupService {
@@ -17,9 +18,16 @@ export class BackupService {
       throw new Error(`Source database file does not exist at: ${sourceDbPath}`);
     }
 
-    const dir = backupDir || path.join(path.dirname(sourceDbPath), "backups");
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    let dir = backupDir || path.join(path.dirname(sourceDbPath), "backups");
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch {
+      dir = path.join(os.tmpdir(), "kolhapuri-backups");
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");

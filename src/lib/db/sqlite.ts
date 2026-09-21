@@ -6,6 +6,7 @@
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 let dbInstance: DatabaseSync | null = null;
 
@@ -20,13 +21,45 @@ export function getDatabase(): DatabaseSync {
     // Isolated in-memory database for fast automated test suites
     dbInstance = new DatabaseSync(":memory:");
   } else {
-    // Persistent file database for development & production operations
-    const dataDir = path.resolve(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    // Determine writable data directory.
+    // In serverless environments (e.g. Vercel, AWS Lambda where process.cwd() is /var/task),
+    // the application directory is strictly read-only and writable storage is in os.tmpdir() (/tmp).
+    let dataDir = process.env.DATA_DIR;
+
+    if (!dataDir) {
+      const isServerless = Boolean(
+        process.env.VERCEL ||
+        process.env.AWS_LAMBDA_FUNCTION_NAME ||
+        (typeof process.cwd === "function" && process.cwd().startsWith("/var/task"))
+      );
+
+      if (isServerless) {
+        dataDir = path.join(os.tmpdir(), "kolhapuri-data");
+      } else {
+        dataDir = path.resolve(process.cwd(), "data");
+      }
     }
+
+    try {
+      if (!fs.existsSync(/*turbopackIgnore: true*/ dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+    } catch {
+      // Fallback to OS temporary directory if working directory is read-only (e.g. /var/task)
+      dataDir = path.join(os.tmpdir(), "kolhapuri-data");
+      try {
+        if (!fs.existsSync(/*turbopackIgnore: true*/ dataDir)) {
+          fs.mkdirSync(dataDir, { recursive: true });
+        }
+      } catch {}
+    }
+
     const dbPath = path.join(dataDir, "pos.db");
-    dbInstance = new DatabaseSync(dbPath);
+    try {
+      dbInstance = new DatabaseSync(dbPath);
+    } catch {
+      dbInstance = new DatabaseSync(":memory:");
+    }
   }
 
   // Optimize SQLite for high-speed multi-terminal concurrent restaurant operations
