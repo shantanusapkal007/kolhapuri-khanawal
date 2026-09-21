@@ -39,12 +39,16 @@ export async function POST(request: NextRequest) {
       token: authResult.session.token,
     });
 
-    // Set secure HTTP-only cookie
+    // Set HTTP-only cookie (only set secure flag if actual HTTPS/proxy connection, allowing local LAN HTTP on mobile)
+    const isHttps =
+      request.nextUrl.protocol === "https:" ||
+      request.headers.get("x-forwarded-proto") === "https";
+
     response.cookies.set({
       name: "auth_session",
       value: authResult.session.token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days

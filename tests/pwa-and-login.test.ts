@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import fs from "fs";
 import path from "path";
+import { NextRequest } from "next/server";
+import { POST as loginRoute } from "@/app/api/auth/login/route";
 import { globalRestaurantStore } from "@/lib/store/restaurant-store";
 
 describe("PWA & Authentication & Simplified Order Taking", () => {
@@ -132,6 +134,43 @@ describe("PWA & Authentication & Simplified Order Taking", () => {
       const pinLoginRes = store.loginUser("5566", "");
       expect(pinLoginRes.success).toBe(true);
       expect(pinLoginRes.user?.name).toContain("Santosh Kadam");
+    });
+
+    it("should authenticate via POST /api/auth/login with admin123, waiter 1111, and direct PIN", async () => {
+      // 1. Admin login with admin123
+      const adminReq = new NextRequest("http://192.168.1.5:3000/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "admin", pin: "admin123" }),
+      });
+      const adminRes = await loginRoute(adminReq);
+      expect(adminRes.status).toBe(200);
+      const adminData = await adminRes.json();
+      expect(adminData.success).toBe(true);
+      expect(adminData.user.role).toBe("OWNER");
+      const cookie = adminRes.cookies.get("auth_session");
+      expect(cookie).toBeDefined();
+
+      // 2. Waiter login with rahul / 1111
+      const waiterReq = new NextRequest("http://192.168.1.5:3000/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "rahul", pin: "1111" }),
+      });
+      const waiterRes = await loginRoute(waiterReq);
+      expect(waiterRes.status).toBe(200);
+      const waiterData = await waiterRes.json();
+      expect(waiterData.success).toBe(true);
+      expect(waiterData.user.role).toBe("WAITER");
+
+      // 3. Direct 4-digit PIN login without username
+      const directPinReq = new NextRequest("http://192.168.1.5:3000/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: "1111", pin: "1111" }),
+      });
+      const directPinRes = await loginRoute(directPinReq);
+      expect(directPinRes.status).toBe(200);
+      const directPinData = await directPinRes.json();
+      expect(directPinData.success).toBe(true);
+      expect(directPinData.user.role).toBe("WAITER");
     });
   });
 

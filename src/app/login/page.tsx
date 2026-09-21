@@ -87,24 +87,27 @@ export default function LoginPage() {
     if (e) e.preventDefault();
     setError(null);
 
-    const inputUser = activeTab === "WAITER" ? (selectedWaiter ? selectedWaiter.username : username) : username;
+    let inputUser = activeTab === "WAITER" ? (selectedWaiter ? selectedWaiter.username : username) : username;
 
-    if (!inputUser) {
-      setError("Please enter or select a username");
+    // If user entered a 4-digit PIN on keypad without selecting a user, use direct PIN login
+    if (!inputUser && pin && pin.length >= 4) {
+      inputUser = pin;
+    }
+
+    if (!inputUser && !pin) {
+      setError("Please select staff or enter 4-digit PIN");
       return;
     }
 
-    if (!pin) {
-      setError("Please enter your 4-digit PIN");
-      return;
-    }
+    const payloadUser = inputUser || pin;
+    const payloadPin = pin || inputUser;
 
     try {
       // 1. Authoritative Server-Side Authentication
       const apiRes = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: inputUser, pin }),
+        body: JSON.stringify({ username: payloadUser, pin: payloadPin }),
       });
 
       const apiData = await apiRes.json().catch(() => null);
@@ -119,15 +122,19 @@ export default function LoginPage() {
         store.currentUser.name = apiData.user.name;
         store.currentUser.role = apiData.user.role;
 
-        if (apiData.user.role === "WAITER") {
-          router.push("/waiter");
-        } else if (apiData.user.role === "KITCHEN") {
-          router.push("/kitchen");
-        } else if (apiData.user.role === "CASHIER") {
-          router.push("/billing");
-        } else {
-          router.push("/dashboard");
-        }
+        const targetUrl =
+          apiData.user.role === "WAITER"
+            ? "/waiter"
+            : apiData.user.role === "KITCHEN"
+            ? "/kitchen"
+            : apiData.user.role === "CASHIER"
+            ? "/billing"
+            : "/dashboard";
+
+        window.location.href = targetUrl;
+        return;
+      } else if (apiData?.error) {
+        setError(apiData.error);
         return;
       }
     } catch {
@@ -135,18 +142,19 @@ export default function LoginPage() {
     }
 
     // 2. Offline PWA fallback
-    const res = store.loginUser(inputUser, pin);
+    const res = store.loginUser(payloadUser, payloadPin);
 
     if (res.success && res.user) {
-      if (res.user.role === "WAITER") {
-        router.push("/waiter");
-      } else if (res.user.role === "KITCHEN") {
-        router.push("/kitchen");
-      } else if (res.user.role === "CASHIER") {
-        router.push("/billing");
-      } else {
-        router.push("/dashboard");
-      }
+      const targetUrl =
+        res.user.role === "WAITER"
+          ? "/waiter"
+          : res.user.role === "KITCHEN"
+          ? "/kitchen"
+          : res.user.role === "CASHIER"
+          ? "/billing"
+          : "/dashboard";
+
+      window.location.href = targetUrl;
     } else {
       setError(res.error || "Invalid username or PIN");
     }
@@ -174,20 +182,34 @@ export default function LoginPage() {
         store.currentUser.name = apiData.user.name;
         store.currentUser.role = apiData.user.role;
 
-        if (apiData.user.role === "WAITER") router.push("/waiter");
-        else if (apiData.user.role === "KITCHEN") router.push("/kitchen");
-        else if (apiData.user.role === "CASHIER") router.push("/billing");
-        else router.push("/dashboard");
+        const targetUrl =
+          apiData.user.role === "WAITER"
+            ? "/waiter"
+            : apiData.user.role === "KITCHEN"
+            ? "/kitchen"
+            : apiData.user.role === "CASHIER"
+            ? "/billing"
+            : "/dashboard";
+
+        window.location.href = targetUrl;
         return;
       }
     } catch {}
 
     const res = store.loginUser(roleUser, rolePin);
     if (res.success && res.user) {
-      if (res.user.role === "WAITER") router.push("/waiter");
-      else if (res.user.role === "KITCHEN") router.push("/kitchen");
-      else if (res.user.role === "CASHIER") router.push("/billing");
-      else router.push("/dashboard");
+      const targetUrl =
+        res.user.role === "WAITER"
+          ? "/waiter"
+          : res.user.role === "KITCHEN"
+          ? "/kitchen"
+          : res.user.role === "CASHIER"
+          ? "/billing"
+          : "/dashboard";
+
+      window.location.href = targetUrl;
+    } else {
+      setError(res.error || "Login failed");
     }
   };
 
@@ -345,29 +367,43 @@ export default function LoginPage() {
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     {waiters.map((w) => (
-                      <button
+                      <div
                         key={w.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedWaiter(w);
-                          setUsername(w.username);
-                          setPin("");
-                          setError(null);
-                        }}
-                        className={`p-2.5 rounded-xl text-left border transition-all touch-manipulation flex items-center justify-between ${
+                        className={`p-2.5 rounded-xl border transition-all flex flex-col justify-between gap-1.5 ${
                           selectedWaiter?.id === w.id
                             ? "bg-red-950/70 border-red-500/80 text-white ring-2 ring-red-500/30"
                             : "bg-stone-950/60 border-stone-800 text-stone-300 hover:border-stone-700"
                         }`}
                       >
-                        <div className="truncate">
-                          <span className="text-xs font-black block truncate">{w.name}</span>
-                          <span className="text-[10px] text-stone-400 font-mono block">@{w.username}</span>
-                        </div>
-                        {selectedWaiter?.id === w.id && (
-                          <CheckCircle2 className="w-4 h-4 text-red-400 shrink-0 ml-1" />
-                        )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedWaiter(w);
+                            setUsername(w.username);
+                            setPin("");
+                            setError(null);
+                          }}
+                          className="text-left w-full cursor-pointer flex items-center justify-between"
+                        >
+                          <div className="truncate">
+                            <span className="text-xs font-black block truncate">{w.name}</span>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[10px] text-stone-400 font-mono block">@{w.username}</span>
+                              <span className="text-[9px] text-amber-400 font-mono font-bold bg-amber-400/10 px-1 rounded">PIN: {w.pin}</span>
+                            </div>
+                          </div>
+                          {selectedWaiter?.id === w.id && (
+                            <CheckCircle2 className="w-4 h-4 text-red-400 shrink-0 ml-1" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickDemoLogin(w.name, w.username, w.pin)}
+                          className="w-full py-1 px-1.5 bg-stone-800/80 hover:bg-stone-700 active:bg-stone-600 text-amber-300 rounded-lg text-[10px] font-bold font-mono flex items-center justify-center gap-1 border border-stone-700/50 cursor-pointer active:scale-95 touch-manipulation"
+                        >
+                          <span>⚡ 1-टॅप लॉगिन ({w.pin})</span>
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -439,14 +475,14 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => handleLoginSubmit()}
-                disabled={pin.length < 4}
+                disabled={pin.length < 4 && !selectedWaiter}
                 className={`w-full py-3.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all touch-manipulation ${
-                  pin.length >= 4
-                    ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-red-700/30"
+                  pin.length >= 4 || selectedWaiter
+                    ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white shadow-red-700/30 cursor-pointer"
                     : "bg-stone-800 text-stone-500 cursor-not-allowed"
                 }`}
               >
-                <span>Login as {selectedWaiter?.name || "Waiter"}</span>
+                <span>Login as {selectedWaiter?.name || (pin.length === 4 ? `PIN ${pin}` : "Waiter")}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -481,7 +517,7 @@ export default function LoginPage() {
                     required
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    placeholder="Enter password (admin123)"
+                    placeholder="Enter password (admin123 or 1234)"
                     className="w-full bg-stone-950/80 border border-stone-800 rounded-2xl pl-10 pr-10 py-3 text-xs text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <button
@@ -508,49 +544,68 @@ export default function LoginPage() {
                 <span>Authorize & Enter</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* Quick Demo Switcher */}
-              <div className="pt-3 border-t border-stone-800/80 space-y-1.5">
-                <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                  Quick Access Shortcuts (1-टॅप लॉगिन):
-                </span>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin("Admin", "admin", "admin123")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
-                  >
-                    <span>👑 Owner / Admin</span>
-                    <span className="text-amber-400 font-mono text-[10px]">admin123</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin("Manager", "manager", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
-                  >
-                    <span>👔 Manager</span>
-                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin("Cashier", "cashier", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
-                  >
-                    <span>🧾 Cashier Desk</span>
-                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDemoLogin("Kitchen", "chef", "1234")}
-                    className="p-2 bg-stone-950/60 hover:bg-stone-800 border border-stone-800 rounded-xl text-left flex items-center justify-between text-stone-300 active:scale-95 cursor-pointer"
-                  >
-                    <span>👨‍🍳 Kitchen KDS</span>
-                    <span className="text-stone-500 font-mono text-[10px]">1234</span>
-                  </button>
-                </div>
-              </div>
             </form>
           )}
+
+          {/* Global Quick Access Shortcuts (Always visible on mobile & desktop) */}
+          <div className="pt-3 border-t border-stone-800/80 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                ⚡ 1-टॅप जलद लॉगिन (Quick 1-Tap Access):
+              </span>
+              <span className="text-[10px] text-stone-500 font-mono">Any Role</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Rahul", "rahul", "1111")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-red-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">🍽️ Rahul (Waiter)</span>
+                <span className="text-amber-400 font-mono text-[10px] shrink-0 ml-1">1111</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Nitin", "nitin", "2222")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-red-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">🍽️ Nitin (Waiter)</span>
+                <span className="text-amber-400 font-mono text-[10px] shrink-0 ml-1">2222</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Cashier", "cashier", "1234")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-emerald-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">🧾 Cashier</span>
+                <span className="text-emerald-400 font-mono text-[10px] shrink-0 ml-1">1234</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Kitchen", "chef", "1234")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-amber-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">👨‍🍳 Kitchen KDS</span>
+                <span className="text-amber-400 font-mono text-[10px] shrink-0 ml-1">1234</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Admin", "admin", "admin123")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-red-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">👑 Owner / Admin</span>
+                <span className="text-amber-400 font-mono text-[10px] shrink-0 ml-1">admin123</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickDemoLogin("Manager", "manager", "1234")}
+                className="p-2 bg-stone-950/70 hover:bg-stone-800 border border-stone-800 hover:border-purple-500/50 rounded-xl text-left flex items-center justify-between text-stone-200 active:scale-95 cursor-pointer touch-manipulation"
+              >
+                <span className="truncate">👔 Manager</span>
+                <span className="text-purple-400 font-mono text-[10px] shrink-0 ml-1">1234</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Footer info */}
