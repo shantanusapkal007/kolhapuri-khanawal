@@ -634,7 +634,7 @@ export default function WaiterOrderClient({
 
       store.addNotification({
         type: "KOT_NEW",
-        title: isTakeaway ? `KOT #${result.kot.kotNumber} (Parcel ${party.partyCode})` : `KOT #${result.kot.kotNumber} (Table ${party.tableNumber})`,
+        title: isTakeaway ? `KOT #${result.kot.kotNumber} (Parcel ${party.partyCode})` : `KOT #${result.kot.kotNumber} (Table ${store.getTableName(party.tableNumber)})`,
         message: `${result.kot.items.map((i) => `${i.menuItemLocalName || i.menuItemName} × ${i.quantity}`).join(", ")} स्वयंपाकघरात पाठवले (Dispatched to kitchen).`,
         category: "KITCHEN",
         urgency: "HIGH",
@@ -824,7 +824,7 @@ export default function WaiterOrderClient({
       }
       printBillReceipt(bill, false, store.printerSettings?.paperWidth || "80mm");
       setShowMoreActions(false);
-      showToast(`Bill printed for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
+      showToast(`Bill printed for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${store.getTableName(party.tableNumber)}`}!`);
     } catch (err: any) {
       showToast(`Could not print bill: ${err.message}`);
     }
@@ -865,7 +865,7 @@ export default function WaiterOrderClient({
         paperWidth: store.printerSettings?.paperWidth || "80mm",
       });
       setShowMoreActions(false);
-      showToast(`Bill requested for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}!`);
+      showToast(`Bill requested for ${isTakeaway ? `Parcel ${party.partyCode}` : `Table ${store.getTableName(party.tableNumber)}`}!`);
     } catch (err: any) {
       showToast(`Could not request bill: ${err.message}`);
     }
@@ -1088,7 +1088,7 @@ export default function WaiterOrderClient({
                       try {
                         store.convertToTakeawayParty(party.id);
                         setShowMoreActions(false);
-                        showToast(`Switched Table ${party.tableNumber} to Takeaway Parcel! Physical table is now FREE.`);
+                        showToast(`Switched Table ${store.getTableName(party.tableNumber)} to Takeaway Parcel! Physical table is now FREE.`);
                         router.refresh();
                       } catch (e: any) {
                         showToast(e.message);
@@ -1561,19 +1561,19 @@ export default function WaiterOrderClient({
                             <button
                               type="button"
                               onClick={() => handleThaliQuantityChange(item, -1)}
-                              className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                              className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-white border border-red-200 text-stone-700 flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                               title="कमी करा (Decrease Thali)"
                             >
                               <Minus className="w-4 h-4" />
                             </button>
-                            <span className="font-tabular font-black text-sm text-stone-900 px-1 min-w-5 text-center">
+                            <span className="font-tabular font-black text-sm text-stone-900 px-1.5 min-w-5 text-center">
                               {inCartTotal}
                             </span>
                             <button
                               type="button"
                               disabled={isOut}
                               onClick={() => handleThaliQuantityChange(item, 1)}
-                              className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                              className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-red-600 text-white font-black flex items-center justify-center active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                               title="वाढवा (Increase Thali)"
                             >
                               <Plus className="w-4 h-4" />
@@ -1584,9 +1584,9 @@ export default function WaiterOrderClient({
                             type="button"
                             disabled={isOut}
                             onClick={() => handleThaliQuantityChange(item, 1)}
-                            className="px-3.5 py-1.5 rounded-xl bg-stone-900 text-white font-black text-xs flex items-center gap-1 hover:bg-stone-800 active:scale-95 touch-manipulation cursor-pointer shadow-2xs shrink-0"
+                            className="min-h-[44px] px-4 py-2.5 rounded-2xl bg-stone-900 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 hover:bg-stone-800 active:scale-95 touch-manipulation cursor-pointer shadow-2xs shrink-0"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4 text-amber-200" />
                             <span>थाळी जोडा (Add)</span>
                           </button>
                         )}
@@ -1745,7 +1745,7 @@ export default function WaiterOrderClient({
                               onClick={() => {
                                 for (let i = 0; i < q; i++) handleAddToCart(item);
                               }}
-                              className="px-1.5 py-0.5 rounded-md bg-stone-100 hover:bg-stone-200 text-stone-600 text-[9px] font-bold active:scale-90"
+                              className="px-2.5 py-1 min-h-[32px] rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold active:scale-90 transition-all touch-manipulation cursor-pointer"
                               title={`Add ${q}`}
                             >
                               +{q}
@@ -1759,20 +1759,20 @@ export default function WaiterOrderClient({
                           <button
                             type="button"
                             onClick={() => handleCardDecrement(item)}
-                            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                            className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-white border border-stone-300 text-stone-700 flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span className="font-tabular font-black text-sm text-red-700 px-1 min-w-5 text-center">
+                          <span className="font-tabular font-black text-sm text-red-700 px-1.5 min-w-5 text-center">
                             {inCartTotal}
                           </span>
                           <button
                             type="button"
                             disabled={isOut}
                             onClick={() => handleAddToCart(item)}
-                            className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
+                            className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl bg-red-600 text-white flex items-center justify-center font-black active:scale-90 touch-manipulation shadow-2xs cursor-pointer"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       ) : (
@@ -1780,13 +1780,13 @@ export default function WaiterOrderClient({
                           type="button"
                           disabled={isOut}
                           onClick={() => handleAddToCart(item)}
-                          className={`min-h-[38px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation cursor-pointer ${
+                          className={`min-h-[44px] px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs active:scale-95 transition-all touch-manipulation cursor-pointer ${
                             isOut
                               ? "bg-stone-200 text-stone-400 cursor-not-allowed"
                               : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white"
                           }`}
                         >
-                          <Plus className="w-3.5 h-3.5 text-amber-200" />
+                          <Plus className="w-4 h-4 text-amber-200" />
                           <span>जोडा (Add)</span>
                         </button>
                       )}
@@ -1805,7 +1805,7 @@ export default function WaiterOrderClient({
             <div className="flex items-center justify-between pb-2.5 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <span className="font-black text-sm text-stone-900">
-                  {party.isTakeaway || party.tableNumber === 0 ? `🛍️ Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}
+                  {party.isTakeaway || party.tableNumber === 0 ? `🛍️ Parcel ${party.partyCode}` : `Table ${store.getTableName(party.tableNumber)}`}
                 </span>
                 <span className="bg-red-100 text-red-700 text-xs font-black px-2 py-0.5 rounded-lg">
                   {totalCartCount} Items
@@ -1856,24 +1856,24 @@ export default function WaiterOrderClient({
                     </div>
 
                     {/* Stepper */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <div className="flex items-center gap-1 bg-white border border-stone-200 px-1.5 py-0.5 rounded-xl shadow-2xs">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 bg-white border border-stone-200 px-2 py-1 rounded-xl shadow-2xs">
                         <button
                           type="button"
                           onClick={() => handleUpdateCartQuantity(idx, -1)}
-                          className="w-5 h-5 flex items-center justify-center text-stone-600 active:scale-90 cursor-pointer"
+                          className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
                         >
-                          <Minus className="w-3 h-3" />
+                          <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="font-tabular font-black text-xs px-1 min-w-4 text-center">
+                        <span className="font-tabular font-black text-xs px-1 min-w-5 text-center">
                           {c.quantity}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleUpdateCartQuantity(idx, 1)}
-                          className="w-5 h-5 flex items-center justify-center text-stone-600 active:scale-90 cursor-pointer"
+                          className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
                         >
-                          <Plus className="w-3 h-3" />
+                          <Plus className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <button
@@ -1883,9 +1883,10 @@ export default function WaiterOrderClient({
                           updated.splice(idx, 1);
                           setCart(updated);
                         }}
-                        className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-rose-600 cursor-pointer"
+                        className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                        title="Remove item"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -2181,23 +2182,23 @@ export default function WaiterOrderClient({
 
                   {/* Quantity Stepper + Trash */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-xl shadow-2xs">
+                    <div className="flex items-center gap-1.5 bg-white border border-stone-200 px-2 py-1 rounded-2xl shadow-2xs">
                       <button
                         type="button"
                         onClick={() => handleUpdateCartQuantity(idx, -1)}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 font-bold active:scale-90 cursor-pointer"
+                        className="w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 font-bold active:scale-90 touch-manipulation cursor-pointer transition-all"
                       >
-                        <Minus className="w-3 h-3" />
+                        <Minus className="w-4 h-4" />
                       </button>
-                      <span className="font-tabular font-black text-xs px-1 min-w-4 text-center">
+                      <span className="font-tabular font-black text-sm px-1.5 min-w-5 text-center">
                         {c.quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => handleUpdateCartQuantity(idx, 1)}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 font-bold active:scale-90 cursor-pointer"
+                        className="w-9 h-9 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 font-bold active:scale-90 touch-manipulation cursor-pointer transition-all"
                       >
-                        <Plus className="w-3 h-3" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     </div>
                     <button
@@ -2207,10 +2208,10 @@ export default function WaiterOrderClient({
                         updated.splice(idx, 1);
                         setCart(updated);
                       }}
-                      className="w-7 h-7 flex items-center justify-center rounded-xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
+                      className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-2xl text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 touch-manipulation transition-all cursor-pointer"
                       title="Remove item"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -2397,7 +2398,7 @@ export default function WaiterOrderClient({
                 <span className={`text-white font-black text-xs px-2.5 py-1 rounded-xl shadow-xs ${
                   party.isTakeaway || party.tableNumber === 0 ? "bg-amber-600" : "bg-red-600"
                 }`}>
-                  {party.isTakeaway || party.tableNumber === 0 ? `Parcel ${party.partyCode}` : `Table ${party.tableNumber}`}
+                  {party.isTakeaway || party.tableNumber === 0 ? `Parcel ${party.partyCode}` : `Table ${store.getTableName(party.tableNumber)}`}
                 </span>
                 <h3 className="font-black text-stone-900 text-base">
                   Bill is Paid (बिल भरले)
@@ -2429,7 +2430,7 @@ export default function WaiterOrderClient({
               <div className="text-[11px] text-stone-500 font-medium">
                 {party.isTakeaway || party.tableNumber === 0
                   ? "Mark parcel as paid and ready for takeaway"
-                  : `Mark settled and close Table ${party.tableNumber}`}
+                  : `Mark settled and close Table ${store.getTableName(party.tableNumber)}`}
               </div>
             </div>
 
@@ -2515,7 +2516,7 @@ export default function WaiterOrderClient({
               <div className="flex items-center gap-2">
                 <span className="text-lg">👤</span>
                 <h3 className="font-black text-sm text-stone-900">
-                  {isTakeaway ? "Customer Details (पार्सल ग्राहक)" : `Table ${party.tableNumber} Diner Info`}
+                  {isTakeaway ? "Customer Details (पार्सल ग्राहक)" : `Table ${store.getTableName(party.tableNumber)} Diner Info`}
                 </h3>
               </div>
               <button

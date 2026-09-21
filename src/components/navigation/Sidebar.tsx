@@ -346,7 +346,7 @@ export function Sidebar({ isMobileOpen = false, onCloseMobile }: SidebarProps) {
 
       {/* Sidebar Container in Pure Luxury Light Theme */}
       <aside
-        className={`premium-sidebar fixed top-0 bottom-0 left-0 z-50 w-72 text-stone-900 flex flex-col justify-between border-r border-[#E7E2DA] transition-transform duration-300 lg:translate-x-0 ${
+        className={`premium-sidebar fixed top-0 bottom-0 left-0 z-50 w-64 text-stone-900 flex flex-col justify-between border-r border-[#E7E2DA] transition-transform duration-300 lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

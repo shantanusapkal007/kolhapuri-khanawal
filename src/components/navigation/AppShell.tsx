@@ -27,15 +27,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       {/* Main App Container offset by sidebar width on large screens */}
-      <div className="flex-1 w-full flex flex-col min-w-0 lg:pl-72 transition-all duration-300">
+      <div className="flex-1 w-full flex flex-col min-w-0 lg:pl-64 transition-all duration-300">
         <TopHeader onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)} />
 
         {/* Responsive main padding: full window vertical scrolling with safe clearance above mobile bottom nav */}
         <main
-          className={`flex-1 w-full max-w-7xl min-w-0 mx-auto premium-page ${
+          className={`flex-1 w-full max-w-[1600px] min-w-0 mx-auto premium-page ${
             isOrderScreen
-              ? "p-2 sm:p-5 lg:p-8 pb-36 lg:pb-12"
-              : "p-2.5 sm:p-5 lg:p-8 pb-32 sm:pb-28 lg:pb-12"
+              ? "p-2 sm:p-4 lg:p-6 pb-36 lg:pb-12"
+              : "p-2.5 sm:p-4 lg:p-6 pb-32 sm:pb-28 lg:pb-12"
           }`}
         >
           <AuthGuard>{children}</AuthGuard>

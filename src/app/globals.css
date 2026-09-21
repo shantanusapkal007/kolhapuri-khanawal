@@ -3,24 +3,56 @@
 
 @layer base {
   :root {
-    --bg-main: #F7F4EF;
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-7: 32px;
+
+    /* Touch target standards */
+    --touch-min: 44px;
+    --touch-primary: 48px;
+
+    /* Border radius standards */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Color Palette */
+    --bg-main: #F9F8F6;
+    --bg-surface: #FFFFFF;
     --card-bg: #FFFFFF;
-    --primary: #8D1D24;
-    --primary-hover: #70171D;
-    --accent: #C77216;
-    --accent-gold: #98520A;
-    --text-main: #231F20;
-    --text-muted: #756E67;
-    --border-warm: #E8E1D7;
-    --surface-soft: #FCFAF7;
-    --shadow-soft: 0 18px 45px -30px rgba(50, 35, 27, 0.28);
-    --shadow-lifted: 0 22px 42px -26px rgba(50, 35, 27, 0.25), 0 8px 18px -14px rgba(50, 35, 27, 0.18);
+    --border-subtle: #E4DFD7;
+    --border-warm: #E4DFD7;
+    --primary: #8A1C14;
+    --primary-hover: #73140D;
+    --accent: #D97706;
+    --accent-gold: #B45309;
+    --text-main: #18181B;
+    --text-muted: #71717A;
+    --surface-soft: #F4F1EA;
+
+    /* Status colors */
+    --status-success: #16A34A;
+    --status-warning: #D97706;
+    --status-critical: #DC2626;
+    --status-info: #2563EB;
+
+    /* Shadows: subtle and crisp, avoiding muddy blur */
+    --shadow-soft: 0 1px 3px 0 rgba(24, 24, 27, 0.05), 0 1px 2px -1px rgba(24, 24, 27, 0.05);
+    --shadow-lifted: 0 4px 6px -1px rgba(24, 24, 27, 0.07), 0 2px 4px -2px rgba(24, 24, 27, 0.05);
+    --shadow-floating: 0 12px 24px -4px rgba(24, 24, 27, 0.12), 0 4px 8px -2px rgba(24, 24, 27, 0.06);
   }
 }
 
 body {
   background-color: var(--bg-main);
-  color: #1C1917;
+  color: var(--text-main);
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
@@ -29,9 +61,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   background-image:
-    radial-gradient(ellipse at 100% -10%, rgba(199, 114, 22, 0.11) 0%, transparent 42%),
-    radial-gradient(ellipse at -10% 100%, rgba(141, 29, 36, 0.07) 0%, transparent 46%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.68), rgba(247, 244, 239, 0.15));
+    radial-gradient(ellipse at 100% 0%, rgba(217, 119, 6, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 0% 100%, rgba(138, 28, 20, 0.03) 0%, transparent 50%);
   max-width: 100%;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -168,13 +199,85 @@ input:focus, select:focus, textarea:focus {
 }
 
 .premium-header {
-  background: rgba(255, 253, 249, 0.82);
-  box-shadow: 0 8px 28px -24px rgba(50, 35, 27, 0.42), 0 1px 0 rgba(255,255,255,0.9) inset;
+  background: rgba(255, 253, 249, 0.92);
+  box-shadow: 0 1px 0 var(--border-subtle);
 }
 
 .premium-sidebar {
-  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(251,248,243,0.98) 100%);
-  box-shadow: 15px 0 40px -36px rgba(50, 35, 27, 0.5), 1px 0 0 rgba(255,255,255,0.8) inset;
+  background: #FFFFFF;
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: 1px 0 0 rgba(228, 223, 215, 0.5);
+}
+
+/* Commercial POS Utilities */
+.pos-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pos-card-interactive {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.pos-card-interactive:active {
+  transform: scale(0.985);
+}
+
+.pos-btn-primary {
+  min-height: var(--touch-primary);
+  background-color: var(--primary);
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  box-shadow: 0 1px 2px 0 rgba(138, 28, 20, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  touch-action: manipulation;
+  user-select: none;
+  transition: background-color 0.12s ease, transform 0.12s ease;
+}
+
+.pos-btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.pos-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.pos-btn-secondary {
+  min-height: var(--touch-min);
+  background-color: var(--surface-soft);
+  color: var(--text-main);
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  touch-action: manipulation;
+  user-select: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.pos-btn-secondary:hover {
+  background-color: #EDE8DE;
+  border-color: #D6CEC2;
+}
+
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }
 
 /* Glassmorphism utilities */

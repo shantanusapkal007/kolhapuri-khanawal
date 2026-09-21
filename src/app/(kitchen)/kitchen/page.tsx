@@ -201,7 +201,7 @@ export default function KitchenDisplayPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStatus("ACTIVE")}
-                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 cursor-pointer ${
                   selectedStatus === "ACTIVE"
                     ? "bg-red-600 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
@@ -212,7 +212,7 @@ export default function KitchenDisplayPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStatus("READY")}
-                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 cursor-pointer ${
                   selectedStatus === "READY"
                     ? "bg-emerald-600 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
@@ -223,7 +223,7 @@ export default function KitchenDisplayPage() {
               <button
                 type="button"
                 onClick={() => setSelectedStatus("SERVED")}
-                className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-1.5 min-h-[38px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 min-h-[44px] rounded-lg transition-all text-center whitespace-nowrap touch-manipulation active:scale-95 cursor-pointer ${
                   selectedStatus === "SERVED"
                     ? "bg-stone-900 text-white shadow-2xs font-black"
                     : "text-stone-600 hover:text-stone-900"
@@ -239,7 +239,7 @@ export default function KitchenDisplayPage() {
                 setAudioEnabled(!audioEnabled);
                 if (!audioEnabled) playKitchenChime();
               }}
-              className={`p-2 min-h-[38px] min-w-[38px] rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 touch-manipulation active:scale-95 ${
+              className={`p-2.5 min-h-[44px] min-w-[44px] rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs shrink-0 touch-manipulation active:scale-95 cursor-pointer ${
                 audioEnabled
                   ? "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
                   : "bg-stone-100 text-stone-500 border-stone-200 hover:bg-stone-200"
@@ -257,7 +257,7 @@ export default function KitchenDisplayPage() {
           <button
             type="button"
             onClick={() => setSelectedStation("ALL")}
-            className={`px-3 py-1.5 min-h-[36px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 ${
+            className={`px-3.5 py-2 min-h-[44px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 cursor-pointer ${
               selectedStation === "ALL"
                 ? "bg-stone-900 text-amber-200 border-stone-900 shadow-2xs"
                 : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
@@ -270,7 +270,7 @@ export default function KitchenDisplayPage() {
               type="button"
               key={st.id}
               onClick={() => setSelectedStation(st.code)}
-              className={`px-3 py-1.5 min-h-[36px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 ${
+              className={`px-3.5 py-2 min-h-[44px] rounded-xl font-black whitespace-nowrap transition-all border touch-manipulation active:scale-95 cursor-pointer ${
                 selectedStation === st.code
                   ? "bg-gradient-to-r from-red-600 to-red-700 text-white border-red-600 shadow-2xs"
                   : "bg-white text-stone-600 border-[#E7E2DA] hover:bg-[#FAF8F5]"
@@ -400,11 +400,11 @@ export default function KitchenDisplayPage() {
                       <div key={item.id} className="pt-2 first:pt-0">
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-2.5">
-                            <span className="w-6 h-6 rounded-md bg-stone-900 text-white font-black text-xs flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="w-8 h-8 rounded-xl bg-stone-900 text-white font-black text-xs sm:text-sm flex items-center justify-center shrink-0 mt-0.5 shadow-xs font-tabular">
                               {item.quantity}×
                             </span>
                             <div>
-                              <span className="font-black text-base text-stone-900 leading-snug block">
+                              <span className="font-black text-base sm:text-lg text-stone-900 leading-snug block">
                                 {marathiName}
                               </span>
                               {englishSubtitle && (
@@ -415,27 +415,27 @@ export default function KitchenDisplayPage() {
                             </div>
                           </div>
                           {item.seatNumber && (
-                            <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-stone-600 bg-stone-100 px-2 py-1 rounded-lg shrink-0 whitespace-nowrap">
                               जागा {item.seatNumber}
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 mt-1.5 ml-8 flex-wrap">
+                        <div className="flex items-center gap-2 mt-2 ml-10 flex-wrap">
                           {item.breadOption && (
-                            <span className="text-[11px] font-black text-amber-950 bg-amber-200 border border-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+                            <span className="text-xs font-black text-amber-950 bg-amber-200 border border-amber-400 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-2xs">
                               <span>🍞</span>
                               <span>{BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.mr || item.breadOption}</span>
-                              <span className="text-[9px] text-amber-800 font-bold">({BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en})</span>
+                              <span className="text-[10px] text-amber-800 font-bold">({BREAD_OPTION_LABELS[item.breadOption as BreadOption]?.en})</span>
                             </span>
                           )}
                           {item.spiceLevel && item.spiceLevel !== "MEDIUM" && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
                               🌶️ {item.spiceLevel.replace(/_/g, " ")}
                             </span>
                           )}
                           {item.notes && (
-                            <span className="text-[11px] font-semibold text-red-600 italic">
+                            <span className="text-xs font-bold text-red-600 italic bg-red-50/80 px-2 py-0.5 rounded-lg border border-red-200">
                               📝 “{item.notes}”
                             </span>
                           )}
@@ -445,13 +445,13 @@ export default function KitchenDisplayPage() {
                   })}
                 </div>
 
-                {/* Step Action Buttons */}
-                <div className="p-3 bg-stone-50 border-t border-stone-200 flex items-center gap-2">
+                {/* Step Action Buttons — 50px for Kitchen Operations */}
+                <div className="p-3.5 bg-stone-50 border-t border-stone-200 flex items-center gap-2">
                   {isNew ? (
                     <button
                       type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "PREPARING")}
-                      className="flex-1 py-2.5 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all touch-manipulation"
+                      className="flex-1 py-3 min-h-[50px] bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-sm active:scale-95 transition-all touch-manipulation cursor-pointer border border-red-500/40"
                     >
                       START PREPARATION
                     </button>
@@ -459,21 +459,21 @@ export default function KitchenDisplayPage() {
                     <button
                       type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "READY")}
-                      className="flex-1 py-2.5 min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 touch-manipulation"
+                      className="flex-1 py-3 min-h-[50px] bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs sm:text-sm rounded-2xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 touch-manipulation cursor-pointer border border-emerald-500/40"
                     >
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className="w-5 h-5 text-emerald-200" />
                       <span>MARK ORDER READY</span>
                     </button>
                   ) : isReady ? (
                     <button
                       type="button"
                       onClick={() => handleAdvanceStatus(kot.id, "SERVED")}
-                      className="flex-1 py-2.5 min-h-[44px] bg-stone-800 hover:bg-stone-900 text-white font-bold text-xs rounded-xl active:scale-95 transition-all touch-manipulation"
+                      className="flex-1 py-3 min-h-[50px] bg-stone-900 hover:bg-stone-800 text-white font-black text-xs sm:text-sm rounded-2xl active:scale-95 transition-all touch-manipulation cursor-pointer border border-stone-800"
                     >
                       MARK SERVED
                     </button>
                   ) : (
-                    <span className="flex-1 text-center text-xs font-bold text-stone-400 py-2.5 min-h-[44px] flex items-center justify-center">
+                    <span className="flex-1 text-center text-xs font-bold text-stone-400 py-3 min-h-[50px] flex items-center justify-center">
                       Served to Table
                     </span>
                   )}
@@ -485,10 +485,10 @@ export default function KitchenDisplayPage() {
                       printKotTicket(kot, undefined, true, store.printerSettings?.paperWidth || "80mm");
                       showToast(`Printing KOT ${kot.kotNumber} (reprint)...`);
                     }}
-                    className="p-2.5 min-h-[44px] min-w-[44px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation"
+                    className="p-3 min-h-[50px] min-w-[50px] bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-2xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation cursor-pointer shadow-2xs"
                     title="Print KOT Ticket (Kitchen Copy / Reprint)"
                   >
-                    <Printer className="w-4 h-4" />
+                    <Printer className="w-5 h-5" />
                   </button>
 
                   {!isServed && (
@@ -498,10 +498,10 @@ export default function KitchenDisplayPage() {
                         setCancellingKotId(kot.id);
                         setCancelReason("Customer cancelled item before preparation");
                       }}
-                      className="p-2.5 min-h-[44px] min-w-[44px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation"
+                      className="p-3 min-h-[50px] min-w-[50px] bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-2xl active:scale-95 transition-all shrink-0 flex items-center justify-center touch-manipulation cursor-pointer shadow-2xs"
                       title="Void / Cancel KOT Ticket"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-5 h-5" />
                     </button>
                   )}
                 </div>

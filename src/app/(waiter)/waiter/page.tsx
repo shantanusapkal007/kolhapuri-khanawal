@@ -141,7 +141,7 @@ export default function WaiterFloorPage() {
       triggerHaptic("success");
       const party = store.createPartyAtTable(tableNum, guests, "", false, "", "", 0);
       setTick((t) => t + 1);
-      showToast(`Party ${party.partyCode} opened at Table ${tableNum}! Opening order screen...`);
+      showToast(`Party ${party.partyCode} opened at Table ${store.getTableName(tableNum)}! Opening order screen...`);
       router.push(`/waiter/order/${party.id}`);
     } catch (err: any) {
       showToast(err.message || "Failed to open table");
@@ -178,7 +178,7 @@ export default function WaiterFloorPage() {
       const updated = store.transferPartyToTable(transferPartyId, targetTableNumber);
       setTick((t) => t + 1);
       setActiveModal(null);
-      showToast(`Party ${updated.partyCode} successfully moved to Table ${targetTableNumber}!`);
+      showToast(`Party ${updated.partyCode} successfully moved to Table ${store.getTableName(targetTableNumber)}!`);
     } catch (err: any) {
       showToast(err?.message || "Failed to transfer party");
     }
@@ -209,7 +209,7 @@ export default function WaiterFloorPage() {
       setTick((t) => t + 1);
       setActiveModal(null);
       setSelectedOrderItemIdsForSplit([]);
-      showToast(`Created new split party ${newParty.partyCode} at Table ${splitTargetTableNumber}!`);
+      showToast(`Created new split party ${newParty.partyCode} at Table ${store.getTableName(splitTargetTableNumber)}!`);
     } catch (err: any) {
       showToast(err?.message || "Failed to split party");
     }
@@ -248,7 +248,7 @@ export default function WaiterFloorPage() {
     const tableNum = table ? table.tableNumber : 1;
     store.addNotification({
       type: "BILL_REQUESTED",
-      title: isTakeaway ? `Parcel ${targetParty.partyCode} Requested Bill 🔥` : `Table ${tableNum} Requested Bill 🔥`,
+      title: isTakeaway ? `Parcel ${targetParty.partyCode} Requested Bill 🔥` : `Table ${store.getTableName(tableNum)} Requested Bill 🔥`,
       message: `${targetParty.partyCode} (${targetParty.customerName || "Walk-in"}) is ready for billing. Total: ₹${grandTotal}.`,
       category: "BILLING",
       urgency: "HIGH",
@@ -270,7 +270,7 @@ export default function WaiterFloorPage() {
       }
       printBillReceipt(bill, false, store.printerSettings?.paperWidth || "80mm");
       setTick((t) => t + 1);
-      showToast(`Printed Customer Bill #${bill.billNumber} for Table ${bill.tableNumber}!`);
+      showToast(`Printed Customer Bill #${bill.billNumber} for Table ${store.getTableName(bill.tableNumber)}!`);
     } catch (err: any) {
       showToast(`❌ Could not print bill: ${err?.message || "Failed"}`);
     }
@@ -287,7 +287,7 @@ export default function WaiterFloorPage() {
       paperWidth: store.printerSettings?.paperWidth || "80mm",
       isReprint: true,
     });
-    showToast(`Reprinted Kitchen KOT #${latestKot.kotNumber} for Table ${latestKot.tableNumber}!`);
+    showToast(`Reprinted Kitchen KOT #${latestKot.kotNumber} for Table ${store.getTableName(latestKot.tableNumber)}!`);
   };
 
   const handleQuickSettleParty = (partyId: string, paymentMethod: "CASH" | "UPI" = "CASH") => {
@@ -454,7 +454,7 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleTakeParcel()}
-            className="min-h-[38px] px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 border border-amber-300 cursor-pointer"
+            className="min-h-[44px] px-3 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 border border-amber-300 cursor-pointer touch-manipulation"
             title="1-Tap Take Parcel"
           >
             <ShoppingBag className="w-3.5 h-3.5 text-stone-950 shrink-0" />
@@ -463,7 +463,7 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => setShowPrinterModal(true)}
-            className="min-h-[38px] px-2.5 py-1.5 bg-stone-800/90 hover:bg-stone-700 text-amber-300 border border-stone-700 font-bold text-xs rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+            className="min-h-[44px] px-2.5 py-1.5 bg-stone-800/90 hover:bg-stone-750 text-amber-300 border border-stone-700 font-bold text-xs rounded-xl shadow-2xs active:scale-95 transition-all flex items-center gap-1 cursor-pointer touch-manipulation"
           >
             <Printer className="w-3.5 h-3.5 text-amber-400 shrink-0" />
             <span>प्रिंटर</span>
@@ -471,7 +471,7 @@ export default function WaiterFloorPage() {
           <button
             type="button"
             onClick={() => handleOpenAddParty(1)}
-            className="min-h-[38px] px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40 cursor-pointer"
+            className="min-h-[44px] px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1 border border-red-500/40 cursor-pointer touch-manipulation"
           >
             <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
             <span>Seat</span>
@@ -672,8 +672,8 @@ export default function WaiterFloorPage() {
         </div>
       )}
 
-      {/* 12 Physical Tables Grid: Responsive 2-col on narrow mobile (<380px), 3-col on >=380px, Touch-Friendly */}
-      <div className="grid grid-cols-2 min-[380px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3.5 max-w-2xl sm:max-w-4xl mx-auto w-full pb-6">
+      {/* 12 Physical Tables Grid: Responsive 2-col on narrow mobile (<380px), 3-col on >=380px, 4-col on tablet/laptop, 6-col on desktop */}
+      <div className="grid grid-cols-2 min-[380px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-6 gap-2 sm:gap-3.5 w-full pb-6">
         {displayedTables.map((table) => {
           const tableParties = store.parties.filter(
             (p) => (p.tableId === table.id || p.tableNumber === table.tableNumber) && p.status !== "CLOSED" && p.status !== "CANCELLED" && !p.isTakeaway
@@ -863,7 +863,7 @@ export default function WaiterFloorPage() {
                           e.stopPropagation();
                           setActiveTableForDetail(table);
                         }}
-                        className="w-full min-h-[40px] py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation cursor-pointer flex items-center justify-center"
+                        className="w-full min-h-[44px] py-2 px-1 bg-purple-600 hover:bg-purple-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all text-center truncate touch-manipulation cursor-pointer flex items-center justify-center"
                       >
                         <span>{tableParties.length}P View →</span>
                       </button>
@@ -875,7 +875,7 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className="w-full min-h-[40px] py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
+                        className="w-full min-h-[44px] py-2 px-1 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border border-emerald-500/40"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
                         <span>Paid</span>
@@ -888,7 +888,7 @@ export default function WaiterFloorPage() {
                       <Link
                         href={`/waiter/order/${primaryParty.id}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full min-h-[40px] py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
+                        className="w-full min-h-[44px] py-2 px-1 bg-gradient-to-r from-red-600 via-red-700 to-red-800 hover:from-red-500 hover:to-red-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation border border-red-500/30"
                       >
                         <Plus className="w-3.5 h-3.5 text-amber-200 shrink-0" />
                         <span>Order</span>
@@ -901,7 +901,7 @@ export default function WaiterFloorPage() {
                           setSettleMethod("CASH");
                         }}
                         title="Bill is Paid — Close Table"
-                        className={`w-full min-h-[40px] py-2 px-1 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border ${
+                        className={`w-full min-h-[44px] py-2 px-1 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1 text-center truncate touch-manipulation cursor-pointer border ${
                           hasBillRequested
                             ? "bg-gradient-to-r from-amber-500 to-amber-600 text-stone-950 border-amber-400 ring-1 ring-amber-300 animate-pulse font-black"
                             : "bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-emerald-500/40"
@@ -921,7 +921,7 @@ export default function WaiterFloorPage() {
                       e.stopPropagation();
                       handleQuickSeatAndOrder(table.tableNumber, 2);
                     }}
-                    className="w-full min-h-[40px] py-2 px-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 text-center truncate touch-manipulation border border-emerald-500/30 cursor-pointer"
+                    className="w-full min-h-[44px] py-2 px-2 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-500 hover:to-emerald-700 text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 text-center truncate touch-manipulation border border-emerald-500/30 cursor-pointer"
                     title="1-Tap Quick Seat (2 Guests) & Take Order"
                   >
                     <Plus className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
@@ -1177,7 +1177,7 @@ export default function WaiterFloorPage() {
                 }`}>
                   {settlePartyTarget.isTakeaway || settlePartyTarget.tableNumber === 0
                     ? `Parcel ${settlePartyTarget.partyCode}`
-                    : `Table ${settlePartyTarget.tableNumber}`}
+                    : `Table ${store.getTableName(settlePartyTarget.tableNumber)}`}
                 </span>
                 <h3 className="font-black text-stone-900 text-base">
                   Bill is Paid (बिल भरले)
@@ -1216,7 +1216,7 @@ export default function WaiterFloorPage() {
                     <div className="text-[11px] text-stone-500 font-medium">
                       {targetIsTakeaway
                         ? "Mark parcel as paid and ready for takeaway"
-                        : `Full payment to close & free Table ${settlePartyTarget.tableNumber}`}
+                        : `Full payment to close & free Table ${store.getTableName(settlePartyTarget.tableNumber)}`}
                     </div>
                   </div>
 
@@ -1301,7 +1301,7 @@ export default function WaiterFloorPage() {
             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
               <div className="flex items-center gap-2">
                 <span className="bg-red-600 text-white font-black text-xs px-2.5 py-1 rounded-lg">
-                  Table {selectedTableNumber}
+                  Table {store.getTableName(selectedTableNumber)}
                 </span>
                 <h3 className="font-black text-stone-900 text-base">
                   How many guests? (किती माणसे?)

@@ -211,7 +211,7 @@ export default function AdminDashboardPage() {
             <span>Today's Total Revenue</span>
             <TrendingUp className="w-4 h-4 text-emerald-700" />
           </div>
-          <div className="mt-1 text-2xl font-black text-stone-900">₹{totalSalesToday.toLocaleString("en-IN")}</div>
+          <div className="mt-1 text-2xl sm:text-3xl font-black font-display font-tabular text-stone-900">₹{totalSalesToday.toLocaleString("en-IN")}</div>
           <div className="text-[11px] text-stone-500 font-medium">
             {store.payments.length} Payments Collected
           </div>
@@ -222,7 +222,7 @@ export default function AdminDashboardPage() {
             <span>Active Seated Guests</span>
             <Users className="w-4 h-4 text-amber-700" />
           </div>
-          <div className="mt-1 text-2xl font-black text-stone-900">{totalGuests}</div>
+          <div className="mt-1 text-2xl sm:text-3xl font-black font-display font-tabular text-stone-900">{totalGuests}</div>
           <div className="text-[11px] text-stone-500 font-medium">
             {activeParties.length} Parties across {occupiedTables.length} Tables
           </div>
@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
             <span>Table Occupancy</span>
             <Utensils className="w-4 h-4 text-red-700" />
           </div>
-          <div className="mt-1 text-2xl font-black text-stone-900">
+          <div className="mt-1 text-2xl sm:text-3xl font-black font-display font-tabular text-stone-900">
             {Math.round((occupiedTables.length / (store.tables.length || 1)) * 100)}%
           </div>
           <div className="text-[11px] text-stone-500 font-medium">
@@ -246,7 +246,7 @@ export default function AdminDashboardPage() {
             <span>KOT Pipeline</span>
             <Clock className="w-4 h-4 text-purple-700" />
           </div>
-          <div className="mt-1 text-2xl font-black text-stone-900">
+          <div className="mt-1 text-2xl sm:text-3xl font-black font-display font-tabular text-stone-900">
             {store.kots.filter((k) => k.status !== "SERVED" && (k.status as any) !== "CANCELLED").length}
           </div>
           <div className="text-[11px] text-stone-500 font-medium">Active kitchen orders</div>

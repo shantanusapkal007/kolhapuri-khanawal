@@ -902,9 +902,9 @@ export default function CashierBillingPage() {
                       <span>{activeBill.roundOff > 0 ? `+₹${activeBill.roundOff}` : `-₹${Math.abs(activeBill.roundOff)}`}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-base font-black text-stone-900 pt-2 border-t border-stone-200">
-                    <span>Grand Total:</span>
-                    <span className="text-emerald-700">₹{activeBill.grandTotal}</span>
+                  <div className="flex justify-between items-baseline pt-2.5 border-t-2 border-stone-300">
+                    <span className="text-sm sm:text-base font-black uppercase tracking-wide text-stone-700">Grand Total:</span>
+                    <span className="font-tabular font-black text-2xl sm:text-3xl text-emerald-700">₹{activeBill.grandTotal}</span>
                   </div>
 
                   {activeBill.paidAmount > 0 && (
@@ -961,11 +961,11 @@ export default function CashierBillingPage() {
                         type="button"
                         disabled={isQuickSettling}
                         onClick={() => handleDirectQuickSettle("CASH")}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs sm:text-sm px-3.5 py-3 min-h-[44px] rounded-xl shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-black text-xs sm:text-sm px-4 py-3 min-h-[48px] sm:min-h-[52px] rounded-2xl shadow-md shadow-emerald-600/25 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer border border-emerald-500/40"
                         title="Instant exact cash settlement with auto drawer kick & receipt"
                       >
-                        <Banknote className="w-4 h-4 text-emerald-200 shrink-0" />
-                        <span>💵 रोख (₹{activeBill.balanceDue})</span>
+                        <Banknote className="w-5 h-5 text-emerald-200 shrink-0" />
+                        <span>💵 Cash (₹{activeBill.balanceDue})</span>
                       </button>
 
                       {/* 1-Tap UPI Settlement Button */}
@@ -973,10 +973,10 @@ export default function CashierBillingPage() {
                         type="button"
                         disabled={isQuickSettling}
                         onClick={() => handleDirectQuickSettle("UPI")}
-                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-gradient-to-r from-stone-900 to-stone-800 hover:from-black hover:to-stone-900 text-amber-300 font-black text-xs sm:text-sm px-3.5 py-3 min-h-[44px] rounded-xl shadow-md shadow-stone-900/20 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gradient-to-r from-stone-950 via-stone-900 to-stone-950 hover:from-stone-900 hover:to-black text-amber-300 font-black text-xs sm:text-sm px-4 py-3 min-h-[48px] sm:min-h-[52px] rounded-2xl shadow-md shadow-stone-900/25 active:scale-95 transition-all touch-manipulation disabled:opacity-60 cursor-pointer border border-stone-800"
                         title="Instant exact UPI QR payment with auto receipt"
                       >
-                        <QrCode className="w-4 h-4 text-amber-400 shrink-0" />
+                        <QrCode className="w-5 h-5 text-amber-400 shrink-0" />
                         <span>📱 UPI (₹{activeBill.balanceDue})</span>
                       </button>
 
@@ -984,10 +984,10 @@ export default function CashierBillingPage() {
                       <button
                         type="button"
                         onClick={() => setIsPaymentModalOpen(true)}
-                        className="w-full sm:w-auto flex items-center justify-center gap-1 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold text-xs px-3 py-3 min-h-[44px] rounded-xl active:scale-95 transition-all touch-manipulation cursor-pointer"
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 font-bold text-xs px-3.5 py-3 min-h-[48px] sm:min-h-[52px] rounded-2xl active:scale-95 transition-all touch-manipulation cursor-pointer"
                         title="Split payment, custom tender, or change calculator"
                       >
-                        <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                        <CreditCard className="w-4 h-4 text-stone-600 shrink-0" />
                         <span>Custom / Split</span>
                       </button>
                     </div>

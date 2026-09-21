@@ -462,7 +462,7 @@ export default function InventoryLedgerPage() {
                       setPurchaseRate(ing.currentCostPerUnit);
                       setActiveModal("PURCHASE");
                     }}
-                    className="flex items-center justify-center gap-1 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white transition-all shadow-2xs active:scale-95"
+                    className="flex items-center justify-center gap-1 py-2.5 min-h-[44px] rounded-xl bg-stone-900 hover:bg-stone-800 text-white transition-all shadow-2xs active:scale-95 touch-manipulation cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5 text-amber-300" />
                     <span>Receive</span>
@@ -479,7 +479,7 @@ export default function InventoryLedgerPage() {
                       setWastageReason("SPOILED");
                       setActiveModal("WASTAGE");
                     }}
-                    className="flex items-center justify-center gap-1 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200/80 transition-all active:scale-95"
+                    className="flex items-center justify-center gap-1 py-2.5 min-h-[44px] rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200/80 transition-all active:scale-95 touch-manipulation cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Waste</span>
@@ -491,7 +491,7 @@ export default function InventoryLedgerPage() {
                 {canAdjustStock ? (
                   <button
                     onClick={() => handleOpenCountModal(ing)}
-                    className="flex items-center justify-center gap-1 py-2 rounded-xl bg-white hover:bg-[#FAF8F5] text-stone-800 border border-[#E7E2DA] transition-all shadow-2xs active:scale-95"
+                    className="flex items-center justify-center gap-1 py-2.5 min-h-[44px] rounded-xl bg-white hover:bg-[#FAF8F5] text-stone-800 border border-[#E7E2DA] transition-all shadow-2xs active:scale-95 touch-manipulation cursor-pointer"
                   >
                     <Scale className="w-3.5 h-3.5 text-stone-600" />
                     <span>Count</span>

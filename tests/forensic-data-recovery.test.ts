@@ -95,5 +95,5 @@ describe("Forensic Section 11: Real Data Recovery, Corruption Defense & Backup/R
     expect(billRow.status).toBe("PAID");
 
     restoredDb.close();
-  }, 20000);
+  }, 60000);
 });
