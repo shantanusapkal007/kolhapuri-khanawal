@@ -83,7 +83,7 @@ export default function LoginPage() {
     setPin("");
   };
 
-  const handleLoginSubmit = (e?: React.FormEvent) => {
+  const handleLoginSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
 
@@ -99,10 +99,45 @@ export default function LoginPage() {
       return;
     }
 
+    try {
+      // 1. Authoritative Server-Side Authentication
+      const apiRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: inputUser, pin }),
+      });
+
+      const apiData = await apiRes.json().catch(() => null);
+
+      if (apiRes.ok && apiData?.success && apiData?.user) {
+        if (apiData.token) {
+          try {
+            localStorage.setItem("auth_session_token", apiData.token);
+          } catch {}
+        }
+        store.setCurrentUserRole(apiData.user.role);
+        store.currentUser.name = apiData.user.name;
+        store.currentUser.role = apiData.user.role;
+
+        if (apiData.user.role === "WAITER") {
+          router.push("/waiter");
+        } else if (apiData.user.role === "KITCHEN") {
+          router.push("/kitchen");
+        } else if (apiData.user.role === "CASHIER") {
+          router.push("/billing");
+        } else {
+          router.push("/dashboard");
+        }
+        return;
+      }
+    } catch {
+      // Fallback for offline PWA operation
+    }
+
+    // 2. Offline PWA fallback
     const res = store.loginUser(inputUser, pin);
 
     if (res.success && res.user) {
-      // Role based routing
       if (res.user.role === "WAITER") {
         router.push("/waiter");
       } else if (res.user.role === "KITCHEN") {
@@ -117,10 +152,36 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickDemoLogin = (roleName: string, roleUser: string, rolePin: string) => {
+  const handleQuickDemoLogin = async (roleName: string, roleUser: string, rolePin: string) => {
     setUsername(roleUser);
     setPin(rolePin);
     setError(null);
+
+    try {
+      const apiRes = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: roleUser, pin: rolePin }),
+      });
+      const apiData = await apiRes.json().catch(() => null);
+      if (apiRes.ok && apiData?.success && apiData?.user) {
+        if (apiData.token) {
+          try {
+            localStorage.setItem("auth_session_token", apiData.token);
+          } catch {}
+        }
+        store.setCurrentUserRole(apiData.user.role);
+        store.currentUser.name = apiData.user.name;
+        store.currentUser.role = apiData.user.role;
+
+        if (apiData.user.role === "WAITER") router.push("/waiter");
+        else if (apiData.user.role === "KITCHEN") router.push("/kitchen");
+        else if (apiData.user.role === "CASHIER") router.push("/billing");
+        else router.push("/dashboard");
+        return;
+      }
+    } catch {}
+
     const res = store.loginUser(roleUser, rolePin);
     if (res.success && res.user) {
       if (res.user.role === "WAITER") router.push("/waiter");

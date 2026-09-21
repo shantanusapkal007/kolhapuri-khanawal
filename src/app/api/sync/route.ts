@@ -1,60 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
+import { TableRepository } from "@/lib/db/table-repository";
+import { OrderRepository } from "@/lib/db/order-repository";
+import { getDatabase } from "@/lib/db/sqlite";
+import { initDatabaseSchema } from "@/lib/db/schema";
+import { seedDatabaseIfEmpty } from "@/lib/db/seed";
 
-// In-memory server relay cache for local restaurant Wi-Fi multi-device synchronization
-interface SharedOperationalState {
-  version: number;
-  senderId?: string;
-  updatedAt: string;
-  payload: any;
+function ensureDb() {
+  const db = getDatabase();
+  initDatabaseSchema(db);
+  seedDatabaseIfEmpty(db);
 }
 
-let serverStateCache: SharedOperationalState | null = null;
+let lastSyncVersion: number = 0;
+let lastSyncSenderId: string = "server";
+let lastRelaySnapshot: any = null;
 
 /**
  * GET /api/sync
- * Retrieves current operational state from local server relay
+ * Upgraded from ephemeral in-memory cache to authoritative SQLite state.
+ * Returns authoritative tables, active dining parties, and active kitchen KOTs.
  */
-export async function GET(request?: Request) {
+export async function GET(request?: NextRequest | Request) {
   try {
-    let clientTimestamp: string | null = null;
-    if (request && request.url) {
-      try {
-        const { searchParams } = new URL(request.url);
-        clientTimestamp = searchParams.get("since");
-      } catch {}
-    }
+    ensureDb();
+    const tables = TableRepository.getAllTables();
+    const dbParties = TableRepository.getActiveParties();
+    const kots = OrderRepository.getActiveKots();
 
-    if (!serverStateCache) {
-      return NextResponse.json({
-        success: true,
-        hasUpdate: false,
-        version: 0,
-        snapshot: null,
-        state: null,
-      });
-    }
-
-    if (clientTimestamp && serverStateCache.updatedAt <= clientTimestamp) {
-      return NextResponse.json({
-        success: true,
-        hasUpdate: false,
-        version: serverStateCache.version,
-        updatedAt: serverStateCache.updatedAt,
-      });
-    }
+    const updatedAt = new Date().toISOString();
+    const parties = dbParties.length > 0 ? dbParties : (lastRelaySnapshot?.parties || []);
 
     return NextResponse.json({
       success: true,
       hasUpdate: true,
-      version: serverStateCache.version,
-      senderId: serverStateCache.senderId,
-      updatedAt: serverStateCache.updatedAt,
-      snapshot: serverStateCache.payload,
-      state: serverStateCache.payload,
+      version: lastSyncVersion || Date.now(),
+      senderId: lastSyncSenderId,
+      updatedAt,
+      authoritative: true,
+      snapshot: {
+        tables,
+        parties,
+        activeKots: kots,
+      },
     });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: error?.message || "Sync failed" },
+      { success: false, error: error?.message || "Authoritative sync failed" },
       { status: 500 }
     );
   }
@@ -62,37 +53,35 @@ export async function GET(request?: Request) {
 
 /**
  * POST /api/sync
- * Pushes updated operational state from a device to the local server relay
+ * Phase 3: Acknowledges sync from device terminals and maintains compatibility
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest | Request) {
   try {
-    const body = await request.json();
+    ensureDb();
+    const body = await request.json().catch(() => ({}));
+    const senderId = body?.senderId || "terminal";
+    const version = typeof body?.version === "number" && body.version > 0 ? body.version : Date.now();
     const snapshot = body?.snapshot || body?.payload;
 
-    if (!body || !snapshot) {
-      return NextResponse.json(
-        { success: false, error: "Invalid sync payload" },
-        { status: 400 }
-      );
+    lastSyncVersion = version;
+    lastSyncSenderId = senderId;
+    if (snapshot) {
+      lastRelaySnapshot = snapshot;
     }
 
-    const version = typeof body.version === "number" && body.version > 0
-      ? body.version
-      : (serverStateCache ? serverStateCache.version + 1 : Date.now());
-    const updatedAt = new Date().toISOString();
-
-    serverStateCache = {
-      version,
-      senderId: body.senderId || "unknown",
-      updatedAt,
-      payload: snapshot,
-    };
+    const tables = TableRepository.getAllTables();
+    const parties = TableRepository.getActiveParties();
 
     return NextResponse.json({
       success: true,
       version,
-      senderId: body.senderId,
-      updatedAt,
+      senderId,
+      updatedAt: new Date().toISOString(),
+      message: "Sync acknowledged by authoritative database server",
+      snapshot: {
+        tables,
+        parties: parties.length > 0 ? parties : (snapshot?.parties || []),
+      },
     });
   } catch (error: any) {
     return NextResponse.json(

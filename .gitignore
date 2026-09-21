@@ -45,3 +45,10 @@ scratch/
 
 # typescript
 *.tsbuildinfo
+
+# SQLite Database & Backups
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/backups/
+data/test-recovery-zone/

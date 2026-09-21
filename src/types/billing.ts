@@ -54,6 +54,7 @@ export interface Bill {
   cashierId: string;
   cashierName: string;
   status: BillStatus;
+  version?: number;
   subtotal: number;
   discountId?: string;
   discountAmount: number;

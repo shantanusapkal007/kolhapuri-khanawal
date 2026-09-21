@@ -106,9 +106,55 @@ export class OutboxSyncManager {
       const { globalRestaurantStore } = await import("@/lib/store/restaurant-store");
       const payload = mutation.payload as any;
 
+      // Check if auth token exists in localStorage
+      let token = "";
+      try {
+        token = localStorage.getItem("auth_session_token") || "";
+      } catch {}
+
+      const authHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        authHeaders["Authorization"] = `Bearer ${token}`;
+      }
+
       switch (mutation.mutationType) {
         case "CREATE_PARTY":
-          if (payload?.tableNumber && payload?.guestCount) {
+          if (payload?.tableNumber) {
+            try {
+              const res = await fetch("/api/tables", {
+                method: "POST",
+                headers: authHeaders,
+                body: JSON.stringify({
+                  action: "SEAT",
+                  tableNumber: payload.tableNumber,
+                  guestCount: payload.guestCount || 2,
+                  descriptor: payload.descriptor,
+                  customerName: payload.customerName,
+                  customerPhone: payload.customerPhone,
+                  isTakeaway: payload.isTakeaway,
+                  packagingCharges: payload.packagingCharges,
+                  waiterId: payload.waiterId,
+                  waiterName: payload.waiterName,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.party) {
+                  // Synchronize local store party
+                  const existingIdx = globalRestaurantStore.parties.findIndex((p) => p.id === data.party.id);
+                  if (existingIdx >= 0) {
+                    globalRestaurantStore.parties[existingIdx] = data.party;
+                  } else {
+                    globalRestaurantStore.parties.push(data.party);
+                  }
+                  return true;
+                }
+              }
+            } catch {}
+
+            // Fallback to local store
             globalRestaurantStore.createPartyAtTable(
               payload.tableNumber,
               payload.guestCount,
@@ -122,6 +168,42 @@ export class OutboxSyncManager {
 
         case "SEND_KOT":
           if (payload?.partyId && Array.isArray(payload?.items) && payload.items.length > 0) {
+            try {
+              const res = await fetch("/api/orders", {
+                method: "POST",
+                headers: authHeaders,
+                body: JSON.stringify({
+                  idempotencyKey: mutation.id,
+                  partyId: payload.partyId,
+                  items: payload.items,
+                  notes: payload.notes,
+                  waiterId: payload.waiterId,
+                  waiterName: payload.waiterName,
+                  stationCode: payload.stationCode,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.order && data.kot) {
+                  // Reconcile into local store
+                  const existingOrdIdx = globalRestaurantStore.orders.findIndex((o) => o.id === data.order.id);
+                  if (existingOrdIdx >= 0) {
+                    globalRestaurantStore.orders[existingOrdIdx] = data.order;
+                  } else {
+                    globalRestaurantStore.orders.push(data.order);
+                  }
+
+                  const existingKotIdx = globalRestaurantStore.kots.findIndex((k) => k.id === data.kot.id);
+                  if (existingKotIdx >= 0) {
+                    globalRestaurantStore.kots[existingKotIdx] = data.kot;
+                  } else {
+                    globalRestaurantStore.kots.push(data.kot);
+                  }
+                  return true;
+                }
+              }
+            } catch {}
+
             const alreadyPlaced = globalRestaurantStore.orders.some(
               (o) => o.idempotencyKey === mutation.id
             );
@@ -137,12 +219,45 @@ export class OutboxSyncManager {
 
         case "UPDATE_KOT_STATUS":
           if (payload?.kotId && payload?.newStatus) {
+            try {
+              await fetch("/api/kots", {
+                method: "POST",
+                headers: authHeaders,
+                body: JSON.stringify({
+                  kotId: payload.kotId,
+                  status: payload.newStatus,
+                }),
+              });
+            } catch {}
             globalRestaurantStore.advanceKotStatus(payload.kotId, payload.newStatus);
           }
           return true;
 
         case "SETTLE_BILL":
           if (payload?.billId && payload?.method && payload?.amount) {
+            try {
+              const res = await fetch("/api/bills", {
+                method: "POST",
+                headers: authHeaders,
+                body: JSON.stringify({
+                  action: "PAY",
+                  billId: payload.billId,
+                  paymentMethod: payload.method,
+                  tenderAmount: payload.amount,
+                  idempotencyKey: mutation.id,
+                  reference: payload.reference,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.bill) {
+                  const bIdx = globalRestaurantStore.bills.findIndex((b) => b.id === data.bill.id);
+                  if (bIdx >= 0) globalRestaurantStore.bills[bIdx] = data.bill;
+                  return true;
+                }
+              }
+            } catch {}
+
             globalRestaurantStore.payBill(
               payload.billId,
               payload.method,
