@@ -72,6 +72,16 @@ function buildItemNotes(
   return parts.join(" | ");
 }
 
+export const NOTE_PRESETS = [
+  "कमी तिखट",
+  "झणझणीत",
+  "रस्सा वेगळा",
+  "गरम द्या",
+  "बिनकांदा",
+  "कडक भाकरी",
+  "कमी तेल",
+];
+
 function getItemVariants(item: MenuItem): { name: string; price: number }[] | null {
   if (item.variants && item.variants.length > 0) {
     return item.variants;
@@ -589,6 +599,62 @@ export default function WaiterOrderClient({
     setCart(updated);
   };
 
+  const handleUpdateItemNote = (
+    itemId: string,
+    variantName: string | undefined,
+    newCustomNote: string
+  ) => {
+    const existingIndex = cart.findIndex(
+      (c) =>
+        c.menuItem.id === itemId &&
+        (variantName === undefined || c.variantName === variantName)
+    );
+    if (existingIndex === -1) {
+      const menuItem = store.menuItems.find((m) => m.id === itemId);
+      if (!menuItem) return;
+      const isThali = isThaliOrMainCourseItem(menuItem);
+      const defaultBread: BreadOption = "ROTI";
+      const portion = DEFAULT_BREAD_PORTIONS[defaultBread] || 2;
+      const breadCounts = isThali ? { [defaultBread]: portion } : undefined;
+      const breadOption = isThali ? defaultBread : undefined;
+      const unitPrice = variantName
+        ? (getItemVariants(menuItem)?.find((v) => v.name === variantName)?.price ?? menuItem.sellingPrice)
+        : menuItem.sellingPrice;
+
+      setCart([
+        ...cart,
+        {
+          menuItem,
+          variantName,
+          unitPrice,
+          quantity: 1,
+          breadOption,
+          breadCounts,
+          customNote: newCustomNote,
+          notes: buildItemNotes(breadCounts, newCustomNote),
+        },
+      ]);
+      return;
+    }
+
+    const updated = [...cart];
+    const target = { ...updated[existingIndex] };
+    target.customNote = newCustomNote;
+    target.notes = buildItemNotes(target.breadCounts, newCustomNote, target.spiceLevel);
+    updated[existingIndex] = target;
+    setCart(updated);
+  };
+
+  const handleUpdateCartIndexNote = (index: number, newCustomNote: string) => {
+    if (index < 0 || index >= cart.length) return;
+    const updated = [...cart];
+    const target = { ...updated[index] };
+    target.customNote = newCustomNote;
+    target.notes = buildItemNotes(target.breadCounts, newCustomNote, target.spiceLevel);
+    updated[index] = target;
+    setCart(updated);
+  };
+
   const handleSendKot = async () => {
     if (cart.length === 0 || isSending) return;
     setIsSending(true);
@@ -777,7 +843,7 @@ export default function WaiterOrderClient({
           menuItemId: c.menuItem.id,
           quantity: c.quantity,
           breadOption: c.breadOption,
-          notes: c.notes,
+          notes: buildItemNotes(c.breadCounts, c.customNote, c.spiceLevel) || c.notes,
           variantName: c.variantName,
           unitPrice: c.unitPrice,
         })),
@@ -1489,6 +1555,7 @@ export default function WaiterOrderClient({
               const inCartTotal = getCartQuantityForItem(item.id);
               const isThaliOrMain = isThaliOrMainCourseItem(item);
               const variants = getItemVariants(item);
+              const itemCartEntries = cart.filter((c) => c.menuItem.id === item.id);
 
               return (
                 <div
@@ -1792,6 +1859,133 @@ export default function WaiterOrderClient({
                       )}
                     </div>
                   )}
+
+                  {/* Special Requirement / Notes Section under Dish */}
+                  {inCartTotal > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-dashed border-stone-200">
+                      {itemCartEntries.length <= 1 ? (
+                        <>
+                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                            <label className="text-[10.5px] font-black uppercase tracking-wide text-amber-950 flex items-center gap-1.5">
+                              <span className="text-xs">📝</span>
+                              <span>विशेष सूचना (KOT Note):</span>
+                            </label>
+                            {itemCartEntries[0]?.customNote && (
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateItemNote(item.id, itemCartEntries[0]?.variantName, "")}
+                                className="text-[10px] font-bold text-stone-400 hover:text-red-600 transition-colors cursor-pointer"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            value={itemCartEntries[0]?.customNote || ""}
+                            onChange={(e) => handleUpdateItemNote(item.id, itemCartEntries[0]?.variantName, e.target.value)}
+                            placeholder="उदा. कमी तिखट, रस्सा वेगळा, गरम द्या, कडक भाकरी..."
+                            className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none text-stone-900 placeholder:text-stone-400 placeholder:font-normal shadow-2xs transition-all"
+                          />
+                          <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                            {NOTE_PRESETS.map((preset) => {
+                              const isSelected = itemCartEntries[0]?.customNote === preset;
+                              return (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => {
+                                    const next = isSelected ? "" : preset;
+                                    handleUpdateItemNote(item.id, itemCartEntries[0]?.variantName, next);
+                                  }}
+                                  className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                                    isSelected
+                                      ? "bg-amber-600 text-white shadow-2xs font-black ring-1 ring-amber-700"
+                                      : "bg-stone-100 hover:bg-amber-50 text-stone-700 border border-stone-200/90"
+                                  }`}
+                                >
+                                  {preset}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-2">
+                          <span className="text-[10.5px] font-black uppercase tracking-wide text-amber-950 flex items-center gap-1.5">
+                            <span className="text-xs">📝</span>
+                            <span>विशेष सूचना (KOT Note):</span>
+                          </span>
+                          {itemCartEntries.map((c) => (
+                            <div key={c.variantName || "main"} className="space-y-1 bg-stone-50/70 p-2 rounded-xl border border-stone-200/70">
+                              <div className="flex items-center justify-between text-[10px] font-bold text-stone-700">
+                                <span>{c.variantName === "Half" ? "हाफ (Half)" : c.variantName === "Full" ? "फुल (Full)" : c.variantName} Note:</span>
+                                {c.customNote && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateItemNote(item.id, c.variantName, "")}
+                                    className="text-stone-400 hover:text-red-600 cursor-pointer"
+                                  >
+                                    Clear
+                                  </button>
+                                )}
+                              </div>
+                              <input
+                                type="text"
+                                value={c.customNote || ""}
+                                onChange={(e) => handleUpdateItemNote(item.id, c.variantName, e.target.value)}
+                                placeholder={`उदा. कमी तिखट (${c.variantName === "Half" ? "हाफ" : "फुल"})...`}
+                                className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none text-stone-900 placeholder:text-stone-400 shadow-2xs"
+                              />
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {NOTE_PRESETS.slice(0, 4).map((preset) => {
+                                  const isSelected = c.customNote === preset;
+                                  return (
+                                    <button
+                                      key={preset}
+                                      type="button"
+                                      onClick={() => {
+                                        const next = isSelected ? "" : preset;
+                                        handleUpdateItemNote(item.id, c.variantName, next);
+                                      }}
+                                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                                        isSelected
+                                          ? "bg-amber-600 text-white font-black"
+                                          : "bg-white text-stone-700 border border-stone-200 hover:bg-amber-50"
+                                      }`}
+                                    >
+                                      {preset}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {inCartTotal === 0 && (
+                    <div className="mt-2 pt-1 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={isOut}
+                        onClick={() => {
+                          if (isThaliOrMain) {
+                            handleThaliQuantityChange(item, 1);
+                          } else if (variants && variants.length > 0) {
+                            handleAddToCart(item, undefined, variants[0]);
+                          } else {
+                            handleAddToCart(item);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-stone-500 hover:text-amber-800 flex items-center gap-1 hover:bg-amber-50/80 px-2 py-0.5 rounded-lg border border-transparent hover:border-amber-200/70 transition-all cursor-pointer"
+                      >
+                        <span>+ 📝 टीप / Note</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1838,56 +2032,104 @@ export default function WaiterOrderClient({
                 {cart.map((c, idx) => (
                   <div
                     key={idx}
-                    className="p-2.5 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center justify-between gap-2 shadow-2xs"
+                    className="p-2.5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-2 shadow-2xs"
                   >
-                    <div className="min-w-0 flex-1">
-                      <span className="font-black text-stone-900 block truncate text-xs">
-                        {c.menuItem.localName || c.menuItem.name} {c.variantName ? `(${c.variantName === "Half" ? "हाफ" : "फुल"})` : ""}
-                      </span>
-                      <div className="flex items-center gap-1.5 text-[11px] text-stone-500 font-tabular mt-0.5">
-                        <span>₹{c.unitPrice} × {c.quantity}</span>
-                        <span className="font-black text-stone-800">= ₹{c.unitPrice * c.quantity}</span>
-                      </div>
-                      {(c.notes || c.breadOption) && (
-                        <span className="text-[9.5px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded mt-1 inline-block truncate max-w-[180px]">
-                          {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="font-black text-stone-900 block truncate text-xs">
+                          {c.menuItem.localName || c.menuItem.name} {c.variantName ? `(${c.variantName === "Half" ? "हाफ" : "फुल"})` : ""}
                         </span>
-                      )}
+                        <div className="flex items-center gap-1.5 text-[11px] text-stone-500 font-tabular mt-0.5">
+                          <span>₹{c.unitPrice} × {c.quantity}</span>
+                          <span className="font-black text-stone-800">= ₹{c.unitPrice * c.quantity}</span>
+                        </div>
+                        {(c.notes || c.breadOption) && (
+                          <span className="text-[9.5px] font-bold bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded mt-1 inline-block truncate max-w-[180px]">
+                            {c.notes || (c.breadOption ? (BREAD_OPTION_LABELS[c.breadOption]?.mr || c.breadOption) : "")}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Stepper */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 bg-white border border-stone-200 px-2 py-1 rounded-xl shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQuantity(idx, -1)}
+                            className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-tabular font-black text-xs px-1 min-w-5 text-center">
+                            {c.quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartQuantity(idx, 1)}
+                            className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = [...cart];
+                            updated.splice(idx, 1);
+                            setCart(updated);
+                          }}
+                          className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                          title="Remove item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Stepper */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="flex items-center gap-1 bg-white border border-stone-200 px-2 py-1 rounded-xl shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateCartQuantity(idx, -1)}
-                          className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-tabular font-black text-xs px-1 min-w-5 text-center">
-                          {c.quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateCartQuantity(idx, 1)}
-                          className="w-7 h-7 flex items-center justify-center text-stone-600 font-bold active:scale-90 hover:bg-stone-100 rounded-lg cursor-pointer transition-all"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                    {/* Desktop Cart Item Note Input + Presets */}
+                    <div className="pt-1.5 border-t border-stone-200/60">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-stone-400 shrink-0">📝</span>
+                        <input
+                          type="text"
+                          value={c.customNote || ""}
+                          onChange={(e) => handleUpdateCartIndexNote(idx, e.target.value)}
+                          placeholder="टीप / Note for KOT (उदा. कमी तिखट)..."
+                          className="flex-1 text-[11px] font-medium px-2 py-1 rounded-lg bg-white border border-stone-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-300 outline-none text-stone-900 placeholder:text-stone-400"
+                        />
+                        {c.customNote && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateCartIndexNote(idx, "")}
+                            className="text-[10px] text-stone-400 hover:text-stone-700 px-1 font-bold cursor-pointer"
+                            title="Clear note"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const updated = [...cart];
-                          updated.splice(idx, 1);
-                          setCart(updated);
-                        }}
-                        className="w-8 h-8 flex items-center justify-center text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                        title="Remove item"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {NOTE_PRESETS.slice(0, 4).map((preset) => {
+                          const isSelected = c.customNote === preset;
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected ? "" : preset;
+                                handleUpdateCartIndexNote(idx, next);
+                              }}
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-amber-600 text-white font-black"
+                                  : "bg-white text-stone-600 border border-stone-200 hover:bg-amber-50"
+                              }`}
+                            >
+                              {preset}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2148,34 +2390,52 @@ export default function WaiterOrderClient({
                           ))}
                       </div>
 
-                      {/* 1-Tap Preset Instruction Pills */}
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {["कमी तिखट", "झणझणीत", "रस्सा वेगळा", "गरम द्या"].map((preset) => {
-                          const isActive = c.customNote === preset;
-                          return (
+                      {/* Special Requirement Note Input & Preset Pills */}
+                      <div className="mt-2 pt-2 border-t border-stone-200/70 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10.5px] font-bold text-stone-700 flex items-center gap-1">
+                            <span>📝</span>
+                            <span>विशेष सूचना (KOT Note):</span>
+                          </label>
+                          {c.customNote && (
                             <button
-                              key={preset}
                               type="button"
-                              onClick={() => {
-                                const updated = [...cart];
-                                const newNote = isActive ? "" : preset;
-                                updated[idx] = {
-                                  ...updated[idx],
-                                  customNote: newNote,
-                                  notes: buildItemNotes(updated[idx].breadCounts, newNote, updated[idx].spiceLevel),
-                                };
-                                setCart(updated);
-                              }}
-                              className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
-                                isActive
-                                  ? "bg-amber-600 text-white shadow-2xs"
-                                  : "bg-white text-stone-600 border border-stone-200 hover:bg-amber-50"
-                              }`}
+                              onClick={() => handleUpdateCartIndexNote(idx, "")}
+                              className="text-[10px] font-bold text-stone-400 hover:text-red-600 cursor-pointer"
                             >
-                              {preset}
+                              Clear
                             </button>
-                          );
-                        })}
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={c.customNote || ""}
+                          onChange={(e) => handleUpdateCartIndexNote(idx, e.target.value)}
+                          placeholder="उदा. कमी तिखट, रस्सा वेगळा, गरम द्या..."
+                          className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-300 outline-none text-stone-900 placeholder:text-stone-400 shadow-2xs"
+                        />
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {NOTE_PRESETS.map((preset) => {
+                            const isActive = c.customNote === preset;
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => {
+                                  const newNote = isActive ? "" : preset;
+                                  handleUpdateCartIndexNote(idx, newNote);
+                                }}
+                                className={`text-[9.5px] font-bold px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                                  isActive
+                                    ? "bg-amber-600 text-white shadow-2xs font-black ring-1 ring-amber-700"
+                                    : "bg-white text-stone-600 border border-stone-200 hover:bg-amber-50"
+                                }`}
+                              >
+                                {preset}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>

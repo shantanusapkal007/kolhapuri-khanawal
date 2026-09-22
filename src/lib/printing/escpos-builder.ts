@@ -1034,17 +1034,31 @@ export function buildKotEscPos(
       p.devanagariLine(`  * तिखट (Spice): ${spiceMr} (${item.spiceLevel.replace(/_/g, " ")})`, { fontSize: 20, heightDots: 30 });
     }
 
-    // 5. Cooking Notes
+    // 5. Cooking Notes / Special Requirements
     if (item.notes) {
-      p.line(`  * टीप (Note): ${cleanThermalText(item.notes)}`);
+      const cleanNote = cleanThermalText(item.notes);
+      if (cleanNote) {
+        if (/[\u0900-\u097F]/.test(cleanNote)) {
+          p.devanagariLine(`  >> टीप (Note): ${cleanNote}`, { fontSize: 20, heightDots: 30 });
+        } else {
+          p.bold(true).line(`  >> NOTE: ${cleanNote}`).bold(false);
+        }
+      }
     }
     p.separator(".");
   }
 
   p.doubleSeparator();
   if (kot.notes) {
-    p.line(`Order Notes: ${cleanThermalText(kot.notes)}`);
-    p.separator();
+    const cleanKotNotes = cleanThermalText(kot.notes);
+    if (cleanKotNotes) {
+      if (/[\u0900-\u097F]/.test(cleanKotNotes)) {
+        p.devanagariLine(`>> Order Note: ${cleanKotNotes}`, { fontSize: 20, heightDots: 30 });
+      } else {
+        p.bold(true).line(`>> ORDER NOTE: ${cleanKotNotes}`).bold(false);
+      }
+      p.separator();
+    }
   }
 
   p.twoColumns(`Items: ${items.length}`, `Total Qty: ${items.reduce((s, i) => s + i.quantity, 0)}`, true);

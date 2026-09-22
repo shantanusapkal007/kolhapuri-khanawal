@@ -382,11 +382,14 @@ export function getThermalBaseCss(paperWidth: "80mm" | "58mm" = "80mm"): string 
     color: #000000 !important;
   }
   .kot-notes {
-    font-style: italic;
-    font-size: ${is58mm ? "11px" : "12px"};
+    font-size: ${is58mm ? "11px" : "12.5px"};
     color: #000000 !important;
     font-weight: 800 !important;
-    margin-top: 2px;
+    margin-top: 2.5px;
+    padding: 2px 4px;
+    background: #f4f4f4;
+    border-left: 3px solid #000000 !important;
+    border-radius: 2px;
   }
   .kot-spice {
     font-size: ${is58mm ? "11px" : "12.5px"};
@@ -1419,6 +1422,7 @@ export function generateCancelledKotHtml(
             <span class="marathi-title">${marathiName}</span>
           </div>
           ${englishName ? `<div class="english-subtitle kot-english-subtitle">(${englishName})</div>` : ""}
+          ${item.notes ? `<div class="kot-notes">📝 ${item.notes}</div>` : ""}
         </td>
       </tr>`;
   }
