@@ -15,6 +15,25 @@ let lastSyncVersion: number = 0;
 let lastSyncSenderId: string = "server";
 let lastRelaySnapshot: any = null;
 
+function mergeActiveParties(primaryParties: any[], secondaryParties: any[]): any[] {
+  const map = new Map<string, any>();
+  if (Array.isArray(secondaryParties)) {
+    for (const p of secondaryParties) {
+      if (p && p.id && p.status !== "CLOSED" && p.status !== "CANCELLED") {
+        map.set(p.id, p);
+      }
+    }
+  }
+  if (Array.isArray(primaryParties)) {
+    for (const p of primaryParties) {
+      if (p && p.id && p.status !== "CLOSED" && p.status !== "CANCELLED") {
+        map.set(p.id, p);
+      }
+    }
+  }
+  return Array.from(map.values());
+}
+
 /**
  * GET /api/sync
  * Upgraded from ephemeral in-memory cache to authoritative SQLite state.
@@ -28,7 +47,17 @@ export async function GET(request?: NextRequest | Request) {
     const kots = OrderRepository.getActiveKots();
 
     const updatedAt = new Date().toISOString();
-    const parties = dbParties.length > 0 ? dbParties : (lastRelaySnapshot?.parties || []);
+    // Merge database parties and last relay snapshot parties so newly created client parties are NEVER lost
+    const parties = mergeActiveParties(lastRelaySnapshot?.parties || [], dbParties);
+
+    // Ensure physical tables reflect occupancy of any active relay parties
+    const occupiedTableNumbers = new Set(parties.map((p) => p.tableNumber));
+    const mergedTables = tables.map((t) => {
+      if (occupiedTableNumbers.has(t.tableNumber) && t.status === "AVAILABLE") {
+        return { ...t, status: "OCCUPIED" as const, activePartiesCount: 1 };
+      }
+      return t;
+    });
 
     return NextResponse.json({
       success: true,
@@ -38,7 +67,7 @@ export async function GET(request?: NextRequest | Request) {
       updatedAt,
       authoritative: true,
       snapshot: {
-        tables,
+        tables: mergedTables,
         parties,
         activeKots: kots,
       },
@@ -65,12 +94,28 @@ export async function POST(request: NextRequest | Request) {
 
     lastSyncVersion = version;
     lastSyncSenderId = senderId;
+
+    const dbParties = TableRepository.getActiveParties();
+    const mergedParties = mergeActiveParties(
+      snapshot?.parties || [],
+      mergeActiveParties(lastRelaySnapshot?.parties || [], dbParties)
+    );
+
     if (snapshot) {
-      lastRelaySnapshot = snapshot;
+      lastRelaySnapshot = {
+        ...snapshot,
+        parties: mergedParties,
+      };
     }
 
     const tables = TableRepository.getAllTables();
-    const parties = TableRepository.getActiveParties();
+    const occupiedTableNumbers = new Set(mergedParties.map((p) => p.tableNumber));
+    const mergedTables = tables.map((t) => {
+      if (occupiedTableNumbers.has(t.tableNumber) && t.status === "AVAILABLE") {
+        return { ...t, status: "OCCUPIED" as const, activePartiesCount: 1 };
+      }
+      return t;
+    });
 
     return NextResponse.json({
       success: true,
@@ -79,8 +124,8 @@ export async function POST(request: NextRequest | Request) {
       updatedAt: new Date().toISOString(),
       message: "Sync acknowledged by authoritative database server",
       snapshot: {
-        tables,
-        parties: parties.length > 0 ? parties : (snapshot?.parties || []),
+        tables: mergedTables,
+        parties: mergedParties,
       },
     });
   } catch (error: any) {

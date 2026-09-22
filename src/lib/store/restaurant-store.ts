@@ -3,7 +3,7 @@
  * Centralized Live Operational State Engine
  */
 
-import { DiningTable, DiningParty, PartySeat } from "@/types/tables";
+import { DiningTable, DiningParty, DiningPartyStatus, PartySeat } from "@/types/tables";
 import { MenuItem, MenuCategory, Order, OrderItem, Kot, KotEvent, KitchenStation, BreadOption } from "@/types/orders";
 import { initialKhanawalCategories, initialKhanawalMenuItems } from "./kolhapuri-menu-data";
 import {
@@ -426,8 +426,28 @@ export class RestaurantStore {
     if (!snapshot || typeof snapshot !== "object") return;
     this.lastSyncVersion = version;
 
-    if (Array.isArray(snapshot.tables)) this.tables = snapshot.tables;
-    if (Array.isArray(snapshot.parties)) this.parties = snapshot.parties;
+    if (Array.isArray(snapshot.parties)) {
+      const remotePartiesMap = new Map<string, DiningParty>();
+      for (const p of snapshot.parties) {
+        if (p && p.id) remotePartiesMap.set(p.id, p);
+      }
+
+      // Merge remote parties with any active local parties not yet reflected in incoming snapshot
+      const mergedParties: DiningParty[] = [...snapshot.parties];
+      for (const localParty of this.parties) {
+        if (localParty && localParty.id && !remotePartiesMap.has(localParty.id)) {
+          if (localParty.status !== "CLOSED" && localParty.status !== "CANCELLED") {
+            mergedParties.push(localParty);
+          }
+        }
+      }
+      this.parties = mergedParties;
+    }
+
+    if (Array.isArray(snapshot.tables)) {
+      this.tables = snapshot.tables;
+    }
+    this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
     if (Array.isArray(snapshot.seats)) this.seats = snapshot.seats;
     if (Array.isArray(snapshot.orders)) this.orders = snapshot.orders;
     if (Array.isArray(snapshot.kots)) this.kots = snapshot.kots;
@@ -1869,6 +1889,26 @@ export class RestaurantStore {
     this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
     this.notifyStateChange("createPartyAtTable");
     return party;
+  }
+
+  setPartyOrdering(partyId: string, isOrdering: boolean): void {
+    const party = this.parties.find((p) => p.id === partyId);
+    if (!party) return;
+    if (party.status === "CLOSED" || party.status === "CANCELLED" || party.status === "WAITING_FOR_BILL") return;
+
+    const hasPlacedOrders = this.orders.some((o) => o.partyId === partyId && o.status !== "CANCELLED");
+    const targetStatus: DiningPartyStatus = isOrdering
+      ? "ORDERING"
+      : hasPlacedOrders
+      ? "FOOD_PENDING"
+      : "OPEN";
+
+    if (party.status !== targetStatus) {
+      party.status = targetStatus;
+      party.lastActivityAt = new Date().toISOString();
+      this.tables = this.tables.map((t) => refreshTableOccupancy(t, this.parties));
+      this.notifyStateChange("setPartyOrdering");
+    }
   }
 
   createTakeawayParty(

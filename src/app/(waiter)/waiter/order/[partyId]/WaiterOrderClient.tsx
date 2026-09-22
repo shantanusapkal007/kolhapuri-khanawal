@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, use, useMemo } from "react";
+import React, { useState, useEffect, use, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { DiningParty } from "@/types/tables";
 import {
   ArrowLeft,
   Search,
@@ -198,7 +199,7 @@ export default function WaiterOrderClient({
   // Resilient party resolution: Check direct ID, or auto-heal table number pattern
   let party = store.parties.find((p) => p.id === resolvedParams.partyId);
   if (!party) {
-    const tableMatch = resolvedParams.partyId.match(/(?:party-tbl-|table-)?(\d+)/i);
+    const tableMatch = resolvedParams.partyId.match(/^(?:party-tbl-|table-)?(\d+)$/i);
     if (tableMatch) {
       const tblNum = parseInt(tableMatch[1], 10);
       const existingTableParty = store.parties.find(
@@ -218,6 +219,26 @@ export default function WaiterOrderClient({
       }
     }
   }
+
+  // Retain party reference across transient background sync polls
+  const lastKnownPartyRef = useRef<DiningParty | null>(null);
+  if (party) {
+    lastKnownPartyRef.current = party;
+  } else if (lastKnownPartyRef.current && (lastKnownPartyRef.current.id === resolvedParams.partyId || lastKnownPartyRef.current.partyCode === resolvedParams.partyId)) {
+    party = lastKnownPartyRef.current;
+  }
+
+  // Multi-device real-time sync: Broadcast ORDERING status so all other devices see this table's order taking place
+  useEffect(() => {
+    if (party?.id) {
+      store.setPartyOrdering(party.id, true);
+    }
+    return () => {
+      if (party?.id) {
+        store.setPartyOrdering(party.id, false);
+      }
+    };
+  }, [party?.id]);
 
   useEffect(() => {
     if (party) {
@@ -273,17 +294,19 @@ export default function WaiterOrderClient({
 
   if (!party) {
     return (
-      <div className="p-8 text-center bg-white rounded-3xl border border-stone-200 shadow-md max-w-md mx-auto my-12">
-        <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-        <h2 className="text-lg font-black text-stone-900">Table Party Not Found</h2>
-        <p className="text-xs text-stone-500 mt-1">This party may have been settled or closed.</p>
-        <Link
-          href="/waiter"
-          className="mt-5 inline-flex items-center gap-1.5 bg-red-600 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dining Tables (मजला)</span>
-        </Link>
+      <div className="p-8 text-center bg-white rounded-3xl border border-stone-200 shadow-md max-w-md mx-auto my-12 animate-in fade-in">
+        <div className="w-10 h-10 rounded-full border-4 border-amber-500 border-t-transparent animate-spin mx-auto mb-3" />
+        <h2 className="text-base font-black text-stone-900">Connecting to Table Menu...</h2>
+        <p className="text-xs text-stone-500 mt-1">Retrieving dining party details...</p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Link
+            href="/waiter"
+            className="inline-flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold text-xs px-4 py-2 rounded-xl transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Tables Floor Plan (मजला)</span>
+          </Link>
+        </div>
       </div>
     );
   }
@@ -968,6 +991,33 @@ export default function WaiterOrderClient({
         <div className="fixed top-4 right-4 z-50 bg-stone-900/95 text-amber-300 border border-amber-500/40 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-xs sm:text-sm font-bold animate-in fade-in slide-in-from-top-2 backdrop-blur-md">
           <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* KOT Sent Success Confirmation Banner */}
+      {lastKotSuccess && (
+        <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 text-white p-3 sm:p-3.5 rounded-2xl shadow-lg border border-emerald-500/40 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-200" />
+            </div>
+            <div className="min-w-0">
+              <span className="font-black text-xs sm:text-sm block leading-tight">
+                ऑर्डर पाठवली! KOT #{lastKotSuccess.kotNumber} ({lastKotSuccess.itemCount} आयटम) स्वयंपाकघरात पाठवला.
+              </span>
+              <span className="text-[11px] text-emerald-100 font-medium">
+                Order sent to kitchen. Menu is ready for next items.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLastKotSuccess(null)}
+            className="p-1.5 rounded-lg hover:bg-white/20 text-white shrink-0 cursor-pointer"
+            title="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
